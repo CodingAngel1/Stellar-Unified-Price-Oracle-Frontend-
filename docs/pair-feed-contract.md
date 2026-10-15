@@ -24,3 +24,12 @@ pair symbols or on-chain proof precision.
 The current API does not guarantee this metadata. Until the backend includes
 the field, the detail page reports it as unavailable and pair cards omit the
 metadata summary. No unit or scale is fabricated by the frontend.
+
+## Provider feed-symbol directory
+
+The same `pairMetadata` object may include a `feedSymbols` map keyed by
+provider identifier. Each value reports `status` (`matched`, `renamed`,
+`unknown`, or `missing`), `canonicalSymbol`, and `observedSymbol`. These values
+must come from the backend's authoritative pair directory; the frontend does
+not infer aliases from provider names or price data. Missing or unknown
+metadata is shown as unavailable rather than treated as a successful match.

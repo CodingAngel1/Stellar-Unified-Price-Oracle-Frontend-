@@ -16,6 +16,7 @@ import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { PairMetadataPanel } from '../components/PairMetadataPanel'
+import { FeedSymbolDiagnostics } from '../components/FeedSymbolDiagnostics'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
@@ -179,6 +180,7 @@ export function PriceDetail() {
           </div>
 
           <PairMetadataPanel pair={price.assetPair} metadata={price.pairMetadata} />
+          <FeedSymbolDiagnostics pair={price.assetPair} feedSymbols={price.pairMetadata?.feedSymbols} />
 
           {/* Tabs — Overview (off-chain aggregated feed) vs Proof (on-chain verification) */}
           <div className="flex border-b border-gray-800 mb-6" role="tablist" aria-label="Price detail sections">

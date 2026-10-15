@@ -30,6 +30,17 @@ export interface PairMetadata {
   quoteUnit: string | null
   /** Number of decimal places in the canonical price scale. */
   priceScale: number | null
+  /** API-reported canonical and observed provider symbols, when available. */
+  feedSymbols?: Record<string, FeedSymbolMetadata>
+}
+
+export type FeedSymbolStatus = 'matched' | 'renamed' | 'unknown' | 'missing'
+
+/** Provider symbol resolution against the canonical pair directory. */
+export interface FeedSymbolMetadata {
+  status: FeedSymbolStatus
+  canonicalSymbol: string | null
+  observedSymbol: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -317,6 +328,25 @@ function isPairMetadata(value: unknown): value is PairMetadata {
       (typeof metadata.priceScale === 'number' &&
         Number.isInteger(metadata.priceScale) &&
         metadata.priceScale >= 0 &&
-        metadata.priceScale <= 100))
+        metadata.priceScale <= 100)) &&
+    (metadata.feedSymbols === undefined ||
+      (metadata.feedSymbols != null &&
+        typeof metadata.feedSymbols === 'object' &&
+        !Array.isArray(metadata.feedSymbols) &&
+        Object.values(metadata.feedSymbols).every(isFeedSymbolMetadata)))
+  )
+}
+
+function isFeedSymbolMetadata(value: unknown): value is FeedSymbolMetadata {
+  if (value == null || typeof value !== 'object') return false
+  const symbol = value as Record<string, unknown>
+  return (
+    (symbol.status === 'matched' ||
+      symbol.status === 'renamed' ||
+      symbol.status === 'unknown' ||
+      symbol.status === 'missing') &&
+    (symbol.canonicalSymbol === null ||
+      (typeof symbol.canonicalSymbol === 'string' && symbol.canonicalSymbol.length > 0)) &&
+    (symbol.observedSymbol === null || (typeof symbol.observedSymbol === 'string' && symbol.observedSymbol.length > 0))
   )
 }

@@ -2,6 +2,8 @@
 export type {
   PriceData,
   PairMetadata,
+  FeedSymbolStatus,
+  FeedSymbolMetadata,
   PriceSyncState,
   LivePriceEntry,
   PriceHistoryEntry,

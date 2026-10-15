@@ -21,4 +21,20 @@ describe('isPriceData pair metadata', () => {
   it('rejects malformed canonical scale metadata', () => {
     expect(isPriceData({ ...price, pairMetadata: { baseUnit: 'BTC', quoteUnit: 'USD', priceScale: 1.5 } })).toBe(false)
   })
+
+  it('rejects malformed provider symbol statuses', () => {
+    expect(
+      isPriceData({
+        ...price,
+        pairMetadata: {
+          baseUnit: 'BTC',
+          quoteUnit: 'USD',
+          priceScale: 8,
+          feedSymbols: {
+            chainlink: { status: 'guessed', canonicalSymbol: 'BTC/USD', observedSymbol: 'BTC/USD' },
+          },
+        },
+      }),
+    ).toBe(false)
+  })
 })
