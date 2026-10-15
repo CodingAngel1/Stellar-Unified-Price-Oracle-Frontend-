@@ -20,6 +20,7 @@ import { exportPriceHistoryPdf } from '../utils/pdfExport'
 import { loadChartExport } from '../utils/deferredExports'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { getChartPalette, getChartTheme, type ChartPalette, type ChartTheme } from '../utils/chartTheme'
+import { getSourceTimestampState } from '../utils/sourceTimestamps'
 
 // ---------------------------------------------------------------------------
 // #305 – Chart annotation types
@@ -37,6 +38,18 @@ export interface ChartAnnotation {
   color?: string
 }
 
+function sourceTimestampSummary(entry: PriceHistoryEntry): string {
+  if (entry.sources.length === 0) return 'No source contributors reported'
+  return entry.sources
+    .map((source) => {
+      const sourceTimestamp = entry.sourceTimestamps?.find((item) => item.source === source)
+      const state = getSourceTimestampState(sourceTimestamp, entry.timestamp)
+      if (state === 'unavailable' || !sourceTimestamp) return `${source}: unavailable from API`
+      return `${source}: ${formatTimestamp(sourceTimestamp.timestamp)}${state === 'stale' ? ' (stale)' : ''}`
+    })
+    .join('; ')
+}
+
 // ---------------------------------------------------------------------------
 // #300 – Custom tooltip component
 // ---------------------------------------------------------------------------
@@ -45,6 +58,7 @@ interface ChartPoint {
   timestamp: number
   confidence: number
   sources: string[]
+  sourceTimestamps?: PriceHistoryEntry['sourceTimestamps']
   time: string
   idx: number
   [key: string]: unknown
@@ -125,6 +139,27 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, palette, norma
               </span>
             ))}
           </div>
+          <ul className="mt-1.5 space-y-1" aria-label="Contributing source timestamps">
+            {sources.map((source) => {
+              const sourceTimestamp = raw.sourceTimestamps?.find((item) => item.source === source)
+              const state = getSourceTimestampState(sourceTimestamp, raw.timestamp)
+              return (
+                <li key={source} style={{ color: palette.tooltipMuted }}>
+                  {source}:{' '}
+                  {!sourceTimestamp || state === 'unavailable' ? (
+                    <span>Unavailable from API</span>
+                  ) : (
+                    <>
+                      <time dateTime={new Date(sourceTimestamp.timestamp).toISOString()}>
+                        {formatTimestamp(sourceTimestamp.timestamp)}
+                      </time>
+                      {state === 'stale' && <span> (stale)</span>}
+                    </>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
         </div>
       )}
       {payload.slice(1).map((p, i) => {
@@ -1001,6 +1036,9 @@ function ChartContent({
                 <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
                   Confidence
                 </th>
+                <th scope="col" className="px-3 py-2 text-left font-medium text-gray-400">
+                  Source timestamps
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1009,6 +1047,7 @@ function ChartContent({
                   <td className="px-3 py-1.5 font-mono">{d.time}</td>
                   <td className="px-3 py-1.5 text-right font-mono">${formatPriceShort(d.price)}</td>
                   <td className="px-3 py-1.5 text-right">{(d.confidence * 100).toFixed(1)}%</td>
+                  <td className="px-3 py-1.5">{sourceTimestampSummary(d)}</td>
                 </tr>
               ))}
             </tbody>
@@ -1026,6 +1065,7 @@ function ChartContent({
               <th scope="col">Time</th>
               <th scope="col">Price USD</th>
               <th scope="col">Confidence</th>
+              <th scope="col">Contributing source timestamps</th>
             </tr>
           </thead>
           <tbody>
@@ -1034,6 +1074,7 @@ function ChartContent({
                 <td>{d.time}</td>
                 <td>{formatPriceShort(d.price)}</td>
                 <td>{(d.confidence * 100).toFixed(1)}%</td>
+                <td>{sourceTimestampSummary(d)}</td>
               </tr>
             ))}
           </tbody>

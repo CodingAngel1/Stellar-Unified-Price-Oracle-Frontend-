@@ -329,7 +329,11 @@ GET /api/prices/:pair/history
       "price": 42800.00,
       "timestamp": 1693485600000,
       "confidence": 0.97,
-      "sources": ["chainlink", "redstone"]
+      "sources": ["chainlink", "redstone"],
+      "sourceTimestamps": [
+        { "source": "chainlink", "timestamp": 1693485595000 },
+        { "source": "redstone", "timestamp": 1693485598000 }
+      ]
     },
     {
       "price": 42850.25,
@@ -340,6 +344,12 @@ GET /api/prices/:pair/history
   ]
 }
 ```
+
+`sourceTimestamps` is an optional additive response field. The frontend displays
+per-source timestamps when supplied; otherwise it explicitly reports that the
+timestamps are unavailable. The current backend contract does not guarantee
+this field, so backend support is required before timestamps will appear for
+existing responses. See [the frontend dependency note](PRICE_HISTORY_SOURCE_TIMESTAMPS.md).
 
 #### HTTP Example
 
@@ -762,6 +772,10 @@ interface PriceHistoryEntry {
   timestamp: number    // Unix timestamp (milliseconds)
   confidence: number   // Confidence at this point
   sources: string[]    // Sources active at this time
+  sourceTimestamps?: { // Optional: requires backend contract support
+    source: string
+    timestamp: number  // Unix timestamp (milliseconds) for that source's contribution
+  }[]
 }
 ```
 

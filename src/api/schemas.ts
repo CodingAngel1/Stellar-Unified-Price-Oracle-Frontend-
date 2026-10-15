@@ -23,12 +23,18 @@ export const ExcludedSourceTickSchema = z.object({
   reason: z.string(),
 })
 
+export const SourceTimestampSchema = z.object({
+  source: z.string().min(1),
+  timestamp: z.number().int().nonnegative(),
+})
+
 export const PriceHistoryEntrySchema = z.object({
   price: z.number().finite(),
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
   excludedSources: z.array(ExcludedSourceTickSchema).optional(),
+  sourceTimestamps: z.array(SourceTimestampSchema).optional(),
 })
 
 export const PriceHistoryResponseSchema = z.object({
