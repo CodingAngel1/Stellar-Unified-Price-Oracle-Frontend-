@@ -32,6 +32,7 @@ import { deriveSourceHealths } from '../utils/sourceHealth'
 import { WORKSPACE_PARAM, type Workspace } from '../utils/workspaceShare'
 import { OnboardingTour, resetTour } from '../components/OnboardingTour'
 import { WorkspaceShareDialog } from '../components/WorkspaceShareDialog'
+import { ConfidenceRegimePanel } from '../components/ConfidenceRegimePanel'
 
 const SKELETON_COUNT = 8
 
@@ -52,6 +53,7 @@ export function Dashboard() {
     pricesError,
     pricesValidating,
     livePrices,
+    attributionHistory,
     wsStatus,
     diagnostics,
     rateLimitStatus,
@@ -743,6 +745,8 @@ export function Dashboard() {
       )}
 
       {/* Source Reliability Leaderboard (#465) */}
+      <ConfidenceRegimePanel histories={attributionHistory} />
+
       <div className="mt-8">
         <ErrorBoundary boundaryId="reliability-leaderboard" featureLabel="Reliability Leaderboard">
           <ReliabilityLeaderboard sourceHealths={sourceHealths} />

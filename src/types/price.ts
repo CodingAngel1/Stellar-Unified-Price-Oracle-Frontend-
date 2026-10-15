@@ -128,6 +128,10 @@ export interface MoveAttribution {
   timestamp: number
   /** Aggregate price for this tick. */
   price: number
+  /** Confidence score reported by the API for this tick (0–1). */
+  confidence: number
+  /** Confidence score reported for the preceding tick, or `null` when unavailable. */
+  previousConfidence: number | null
   /** Aggregate delta vs previous tick, or `null` on the first tick. */
   delta: number | null
   /** Aggregate delta as a percentage, or `null` when prevPrice is null or zero. */
