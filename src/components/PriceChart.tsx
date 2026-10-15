@@ -21,6 +21,7 @@ import { loadChartExport } from '../utils/deferredExports'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { getChartPalette, getChartTheme, type ChartPalette, type ChartTheme } from '../utils/chartTheme'
 import { getSourceTimestampState } from '../utils/sourceTimestamps'
+import { buildSourceCoverageData } from '../utils/priceHistoryCoverage'
 
 // ---------------------------------------------------------------------------
 // #305 – Chart annotation types
@@ -278,6 +279,8 @@ function ChartContent({
   >(null)
   // Toggle individual overlay pairs on/off
   const [hiddenPairs, setHiddenPairs] = useState<Set<string>>(new Set())
+  const [hiddenCoverageSources, setHiddenCoverageSources] = useState<Set<string>>(new Set())
+  const [coverageVisible, setCoverageVisible] = useState(false)
   // Whether to show normalised % change (used when overlays present)
   const [normalised, setNormalised] = useState(false)
   // Whether accessible data table is shown
@@ -476,6 +479,11 @@ function ChartContent({
   }, [])
 
   const visibleData = mergedChartData.slice(activeDomain[0], activeDomain[1] + 1)
+  const coverageData = useMemo(
+    () => buildSourceCoverageData(chartData.slice(activeDomain[0], activeDomain[1] + 1)),
+    [chartData, activeDomain],
+  )
+  const activeCoverageSeries = coverageData.series.filter((item) => !hiddenCoverageSources.has(item.source))
 
   // Human-readable label for the currently zoomed date range (#301)
   const zoomedRangeLabel =
@@ -558,6 +566,19 @@ function ChartContent({
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {rangeBar}
+          <button
+            type="button"
+            onClick={() => setCoverageVisible((visible) => !visible)}
+            className={`px-2 py-1 text-xs rounded-lg border transition-colors ${
+              coverageVisible
+                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                : 'text-gray-400 border-gray-700 hover:text-gray-200 hover:bg-gray-700'
+            }`}
+            aria-pressed={coverageVisible}
+            aria-label="Toggle per-source coverage overlay"
+          >
+            Coverage
+          </button>
           {hasOverlays && (
             <button
               type="button"
@@ -895,6 +916,135 @@ function ChartContent({
           </ResponsiveContainer>
         )}
       </div>
+      {coverageVisible && (
+        <section
+          className="mt-3 rounded-lg border p-3"
+          style={{ backgroundColor: palette.background, borderColor: palette.border }}
+          aria-label="Per-source observed history coverage"
+        >
+          <div className="mb-2 flex flex-wrap items-center gap-2" role="group" aria-label="Toggle covered sources">
+            {coverageData.series.map((item) => {
+              const seriesIndex = coverageData.series.indexOf(item)
+              const series = palette.series[seriesIndex % palette.series.length]
+              const hidden = hiddenCoverageSources.has(item.source)
+              return (
+                <button
+                  key={item.source}
+                  type="button"
+                  onClick={() =>
+                    setHiddenCoverageSources((previous) => {
+                      const next = new Set(previous)
+                      if (next.has(item.source)) next.delete(item.source)
+                      else next.add(item.source)
+                      return next
+                    })
+                  }
+                  className={`rounded border px-2 py-1 text-xs ${hidden ? 'opacity-50' : ''}`}
+                  style={{ color: series.color, borderColor: series.color }}
+                  aria-pressed={!hidden}
+                  aria-label={`Toggle ${item.source} coverage`}
+                >
+                  {item.source}: {item.percent.toFixed(1)}%
+                </button>
+              )
+            })}
+          </div>
+          {coverageData.series.length === 0 ? (
+            <p className="py-5 text-center text-sm" style={{ color: palette.muted }} role="status">
+              Per-source coverage is unavailable because the returned history contains no contributing-source data.
+            </p>
+          ) : (
+            <>
+              <div
+                className="h-32 w-full"
+                role="img"
+                aria-label={`Per-source observed coverage across ${coverageData.points.length} historical price points`}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={coverageData.points}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tickFormatter={(timestamp: number) => formatChartTimeWithTz(timestamp, timezone)}
+                      tick={{ fill: palette.muted, fontSize: 10 }}
+                      axisLine={{ stroke: palette.border }}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      ticks={[0, 50, 100]}
+                      tickFormatter={(value: number) => `${value}%`}
+                      tick={{ fill: palette.muted, fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={48}
+                    />
+                    <Tooltip
+                      labelFormatter={(timestamp) => formatChartTimeWithTz(Number(timestamp), timezone)}
+                      formatter={(value, name) => {
+                        const item = coverageData.series.find((series) => series.dataKey === name)
+                        return [`${Number(value).toFixed(0)}%`, item?.source ?? String(name)]
+                      }}
+                      contentStyle={{
+                        backgroundColor: palette.tooltipBackground,
+                        borderColor: palette.border,
+                        color: palette.tooltipForeground,
+                      }}
+                      labelStyle={{ color: palette.tooltipMuted }}
+                      itemStyle={{ color: palette.tooltipForeground }}
+                    />
+                    {activeCoverageSeries.map((item) => {
+                      const seriesIndex = coverageData.series.indexOf(item)
+                      const series = palette.series[seriesIndex % palette.series.length]
+                      return (
+                        <Line
+                          key={item.source}
+                          type="stepAfter"
+                          dataKey={item.dataKey}
+                          name={item.source}
+                          stroke={series.color}
+                          strokeDasharray={series.dash}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      )
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-2 text-xs" style={{ color: palette.muted }}>
+                Coverage is the share of returned price points that report each source as a contributor; it does not
+                represent upstream uptime.
+              </p>
+              <div className="sr-only">
+                <table aria-label="Per-source price history coverage data">
+                  <caption>Coverage by returned historical price point</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Timestamp</th>
+                      {coverageData.series.map((item) => (
+                        <th scope="col" key={item.source}>{item.source} coverage</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {coverageData.points.slice(0, 100).map((point, index) => (
+                      <tr key={`${point.timestamp}-${index}`}>
+                        <td>{formatTimestamp(point.timestamp)}</td>
+                        {coverageData.series.map((item) => (
+                          <td key={item.source}>{point[item.dataKey] === 100 ? 'Contributed' : 'Not reported'}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+      )}
       {/* #305 – Annotation controls */}
       <div className="flex items-center gap-2 mt-2 flex-shrink-0">
         <button

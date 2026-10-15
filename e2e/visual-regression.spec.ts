@@ -108,6 +108,23 @@ async function waitForPageReady(page: Page): Promise<void> {
   ])
 }
 
+// ── Price chart palette and per-source overlays ─────────────────────────────
+
+for (const theme of ['light', 'dark', 'high-contrast'] as const) {
+  test(`price chart ${theme} theme baseline with source coverage`, async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop)
+    await page.goto(`/e2e/fixtures/price-chart-harness.html?theme=${theme}`)
+    await page.getByRole('heading', { name: 'BTC/USD Price History' }).waitFor()
+    await page.getByRole('button', { name: 'Toggle per-source coverage overlay' }).click()
+    await page.getByRole('img', { name: /Per-source observed coverage/ }).waitFor()
+
+    const screenshot = await stableScreenshot(page)
+    expect(screenshot).toMatchSnapshot(`price-chart-${theme}-desktop.png`, {
+      maxDiffPixelRatio: 0.02,
+    })
+  })
+}
+
 // ── Dashboard — viewport-specific screenshots ───────────────────────────────
 
 for (const [name, size] of Object.entries(VIEWPORTS) as [
@@ -216,30 +233,6 @@ test.describe('Price Detail page', () => {
 
     const screenshot = await stableScreenshot(page)
     expect(screenshot).toMatchSnapshot('price-detail-light-desktop.png', {
-      maxDiffPixelRatio: 0.02,
-    })
-  })
-
-  test('high contrast baseline — desktop', async ({ page }) => {
-    await page.setViewportSize(VIEWPORTS.desktop)
-    await setColorScheme(page, 'dark')
-    await page.goto('/prices/BTC%2FUSD')
-    await page.waitForLoadState('networkidle')
-    await page.evaluate(() => document.documentElement.classList.add('high-contrast'))
-    await page.waitForTimeout(100)
-    await Promise.race([
-      page
-        .getByRole('button', { name: /go back/i })
-        .waitFor({ timeout: 10_000 })
-        .catch(() => {}),
-      page
-        .getByRole('alert')
-        .waitFor({ timeout: 10_000 })
-        .catch(() => {}),
-    ])
-
-    const screenshot = await stableScreenshot(page)
-    expect(screenshot).toMatchSnapshot('price-detail-high-contrast-desktop.png', {
       maxDiffPixelRatio: 0.02,
     })
   })
