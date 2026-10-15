@@ -17,6 +17,7 @@ import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { PairMetadataPanel } from '../components/PairMetadataPanel'
 import { FeedSymbolDiagnostics } from '../components/FeedSymbolDiagnostics'
+import { ProviderPrecisionComparison } from '../components/ProviderPrecisionComparison'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
@@ -253,6 +254,19 @@ export function PriceDetail() {
                     </span>
                   ))}
                 </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                <h2 className="text-xs text-gray-400 uppercase tracking-wider mb-3">
+                  Normalized provider price precision
+                </h2>
+                <ProviderPrecisionComparison
+                  pair={price.assetPair}
+                  pairMetadata={price.pairMetadata}
+                  sourcePrices={price.sourcePrices}
+                  sourcePriceDecimals={price.sourcePriceDecimals}
+                  timestamp={price.timestamp}
+                />
               </div>
 
               {/* Move attribution — rendered whenever WS attribution data is available */}

@@ -37,4 +37,9 @@ describe('isPriceData pair metadata', () => {
       }),
     ).toBe(false)
   })
+
+  it('rejects invalid provider precision metadata', () => {
+    expect(isPriceData({ ...price, sourcePriceDecimals: { chainlink: 1.2 } })).toBe(false)
+    expect(isPriceData({ ...price, sourcePrices: { chainlink: Number.NaN } })).toBe(false)
+  })
 })

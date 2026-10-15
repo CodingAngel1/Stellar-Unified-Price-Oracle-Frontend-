@@ -20,6 +20,10 @@ export interface PriceData {
   sources: string[]
   /** Canonical units and output scale, when supplied by the API. */
   pairMetadata?: PairMetadata
+  /** Individual provider values, when included in the aggregate response. */
+  sourcePrices?: Record<string, number>
+  /** Decimal places used by each provider for the corresponding source price. */
+  sourcePriceDecimals?: Record<string, number>
 }
 
 /** Canonical units and decimal scale used to interpret an asset pair's price. */
@@ -314,7 +318,24 @@ export function isPriceData(value: unknown): value is PriceData {
     !Number.isNaN(obj.confidence) &&
     Array.isArray(obj.sources) &&
     obj.sources.every((s: unknown) => typeof s === 'string') &&
-    (pairMetadata === undefined || isPairMetadata(pairMetadata))
+    (pairMetadata === undefined || isPairMetadata(pairMetadata)) &&
+    (obj.sourcePrices === undefined || isFiniteNumberRecord(obj.sourcePrices)) &&
+    (obj.sourcePriceDecimals === undefined || isDecimalPlacesRecord(obj.sourcePriceDecimals))
+  )
+}
+
+function isFiniteNumberRecord(value: unknown): value is Record<string, number> {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) return false
+  return Object.entries(value).every(
+    ([key, number]) => key.length > 0 && typeof number === 'number' && Number.isFinite(number),
+  )
+}
+
+function isDecimalPlacesRecord(value: unknown): value is Record<string, number> {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) return false
+  return Object.entries(value).every(
+    ([key, number]) =>
+      key.length > 0 && typeof number === 'number' && Number.isInteger(number) && number >= 0 && number <= 100,
   )
 }
 

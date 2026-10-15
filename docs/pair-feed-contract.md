@@ -33,3 +33,21 @@ provider identifier. Each value reports `status` (`matched`, `renamed`,
 must come from the backend's authoritative pair directory; the frontend does
 not infer aliases from provider names or price data. Missing or unknown
 metadata is shown as unavailable rather than treated as a successful match.
+
+## Provider values and decimal precision
+
+To compare provider precision, the price response may include `sourcePrices`
+(finite numeric values keyed by provider) and `sourcePriceDecimals` (integer
+decimal-place counts from 0 through 100, keyed by provider). The response must
+also include `pairMetadata.priceScale` for normalization. The frontend formats
+all supplied provider values at that shared scale and compares the API-reported
+decimal counts with it; it does not infer provider precision from JavaScript
+number formatting.
+
+If provider values or the canonical scale are absent, the comparison reports
+why it cannot be produced. If a provider's decimal count is absent, that row
+shows precision as unavailable. The existing response timestamp is shown for
+context; provider-specific timestamps are not represented by this contract.
+The comparison uses the dashboard's existing two-minute aging threshold to
+label an old aggregate snapshot as stale; it does not treat that label as a
+provider-specific freshness measurement.

@@ -27,6 +27,8 @@ export const PriceDataSchema = z.object({
         .optional(),
     })
     .optional(),
+  sourcePrices: z.record(z.string().min(1), z.number().finite()).optional(),
+  sourcePriceDecimals: z.record(z.string().min(1), z.number().int().min(0).max(100)).optional(),
 })
 
 /**
