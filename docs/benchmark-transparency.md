@@ -25,3 +25,13 @@ array of pair-scoped observations:
 The frontend filters observations to the requested pair. The backend must add
 pair scoping and source provenance if its current endpoint does not provide
 them; the frontend does not infer either value.
+
+## Historical data-quality incidents
+
+Price-history points that include `excludedSources` are marked on the affected
+pair's chart as **Source excluded**. The marker note lists the excluded source,
+reported price, and upstream reason from that exact history record. These
+markers are API-derived, are not user-dismissible, and are not generated for
+history points without exclusion metadata. When the history API omits
+`excludedSources`, the chart has no incident markers; the frontend does not
+infer incidents from price movements or confidence scores.

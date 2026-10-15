@@ -49,6 +49,27 @@ describe('PriceChart', () => {
     expect(screen.getByText('BTC/USD Price History')).toBeInTheDocument()
   })
 
+  it('announces API-derived quality incidents and does not offer to remove them', () => {
+    renderWithProviders(
+      <PriceChart
+        data={sampleData}
+        pair="BTC/USD"
+        annotations={[
+          {
+            id: 'excluded-source-123',
+            timestamp: sampleData[0].timestamp,
+            label: 'Source excluded',
+            note: 'band: outlier',
+            kind: 'quality',
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByRole('note', { name: 'Source excluded: band: outlier' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove annotation Source excluded' })).not.toBeInTheDocument()
+  })
+
   it('renders all time range buttons', () => {
     renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     for (const label of ['1H', '24H', '7D', '30D', '1Y']) {

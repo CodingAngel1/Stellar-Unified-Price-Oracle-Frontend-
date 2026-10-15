@@ -34,6 +34,8 @@ export interface ChartAnnotation {
   note?: string
   /** Hex colour for the reference line. Defaults to amber. */
   color?: string
+  /** Quality annotations are API-derived and cannot be dismissed as user notes. */
+  kind?: 'quality' | 'user'
 }
 
 // ---------------------------------------------------------------------------
@@ -944,16 +946,20 @@ function ChartContent({
               className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
               style={{ borderColor: ann.color ?? '#f59e0b', color: ann.color ?? '#f59e0b' }}
               title={ann.note}
+              role={ann.kind === 'quality' ? 'note' : undefined}
+              aria-label={ann.kind === 'quality' ? `${ann.label}: ${ann.note ?? ''}` : undefined}
             >
               {ann.label}
-              <button
-                type="button"
-                onClick={() => setLocalAnnotations((prev) => prev.filter((a) => a.id !== ann.id))}
-                className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
-                aria-label={`Remove annotation ${ann.label}`}
-              >
-                ×
-              </button>
+              {ann.kind !== 'quality' && (
+                <button
+                  type="button"
+                  onClick={() => setLocalAnnotations((prev) => prev.filter((a) => a.id !== ann.id))}
+                  className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                  aria-label={`Remove annotation ${ann.label}`}
+                >
+                  ×
+                </button>
+              )}
             </span>
           ))}
         </div>

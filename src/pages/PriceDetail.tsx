@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSwr } from '../hooks/useSwr'
@@ -24,6 +24,7 @@ import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
+import { buildExcludedSourceAnnotations } from '../utils/qualityIncidents'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -137,6 +138,7 @@ export function PriceDetail() {
     history.map((entry) => ({ timestamp: new Date(entry.timestamp).toISOString(), price: entry.price })),
     { pair: isInvalidPair ? '' : decodedPair },
   )
+  const qualityAnnotations = useMemo(() => buildExcludedSourceAnnotations(history), [history])
 
   // Benchmark pair history — fetched only when a benchmark pair is selected
   const { history: benchmarkHistory, loading: benchmarkHistoryLoading } = usePriceHistory(benchmarkPair, {
@@ -413,6 +415,7 @@ export function PriceDetail() {
                       <LazyPriceChart
                         data={history}
                         pair={decodedPair}
+                        annotations={qualityAnnotations}
                         loading={historyLoading && history.length === 0}
                         loadingMore={loadingMore}
                         hasMore={hasMore}
