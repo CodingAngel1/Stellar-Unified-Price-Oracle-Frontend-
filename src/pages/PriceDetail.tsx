@@ -24,6 +24,7 @@ import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
 import { getObservedSourceRange } from '../utils/uncertaintyBand'
 import { ObservedSourceRange } from '../components/ObservedSourceRange'
+import { ConfidenceChangeExplanation } from '../components/ConfidenceChangeExplanation'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -261,7 +262,20 @@ export function PriceDetail() {
               {(() => {
                 const pairHistory = attributionHistory.get(decodedPair) ?? []
                 const latest = pairHistory[pairHistory.length - 1]
-                return latest ? <MoveAttributionPanel latest={latest} history={pairHistory} /> : null
+                const previous = pairHistory[pairHistory.length - 2]
+                return latest ? (
+                  <>
+                    <MoveAttributionPanel latest={latest} history={pairHistory} />
+                    <ConfidenceChangeExplanation latest={latest} previous={previous} />
+                  </>
+                ) : (
+                  <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                    <h2 className="text-xs text-gray-400 uppercase tracking-wider mb-3">Confidence change context</h2>
+                    <p className="text-sm text-gray-400" role="status">
+                      Waiting for live tick data to compare confidence inputs.
+                    </p>
+                  </section>
+                )
               })()}
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
