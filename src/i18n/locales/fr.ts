@@ -442,13 +442,22 @@ const fr = {
 
   pwa: {
     installTitle: 'Installer Stellar Oracle',
-    installDetail: 'Ajoutez cette application à votre appareil pour un accès rapide et une utilisation hors ligne.',
+    installDetail: 'Accédez aux prix des oracles en un geste, avec l’application disponible hors ligne.',
     installAction: 'Installer',
+    installing: 'Ouverture…',
     installDismiss: 'Pas maintenant',
+    installError:
+      'La fenêtre d’installation ne s’est pas ouverte. Vous pouvez installer l’application depuis le menu du navigateur.',
     updateTitle: 'Mise à jour disponible',
-    updateDetail: "Une nouvelle version de l'application est prête.",
+    updateVersion: 'Version {{version}}',
+    updateNotes: 'Inclut les dernières améliorations et corrections.',
     updateAction: 'Recharger',
+    updating: 'Application…',
     updateDismiss: 'Plus tard',
+    offlineReady: 'L’application est disponible hors ligne. Les prix en direct nécessitent une connexion.',
+    errorTitle: 'La mise à jour ou le mode hors ligne est indisponible',
+    errorDetail: 'La version actuelle reste disponible en ligne ; le changement demandé n’a pas été appliqué.',
+    dismissError: 'Fermer',
   },
 
   notFound: {

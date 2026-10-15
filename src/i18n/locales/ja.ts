@@ -437,13 +437,21 @@ const ja = {
 
   pwa: {
     installTitle: 'Stellar Oracle をインストール',
-    installDetail: 'このアプリをデバイスに追加すると、すばやくアクセスでき、オフラインでも利用できます。',
+    installDetail: 'オラクル価格にすぐアクセスできます。アプリの基本部分はオフラインでも利用できます。',
     installAction: 'インストール',
+    installing: '起動中…',
     installDismiss: '後で',
+    installError: 'インストール画面を開けませんでした。ブラウザーのメニューからインストールできます。',
     updateTitle: 'アップデートがあります',
-    updateDetail: '新しいバージョンの準備ができました。',
+    updateVersion: 'バージョン {{version}}',
+    updateNotes: '最新の修正と改善が含まれています。',
     updateAction: '再読み込み',
+    updating: '適用中…',
     updateDismiss: '後で',
+    offlineReady: 'アプリの基本部分をオフラインで利用できます。最新価格の取得には接続が必要です。',
+    errorTitle: 'アップデートまたはオフライン機能を利用できません',
+    errorDetail: '現在のアプリはオンラインで引き続き利用できます。要求された変更は適用されませんでした。',
+    dismissError: '閉じる',
   },
 
   notFound: {

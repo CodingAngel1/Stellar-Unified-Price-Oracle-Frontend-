@@ -464,13 +464,21 @@ const en = {
   // ── PWA install / update prompts (#361) ───────────────────────────────────
   pwa: {
     installTitle: 'Install Stellar Oracle',
-    installDetail: 'Add this app to your device for quick access and offline support.',
+    installDetail: 'Keep live oracle prices one tap away, with the app shell available offline.',
     installAction: 'Install',
+    installing: 'Opening…',
     installDismiss: 'Not now',
+    installError: 'The install prompt could not be opened. You can install this app from your browser menu.',
     updateTitle: 'Update available',
-    updateDetail: 'A new version of the app is ready.',
-    updateAction: 'Reload',
+    updateVersion: 'Version {{version}}',
+    updateNotes: 'Includes the latest fixes and improvements.',
+    updateAction: 'Reload to update',
+    updating: 'Applying…',
     updateDismiss: 'Later',
+    offlineReady: 'The app shell is cached for offline access. Live prices still need a connection.',
+    errorTitle: 'Offline support or update is unavailable',
+    errorDetail: 'The current app remains available online; the requested service worker change was not applied.',
+    dismissError: 'Dismiss',
   },
 
   // ── NotFound page ─────────────────────────────────────────────────────────

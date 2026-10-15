@@ -109,10 +109,10 @@ export function AppContent(): ReactElement {
   return (
     <AlertsProvider>
       <AppAnnouncements />
+      <InstallPrompt />
+      <PwaUpdateBanner />
       <ErrorBoundary key={location.key}>
         <ApiVersionBanner />
-        <InstallPrompt />
-        <PwaUpdateBanner />
         <Layout>
           <Routes>
             <Route
