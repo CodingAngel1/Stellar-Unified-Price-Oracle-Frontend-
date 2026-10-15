@@ -553,6 +553,7 @@ const en = {
     fields: {
       refreshInterval: 'Refresh Interval',
       chartTimeRange: 'Chart Time Range',
+      chartHistoryPageSize: 'Chart History Points per Page',
       staleThreshold: 'Stale Asset Threshold',
     },
     accessibility: {

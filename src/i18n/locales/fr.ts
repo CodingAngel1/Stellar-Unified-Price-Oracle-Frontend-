@@ -526,6 +526,7 @@ const fr = {
     fields: {
       refreshInterval: 'Intervalle de rafraîchissement',
       chartTimeRange: 'Plage de temps du graphique',
+      chartHistoryPageSize: "Points d'historique par page",
       staleThreshold: "Seuil d'actif obsolète",
     },
     accessibility: {

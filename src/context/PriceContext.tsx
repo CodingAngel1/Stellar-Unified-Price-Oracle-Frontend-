@@ -8,7 +8,6 @@ import { rateLimitManager, type RateLimitStatus } from '../api/rateLimit'
 import { markStage } from '../perf/startup'
 import { useOutboundQueue } from '../hooks/useOutboundQueue'
 import { offlinePriceStore, type OfflineSnapshot } from '../services/offlinePriceStore'
-import { config } from '../config'
 import { computeAttribution, appendToRingBuffer, type SourcePriceState } from '../utils/moveAttribution'
 import {
   TICK_POLICY,
@@ -18,6 +17,7 @@ import {
   type TickCoalescerStats,
 } from '../utils/tickCoalescer'
 import type { LivePriceEntry, PriceData, MoveAttribution, WsPriceUpdate } from '../types'
+import { usePreferences } from '../preferences/PreferencesContext'
 import { useToast } from './ToastContext'
 
 /**
@@ -175,6 +175,7 @@ const PriceContext = createContext<PriceContextValue | null>(null)
  * has no data (first load while offline).
  */
 export function PriceProvider({ children }: { children: ReactNode }) {
+  const { preferences } = usePreferences()
   const {
     data: prices = [],
     isLoading: pricesLoading,
@@ -184,7 +185,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   } = useQuery<PriceData[], Error>({
     queryKey: ['prices'],
     queryFn: () => fetchAllPrices(),
-    refetchInterval: config.refreshInterval,
+    refetchInterval: preferences.refreshInterval,
     staleTime: 5_000,
     retry: 3,
   })

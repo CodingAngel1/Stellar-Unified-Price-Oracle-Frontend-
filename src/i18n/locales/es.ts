@@ -524,6 +524,7 @@ const es = {
     fields: {
       refreshInterval: 'Intervalo de actualización',
       chartTimeRange: 'Rango de tiempo del gráfico',
+      chartHistoryPageSize: 'Puntos del historial por página',
       staleThreshold: 'Umbral de activo desactualizado',
     },
     accessibility: {

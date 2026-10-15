@@ -465,6 +465,7 @@ const he = {
     fields: {
       refreshInterval: 'מרווח רענון',
       chartTimeRange: 'טווח זמן גרף',
+      chartHistoryPageSize: 'נקודות היסטוריה בכל עמוד',
       staleThreshold: 'סף נכסים ישנים',
     },
     accessibility: {

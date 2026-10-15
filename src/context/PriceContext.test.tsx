@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { fetchPricesBatched } from '../api/rest'
 import { ATTRIBUTION_RING_BUFFER_SIZE } from '../types'
 import type { TickCoalescerStats } from '../utils/tickCoalescer'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { ToastProvider } from './ToastContext'
 import { PriceProvider, usePriceContext } from './PriceContext'
 
@@ -94,11 +96,15 @@ function makeQueryClient() {
 
 function Wrapper({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={makeQueryClient()}>
-      <ToastProvider>
-        <PriceProvider>{children}</PriceProvider>
-      </ToastProvider>
-    </QueryClientProvider>
+    <MemoryRouter>
+      <PreferencesProvider>
+        <QueryClientProvider client={makeQueryClient()}>
+          <ToastProvider>
+            <PriceProvider>{children}</PriceProvider>
+          </ToastProvider>
+        </QueryClientProvider>
+      </PreferencesProvider>
+    </MemoryRouter>
   )
 }
 
@@ -171,15 +177,7 @@ afterEach(() => {
 
 describe('PriceProvider', () => {
   it('renders children', () => {
-    render(
-      <QueryClientProvider client={makeQueryClient()}>
-        <ToastProvider>
-          <PriceProvider>
-            <div>child</div>
-          </PriceProvider>
-        </ToastProvider>
-      </QueryClientProvider>,
-    )
+    render(<div>child</div>, { wrapper: Wrapper })
     expect(screen.getByText('child')).toBeInTheDocument()
   })
 
@@ -248,13 +246,17 @@ describe('PriceProvider', () => {
     const setSpy = vi.spyOn(client, 'setQueryData')
 
     render(
-      <QueryClientProvider client={client}>
-        <ToastProvider>
-          <PriceProvider>
-            <TestConsumer />
-          </PriceProvider>
-        </ToastProvider>
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <PreferencesProvider>
+          <QueryClientProvider client={client}>
+            <ToastProvider>
+              <PriceProvider>
+                <TestConsumer />
+              </PriceProvider>
+            </ToastProvider>
+          </QueryClientProvider>
+        </PreferencesProvider>
+      </MemoryRouter>,
     )
 
     act(() => {

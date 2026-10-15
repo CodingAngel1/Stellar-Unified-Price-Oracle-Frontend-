@@ -521,6 +521,7 @@ const ja = {
     fields: {
       refreshInterval: '更新間隔',
       chartTimeRange: 'チャート時間範囲',
+      chartHistoryPageSize: 'ページごとのチャート履歴ポイント数',
       staleThreshold: '古いデータのしきい値',
     },
     accessibility: {

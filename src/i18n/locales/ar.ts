@@ -465,6 +465,7 @@ const ar = {
     fields: {
       refreshInterval: 'فترة التحديث',
       chartTimeRange: 'نطاق وقت الرسم البياني',
+      chartHistoryPageSize: 'نقاط السجل لكل صفحة',
       staleThreshold: 'حد الأصول القديمة',
     },
     accessibility: {

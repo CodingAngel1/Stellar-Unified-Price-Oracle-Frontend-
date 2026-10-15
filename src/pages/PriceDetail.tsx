@@ -131,11 +131,15 @@ export function PriceDetail() {
     error: historyError,
     storageNearQuota,
     loadMore,
-  } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, { pageSize: 100 })
+  } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, {
+    pageSize: preferences.chartHistoryPageSize,
+    refreshInterval: preferences.refreshInterval,
+  })
 
   // Benchmark pair history — fetched only when a benchmark pair is selected
   const { history: benchmarkHistory, loading: benchmarkHistoryLoading } = usePriceHistory(benchmarkPair, {
-    pageSize: 100,
+    pageSize: preferences.chartHistoryPageSize,
+    refreshInterval: preferences.refreshInterval,
   })
 
   const loading = priceLoading || (historyLoading && history.length === 0)
