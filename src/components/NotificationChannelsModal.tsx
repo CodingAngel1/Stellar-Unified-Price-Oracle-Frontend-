@@ -592,7 +592,7 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
                   <button
                     type="button"
                     onClick={() => void navigator.clipboard.writeText(buildVerifySample(verifyLang))}
-                    className="absolute top-2 right-2 text-xs px-2 py-1 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors"
+                    className="absolute top-2 end-2 text-xs px-2 py-1 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors"
                   >
                     Copy
                   </button>

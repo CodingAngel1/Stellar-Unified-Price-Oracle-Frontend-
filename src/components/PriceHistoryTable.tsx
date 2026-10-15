@@ -57,7 +57,7 @@ export const PriceHistoryTable = memo(function PriceHistoryTable({ data }: Price
                 key={key}
                 scope="col"
                 onClick={() => handleSort(key)}
-                className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap hover:text-gray-200 transition-colors"
+                className="px-4 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap hover:text-gray-200 transition-colors"
                 aria-sort={sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
                 <span className="flex items-center gap-1">
@@ -65,12 +65,17 @@ export const PriceHistoryTable = memo(function PriceHistoryTable({ data }: Price
                   {sortKey === key ? (
                     <span aria-hidden="true">{sortDir === 'asc' ? '↑' : '↓'}</span>
                   ) : (
-                    <span className="text-gray-700" aria-hidden="true">↕</span>
+                    <span className="text-gray-700" aria-hidden="true">
+                      ↕
+                    </span>
                   )}
                 </span>
               </th>
             ))}
-            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">
+            <th
+              scope="col"
+              className="px-4 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap"
+            >
               Sources
             </th>
           </tr>

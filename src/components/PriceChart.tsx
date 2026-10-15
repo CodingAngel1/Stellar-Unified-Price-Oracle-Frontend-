@@ -19,6 +19,7 @@ import { rasterizeChartToDataUrl } from '../utils/chartExport'
 import { exportPriceHistoryPdf } from '../utils/pdfExport'
 import { loadChartExport } from '../utils/deferredExports'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { useIsRtl } from '../hooks/useIsRtl'
 
 // ---------------------------------------------------------------------------
 // #305 – Chart annotation types
@@ -221,6 +222,7 @@ function ChartContent({
   overlayPairs?: OverlayPair[]
   annotations?: ChartAnnotation[]
 }) {
+  const isRtl = useIsRtl()
   // Zoom/pan state
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null)
   const [isPanning, setIsPanning] = useState(false)
@@ -591,14 +593,14 @@ function ChartContent({
             </button>
             {exportMenuOpen && (
               <div
-                className="absolute right-0 mt-1 w-32 bg-gray-800 border border-gray-700 rounded-xl shadow-lg z-10 overflow-hidden"
+                className="absolute end-0 mt-1 w-32 bg-gray-800 border border-gray-700 rounded-xl shadow-lg z-10 overflow-hidden"
                 role="menu"
               >
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => handleExport('png')}
-                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="w-full text-start px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
                 >
                   Export as PNG
                 </button>
@@ -606,7 +608,7 @@ function ChartContent({
                   type="button"
                   role="menuitem"
                   onClick={() => handleExport('svg')}
-                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="w-full text-start px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
                 >
                   Export as SVG
                 </button>
@@ -614,7 +616,7 @@ function ChartContent({
                   type="button"
                   role="menuitem"
                   onClick={() => handleExport('pdf')}
-                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="w-full text-start px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
                 >
                   Export as PDF
                 </button>
@@ -703,19 +705,21 @@ function ChartContent({
               <CartesianGrid strokeDasharray="3 3" stroke={colors.gridStroke} />
               <XAxis
                 dataKey="time"
+                reversed={isRtl}
                 tick={{ fill: colors.tickFill, fontSize: 11 }}
                 axisLine={{ stroke: colors.axisLine }}
                 tickLine={false}
                 interval="preserveStartEnd"
                 label={{
                   value: tzAbbr,
-                  position: 'insideBottomRight',
+                  position: isRtl ? 'insideBottomLeft' : 'insideBottomRight',
                   offset: -5,
                   fill: colors.tickFill,
                   fontSize: 10,
                 }}
               />
               <YAxis
+                orientation={isRtl ? 'right' : 'left'}
                 tick={{ fill: colors.tickFill, fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
@@ -786,19 +790,21 @@ function ChartContent({
               <CartesianGrid strokeDasharray="3 3" stroke={colors.gridStroke} />
               <XAxis
                 dataKey="time"
+                reversed={isRtl}
                 tick={{ fill: colors.tickFill, fontSize: 11 }}
                 axisLine={{ stroke: colors.axisLine }}
                 tickLine={false}
                 interval="preserveStartEnd"
                 label={{
                   value: tzAbbr,
-                  position: 'insideBottomRight',
+                  position: isRtl ? 'insideBottomLeft' : 'insideBottomRight',
                   offset: -5,
                   fill: colors.tickFill,
                   fontSize: 10,
                 }}
               />
               <YAxis
+                orientation={isRtl ? 'right' : 'left'}
                 domain={[minP - pad, maxP + pad]}
                 tick={{ fill: colors.tickFill, fontSize: 11 }}
                 axisLine={false}
@@ -949,7 +955,7 @@ function ChartContent({
               <button
                 type="button"
                 onClick={() => setLocalAnnotations((prev) => prev.filter((a) => a.id !== ann.id))}
-                className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                className="ms-1 opacity-60 hover:opacity-100 transition-opacity"
                 aria-label={`Remove annotation ${ann.label}`}
               >
                 ×
@@ -976,13 +982,13 @@ function ChartContent({
           <table className="w-full text-xs text-gray-300" aria-label={`${pair} price history data table (${tzAbbr})`}>
             <thead className="bg-gray-800 sticky top-0">
               <tr>
-                <th scope="col" className="px-3 py-2 text-left font-medium text-gray-400">
+                <th scope="col" className="px-3 py-2 text-start font-medium text-gray-400">
                   Time ({tzAbbr})
                 </th>
-                <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
+                <th scope="col" className="px-3 py-2 text-end font-medium text-gray-400">
                   Price (USD)
                 </th>
-                <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
+                <th scope="col" className="px-3 py-2 text-end font-medium text-gray-400">
                   Confidence
                 </th>
               </tr>
@@ -991,8 +997,8 @@ function ChartContent({
               {visibleData.map((d, i) => (
                 <tr key={i} className={i % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'}>
                   <td className="px-3 py-1.5 font-mono">{d.time}</td>
-                  <td className="px-3 py-1.5 text-right font-mono">${formatPriceShort(d.price)}</td>
-                  <td className="px-3 py-1.5 text-right">{(d.confidence * 100).toFixed(1)}%</td>
+                  <td className="px-3 py-1.5 text-end font-mono">${formatPriceShort(d.price)}</td>
+                  <td className="px-3 py-1.5 text-end">{(d.confidence * 100).toFixed(1)}%</td>
                 </tr>
               ))}
             </tbody>

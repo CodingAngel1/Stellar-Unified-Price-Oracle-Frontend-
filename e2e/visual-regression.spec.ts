@@ -278,3 +278,33 @@ test.describe('API Docs page', () => {
     })
   })
 })
+
+// ── Localization layout regressions ─────────────────────────────────────────
+
+test.describe('Localization layout — desktop', () => {
+  test('Arabic RTL baseline', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop)
+    await page.goto('/dashboard?lang=ar')
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
+    await page.getByRole('main').waitFor({ timeout: 10_000 })
+
+    const screenshot = await stableScreenshot(page)
+    expect(screenshot).toMatchSnapshot('dashboard-ar-rtl-desktop.png', {
+      maxDiffPixelRatio: 0.02,
+    })
+  })
+
+  test('expanded pseudo-locale baseline', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop)
+    await page.goto('/dashboard?lang=en-XA')
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('··')
+
+    const screenshot = await stableScreenshot(page)
+    expect(screenshot).toMatchSnapshot('dashboard-en-xa-expanded-desktop.png', {
+      maxDiffPixelRatio: 0.02,
+    })
+  })
+})

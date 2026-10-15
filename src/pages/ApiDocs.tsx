@@ -315,7 +315,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
           <button
             type="button"
             onClick={handleCopy}
-            className="ml-auto text-xs text-gray-400 hover:text-gray-200 transition-colors"
+            className="ms-auto text-xs text-gray-400 hover:text-gray-200 transition-colors"
             aria-label={t('apiDocs.copy')}
           >
             {copied ? t('apiDocs.copied') : t('apiDocs.copy')}
@@ -359,7 +359,7 @@ export function ApiDocs() {
           href="https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/blob/main/docs/on-chain.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 mt-3 ml-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400 dark:hover:bg-cyan-900/40 transition-colors"
+          className="inline-flex items-center gap-1.5 mt-3 ms-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400 dark:hover:bg-cyan-900/40 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -375,7 +375,7 @@ export function ApiDocs() {
           href="https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/blob/main/docs/sdk-quickstart.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 mt-3 ml-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400 dark:hover:bg-cyan-900/40 transition-colors"
+          className="inline-flex items-center gap-1.5 mt-3 ms-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400 dark:hover:bg-cyan-900/40 transition-colors"
         >
           SDK quickstarts
         </a>

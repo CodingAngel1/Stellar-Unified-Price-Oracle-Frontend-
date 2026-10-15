@@ -1,17 +1,9 @@
 import { memo, useMemo, useCallback } from 'react'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  ReferenceLine,
-} from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts'
 import type { PriceHistoryEntry } from '../types'
 import { SOURCE_COLORS } from '../utils/sourceColors'
 import { formatPriceShort } from '../utils/format'
+import { useIsRtl } from '../hooks/useIsRtl'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,9 +49,7 @@ function colorForPair(pair: string, pairs: string[]): string {
 // Normalize a price series to % change relative to its first data point.
 // Returns (price / firstPrice - 1) * 100 for each entry.
 // ---------------------------------------------------------------------------
-function normalizeToPercent(
-  entries: PriceHistoryEntry[],
-): Array<{ timestamp: number; value: number }> {
+function normalizeToPercent(entries: PriceHistoryEntry[]): Array<{ timestamp: number; value: number }> {
   if (entries.length === 0) return []
   const base = entries[0].price
   if (base === 0) return entries.map((e) => ({ timestamp: e.timestamp, value: 0 }))
@@ -149,9 +139,7 @@ function MultiTooltip({ active, payload, label, normalizedMode, benchmarkPair }:
         return (
           <div key={p.dataKey} className="flex items-center justify-between gap-3 mb-1">
             <span className="flex items-center gap-1.5" style={{ color: p.color ?? '#fff' }}>
-              {isBenchmark && (
-                <span className="text-[10px] uppercase tracking-wide opacity-70">bm</span>
-              )}
+              {isBenchmark && <span className="text-[10px] uppercase tracking-wide opacity-70">bm</span>}
               {p.dataKey}
             </span>
             <span className="font-mono text-gray-100">
@@ -187,33 +175,18 @@ function MultiLegend({ pairs, benchmarkPair }: LegendProps) {
         const color = SERIES_COLORS[idx % SERIES_COLORS.length] ?? '#06b6d4'
         const isBenchmark = pair === benchmarkPair
         return (
-          <div
-            key={pair}
-            role="listitem"
-            className="flex items-center gap-1.5 text-xs"
-            style={{ color }}
-          >
+          <div key={pair} role="listitem" className="flex items-center gap-1.5 text-xs" style={{ color }}>
             {isBenchmark ? (
               // Dashed line indicator
               <svg width="20" height="10" aria-hidden="true">
-                <line
-                  x1="0"
-                  y1="5"
-                  x2="20"
-                  y2="5"
-                  stroke={color}
-                  strokeWidth="2"
-                  strokeDasharray="4 2"
-                />
+                <line x1="0" y1="5" x2="20" y2="5" stroke={color} strokeWidth="2" strokeDasharray="4 2" />
               </svg>
             ) : (
               <span className="inline-block w-5 h-0 border-t-2" style={{ borderColor: color }} />
             )}
             <span>
               {pair}
-              {isBenchmark && (
-                <span className="ml-1 text-[10px] uppercase tracking-wide opacity-60">benchmark</span>
-              )}
+              {isBenchmark && <span className="ms-1 text-[10px] uppercase tracking-wide opacity-60">benchmark</span>}
             </span>
           </div>
         )
@@ -233,10 +206,8 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
   normalizedMode = false,
   onExport,
 }: MultiPairOverlayChartProps) {
-  const chartData = useMemo(
-    () => buildChartData(pairs, history, normalizedMode),
-    [pairs, history, normalizedMode],
-  )
+  const isRtl = useIsRtl()
+  const chartData = useMemo(() => buildChartData(pairs, history, normalizedMode), [pairs, history, normalizedMode])
 
   const handleExport = useCallback(() => {
     if (!onExport) return
@@ -292,13 +263,7 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
             className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg border text-gray-400 border-gray-700 hover:text-gray-200 hover:bg-gray-700 transition-colors"
             aria-label="Export chart data as CSV"
           >
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -321,6 +286,7 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
             <XAxis
+              reversed={isRtl}
               dataKey="timestamp"
               tickFormatter={formatTs}
               tick={{ fill: tickFill, fontSize: 11 }}
@@ -329,6 +295,7 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
               interval="preserveStartEnd"
             />
             <YAxis
+              orientation={isRtl ? 'right' : 'left'}
               tick={{ fill: tickFill, fontSize: 11 }}
               axisLine={false}
               tickLine={false}
@@ -336,13 +303,7 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
               width={80}
             />
             <Tooltip
-              content={
-                <MultiTooltip
-                  pairs={pairs}
-                  normalizedMode={normalizedMode}
-                  benchmarkPair={benchmarkPair}
-                />
-              }
+              content={<MultiTooltip pairs={pairs} normalizedMode={normalizedMode} benchmarkPair={benchmarkPair} />}
             />
             {/* Zero reference line in normalized mode */}
             {normalizedMode && (

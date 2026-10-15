@@ -14,7 +14,7 @@ export const PwaUpdateBanner = memo(function PwaUpdateBanner() {
   if (!registration) return null
 
   return (
-    <div className="fixed bottom-24 left-4 z-50" role="alert">
+    <div className="fixed bottom-24 start-4 z-50" role="alert">
       <div className="bg-gray-900/95 dark:bg-gray-900/95 border border-cyan-700/50 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg shadow-black/30 flex items-center gap-3 max-w-sm">
         <svg className="w-5 h-5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path

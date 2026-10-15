@@ -54,14 +54,13 @@ function BottomTab({
       <span className="relative">
         {icon}
         {badge != null && badge > 0 && (
-          // Use -top-1 on both axes and rtl-badge-flip handles the inline-end flip
-          <span className="absolute -top-1 -right-1 rtl-badge-flip w-2.5 h-2.5 bg-cyan-500 rounded-full border border-white dark:border-gray-950 animate-pulse" />
+          <span className="absolute -top-1 -end-1 w-2.5 h-2.5 bg-cyan-500 rounded-full border border-white dark:border-gray-950 animate-pulse" />
         )}
       </span>
       <span className="text-[10px] font-medium leading-none">{label}</span>
       {isActive && (
-        // left-1/2 + -translate-x-1/2 is symmetric — fine in both directions
-        <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-cyan-500 rounded-b-full" />
+        // start-1/2 + -translate-x-1/2 is symmetric — fine in both directions
+        <span className="absolute top-0 start-1/2 -translate-x-1/2 w-6 h-0.5 bg-cyan-500 rounded-b-full" />
       )}
     </NavLink>
   )
@@ -82,8 +81,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950 transition-colors duration-200">
       {/*
-       * Skip-to-content: use `focus:start-2` (inline-start logical) instead of
-       * `focus:left-2` so the link appears at the visual start in both LTR and RTL.
+       * Skip-to-content uses logical inline-start positioning in both directions.
        * Tailwind v4 supports `start-*` and `end-*` logical utilities.
        */}
       <a
@@ -127,7 +125,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
             </div>
           </div>
 
-          {/* Right actions — in RTL these will naturally appear on the left */}
+          {/* Right actions — in RTL these will naturally appear on the start */}
           <div className="flex items-center gap-2">
             {/* Client-side outbound back-pressure (#330). Renders nothing unless
                 requests are queued or the server asked us to pause. */}
@@ -172,9 +170,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
               </svg>
               {activeCount > 0 && (
                 /*
-                 * Badge dot: use `top-1.5 end-1.5` (logical inline-end) instead of
-                 * `top-1.5 right-1.5` so it appears at the visual trailing corner in
-                 * both LTR and RTL without extra CSS overrides.
+                 * Badge dot uses logical inline-end positioning in both directions.
                  */
                 <span className="absolute top-1.5 end-1.5 w-2.5 h-2.5 bg-cyan-500 rounded-full animate-pulse border border-white dark:border-gray-900" />
               )}

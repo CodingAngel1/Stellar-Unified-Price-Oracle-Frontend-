@@ -253,7 +253,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                       <th
                         key={col}
                         scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap"
+                        className="px-4 py-3 text-start text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap"
                       >
                         {col}
                       </th>

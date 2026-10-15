@@ -70,7 +70,7 @@ function ContributionBar({ source, weight, excluded }: { source: string; weight:
         />
       </div>
       <span
-        className={`text-xs tabular-nums w-10 text-right ${excluded ? 'text-gray-600 line-through' : 'text-gray-400'}`}
+        className={`text-xs tabular-nums w-10 text-end ${excluded ? 'text-gray-600 line-through' : 'text-gray-400'}`}
       >
         {excluded ? '—' : `${pct}%`}
       </span>
@@ -136,7 +136,7 @@ export function AggregationBreakdownPanel({ breakdown }: AggregationBreakdownPan
       <p className="text-xs text-gray-500 mb-4 leading-relaxed">
         {MODE_DESCRIPTIONS[breakdown.mode]}
         {breakdown.mode === 'outlier_excluded' && typeof breakdown.params['zScoreThreshold'] === 'number' && (
-          <span className="ml-1 text-amber-400/70">(z-score threshold: {breakdown.params['zScoreThreshold']})</span>
+          <span className="ms-1 text-amber-400/70">(z-score threshold: {breakdown.params['zScoreThreshold']})</span>
         )}
       </p>
 
@@ -149,20 +149,20 @@ export function AggregationBreakdownPanel({ breakdown }: AggregationBreakdownPan
         <table className="w-full text-sm border-collapse" aria-label="Aggregation breakdown table">
           <thead>
             <tr className="bg-gray-800/80">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Source
               </th>
-              <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-end text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Price
               </th>
-              <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-end text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Weight
                 <MetricHelp topic="weights" />
               </th>
-              <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-end text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Contribution
               </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">
+              <th className="px-4 py-2.5 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">
                 Share
               </th>
             </tr>
@@ -192,15 +192,15 @@ export function AggregationBreakdownPanel({ breakdown }: AggregationBreakdownPan
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-gray-200">${formatPrice(item.price)}</td>
-                <td className="px-4 py-3 text-right font-mono text-gray-300">
+                <td className="px-4 py-3 text-end font-mono text-gray-200">${formatPrice(item.price)}</td>
+                <td className="px-4 py-3 text-end font-mono text-gray-300">
                   {item.excluded ? (
                     <span className="text-gray-600 line-through">{(item.weight * 100).toFixed(1)}%</span>
                   ) : (
                     `${(item.weight * 100).toFixed(1)}%`
                   )}
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-gray-300">
+                <td className="px-4 py-3 text-end font-mono text-gray-300">
                   {item.excluded ? <span className="text-gray-600">—</span> : `$${formatPrice(item.contribution)}`}
                 </td>
                 <td className="px-4 py-3 hidden sm:table-cell w-40">
@@ -213,11 +213,11 @@ export function AggregationBreakdownPanel({ breakdown }: AggregationBreakdownPan
           <tfoot>
             <tr className="border-t-2 border-gray-700 bg-gray-800/60">
               <td className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Aggregate</td>
-              <td className="px-4 py-3 text-right font-mono font-bold text-cyan-400">
+              <td className="px-4 py-3 text-end font-mono font-bold text-cyan-400">
                 ${formatPrice(breakdown.aggregatePrice)}
               </td>
-              <td className="px-4 py-3 text-right font-mono text-gray-400">100%</td>
-              <td className="px-4 py-3 text-right font-mono font-bold text-cyan-400">
+              <td className="px-4 py-3 text-end font-mono text-gray-400">100%</td>
+              <td className="px-4 py-3 text-end font-mono font-bold text-cyan-400">
                 ${formatPrice(breakdown.aggregatePrice)}
               </td>
               <td className="px-4 py-3 hidden sm:table-cell" />
