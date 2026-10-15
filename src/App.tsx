@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
@@ -10,7 +10,7 @@ import { ApiDocsSkeleton } from './components/Skeletons/ApiDocsSkeleton'
 import { NotFoundSkeleton } from './components/Skeletons/NotFoundSkeleton'
 import { PriceProvider } from './context/PriceContext'
 import { KeyboardShortcutsProvider } from './context/KeyboardShortcutsContext'
-import { AlertsProvider } from './hooks/useAlerts'
+import { AlertsProvider, useAlerts } from './hooks/useAlerts'
 import { ToastProvider } from './context/ToastContext'
 import { PreferencesProvider } from './preferences/PreferencesContext'
 import { ErrorReporterProvider } from './context/ErrorReporterContext'
@@ -27,6 +27,10 @@ import { PerformanceOverlay } from './components/PerformanceOverlay'
 import { ApiVersionBanner } from './components/ApiVersionBanner'
 import { InstallPrompt } from './components/InstallPrompt'
 import { PwaUpdateBanner } from './components/PwaUpdateBanner'
+import { LiveRegionContainer } from './components/LiveRegionContainer'
+import { usePriceContext } from './context/PriceContext'
+import { usePriceAnnouncer } from './hooks/usePriceAnnouncer'
+import { useAlertAnnouncer } from './hooks/useAlertAnnouncer'
 import { Webhooks } from './pages/Webhooks'
 import {
   LazyApiDocs,
@@ -53,6 +57,20 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+function AppAnnouncements(): ReactElement {
+  const { prices, livePrices } = usePriceContext()
+  const { alerts } = useAlerts()
+  const currentPrices = useMemo(
+    () => prices.map((price) => livePrices.get(price.assetPair)?.data ?? price),
+    [prices, livePrices],
+  )
+
+  usePriceAnnouncer(currentPrices)
+  useAlertAnnouncer(alerts)
+
+  return <LiveRegionContainer />
+}
 
 export function AppContent(): ReactElement {
   const location = useLocation()
@@ -89,8 +107,9 @@ export function AppContent(): ReactElement {
   }, [location.pathname])
 
   return (
-    <ErrorBoundary key={location.key}>
-      <AlertsProvider>
+    <AlertsProvider>
+      <AppAnnouncements />
+      <ErrorBoundary key={location.key}>
         <ApiVersionBanner />
         <InstallPrompt />
         <PwaUpdateBanner />
@@ -156,8 +175,8 @@ export function AppContent(): ReactElement {
             />
           </Routes>
         </Layout>
-      </AlertsProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </AlertsProvider>
   )
 }
 

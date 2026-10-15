@@ -276,7 +276,6 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
           <LazyAlertPanel />
         </Suspense>
       )}
-      <div id="price-announcer" role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
     </div>
   )
 }
