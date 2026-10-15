@@ -103,6 +103,7 @@ describe('API docs SDK playground', () => {
     const alert = await screen.findByRole('alert')
     const traceId = alert.textContent?.match(/Trace ID: (trace-[\w-]+)/)?.[1]
     expect(traceId).toBeTruthy()
-    expect(getStoredErrorReports().at(-1)?.traceId).toBe(traceId)
+    const reports = getStoredErrorReports()
+    expect(reports[reports.length - 1]?.traceId).toBe(traceId)
   })
 })
