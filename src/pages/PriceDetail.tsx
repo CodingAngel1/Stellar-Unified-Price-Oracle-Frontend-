@@ -22,6 +22,7 @@ import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
+import { CircuitBreakerStatus } from '../components/CircuitBreakerStatus'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -156,6 +157,8 @@ export function PriceDetail() {
         </svg>
         {t('priceDetail.back')}
       </button>
+
+      {!isInvalidPair && decodedPair && <CircuitBreakerStatus pair={decodedPair} />}
 
       {isInvalidPair ? (
         <div className="p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">

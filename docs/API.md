@@ -87,6 +87,15 @@ Delay = Random(0, min(1s × 2^attempt, 30s))
 Max attempts: 3
 ```
 
+### Frontend circuit-breaker status
+
+The frontend tracks failures for pair-specific price requests independently;
+all-pairs and batch endpoints keep a shared endpoint-group breaker. On a pair's
+detail page, the current state is announced as closed, open, or half-open. When
+open, the page shows the next retry time in the browser's local time zone.
+After the cooldown expires the breaker permits one half-open test request; it
+does not promise that the upstream feed has recovered.
+
 ---
 
 ## Caching (#508)
