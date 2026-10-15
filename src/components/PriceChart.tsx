@@ -11,6 +11,7 @@ import {
   Line,
   LineChart,
   ReferenceLine,
+  ReferenceArea,
 } from 'recharts'
 import type { TooltipPayload } from 'recharts'
 import type { PriceHistoryEntry } from '../types'
@@ -19,6 +20,7 @@ import { rasterizeChartToDataUrl } from '../utils/chartExport'
 import { exportPriceHistoryPdf } from '../utils/pdfExport'
 import { loadChartExport } from '../utils/deferredExports'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { findPriceHistoryGaps } from '../utils/priceHistoryGaps'
 
 // ---------------------------------------------------------------------------
 // #305 – Chart annotation types
@@ -284,6 +286,7 @@ function ChartContent({
 
   const tzAbbr = getTimezoneAbbr(timezone)
   const filteredData = filterByRange(data, timeRange)
+  const potentialGaps = useMemo(() => findPriceHistoryGaps(filteredData), [filteredData])
 
   const chartData = filteredData
     .slice()
@@ -728,6 +731,17 @@ function ChartContent({
                   <CustomTooltip tzAbbr={tzAbbr} allData={visibleData as ChartPoint[]} normalised={normalised} />
                 }
               />
+              {potentialGaps.map((gap) => (
+                <ReferenceArea
+                  key={`${gap.startTimestamp}-${gap.endTimestamp}`}
+                  x1={formatChartTimeWithTz(gap.startTimestamp, timezone)}
+                  x2={formatChartTimeWithTz(gap.endTimestamp, timezone)}
+                  fill="#f59e0b"
+                  fillOpacity={0.12}
+                  stroke="#f59e0b"
+                  strokeDasharray="4 2"
+                />
+              ))}
               {/* #305 – Annotations as vertical reference lines */}
               {localAnnotations.map((ann) => {
                 const annTime = formatChartTimeWithTz(ann.timestamp, timezone)
@@ -810,6 +824,17 @@ function ChartContent({
               <Tooltip
                 content={<CustomTooltip tzAbbr={tzAbbr} allData={visibleData as ChartPoint[]} normalised={false} />}
               />
+              {potentialGaps.map((gap) => (
+                <ReferenceArea
+                  key={`${gap.startTimestamp}-${gap.endTimestamp}`}
+                  x1={formatChartTimeWithTz(gap.startTimestamp, timezone)}
+                  x2={formatChartTimeWithTz(gap.endTimestamp, timezone)}
+                  fill="#f59e0b"
+                  fillOpacity={0.12}
+                  stroke="#f59e0b"
+                  strokeDasharray="4 2"
+                />
+              ))}
               {/* #305 – Annotations as vertical reference lines */}
               {localAnnotations.map((ann) => {
                 const annTime = formatChartTimeWithTz(ann.timestamp, timezone)
@@ -844,6 +869,28 @@ function ChartContent({
           </ResponsiveContainer>
         )}
       </div>
+      {potentialGaps.length > 0 && (
+        <div
+          className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200"
+          role="status"
+          aria-label="Potential missing-feed intervals"
+        >
+          <p className="font-medium">
+            {potentialGaps.length} potential feed gap{potentialGaps.length === 1 ? '' : 's'} inferred from timestamps
+          </p>
+          <ul className="mt-1 space-y-1">
+            {potentialGaps.map((gap) => (
+              <li key={`${gap.startTimestamp}-${gap.endTimestamp}`}>
+                {formatTimestamp(gap.startTimestamp)} – {formatTimestamp(gap.endTimestamp)} (
+                {Math.round(gap.elapsedMs / 1000)}s between observed samples)
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-amber-200/70">
+            Intervals are inferred from this history; no missing prices are estimated.
+          </p>
+        </div>
+      )}
       {/* #305 – Annotation controls */}
       <div className="flex items-center gap-2 mt-2 flex-shrink-0">
         <button

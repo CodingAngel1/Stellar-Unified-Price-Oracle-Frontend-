@@ -49,6 +49,25 @@ describe('PriceChart', () => {
     expect(screen.getByText('BTC/USD Price History')).toBeInTheDocument()
   })
 
+  it('announces inferred feed gaps without estimating missing prices', () => {
+    const now = Date.now()
+    renderWithProviders(
+      <PriceChart
+        pair="BTC/USD"
+        loading={false}
+        data={[
+          { price: 50000, timestamp: now - 30_000, confidence: 0.99, sources: ['chainlink'] },
+          { price: 50100, timestamp: now - 20_000, confidence: 0.99, sources: ['chainlink'] },
+          { price: 50300, timestamp: now, confidence: 0.99, sources: ['chainlink'] },
+        ]}
+      />,
+    )
+    expect(screen.getByRole('status', { name: 'Potential missing-feed intervals' })).toHaveTextContent(
+      'potential feed gap inferred from timestamps',
+    )
+    expect(screen.getByText(/no missing prices are estimated/i)).toBeInTheDocument()
+  })
+
   it('renders all time range buttons', () => {
     renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     for (const label of ['1H', '24H', '7D', '30D', '1Y']) {
