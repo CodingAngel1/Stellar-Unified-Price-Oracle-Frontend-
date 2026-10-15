@@ -1,12 +1,21 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, screen, fireEvent } from '@testing-library/react'
+import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { checkAccessibility } from '../test/accessibility'
-import { renderWithProviders } from '../test/render'
 import { PriceChart } from './PriceChart'
 
 afterEach(cleanup)
+
+function renderWithProviders(ui: React.ReactElement) {
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <MemoryRouter>
+        <PreferencesProvider>{children}</PreferencesProvider>
+      </MemoryRouter>
+    ),
+  })
+}
 
 const sampleData = [
   { price: 50000, timestamp: Date.now() - 3600000, confidence: 0.99, sources: ['chainlink'] },

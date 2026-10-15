@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { checkAccessibility } from '../test/accessibility'
-import { renderWithProviders } from '../test/render'
 import ReferenceBenchmarkBadge from './ReferenceBenchmarkBadge'
 
 afterEach(cleanup)
 
 describe('ReferenceBenchmarkBadge', () => {
   it('renders benchmark provenance and labels old observations stale', () => {
-    renderWithProviders(
+    render(
       <ReferenceBenchmarkBadge
         referencePrice={0.31}
         referenceTimestamp="2026-10-15T18:00:00.000Z"
@@ -22,7 +21,7 @@ describe('ReferenceBenchmarkBadge', () => {
   })
 
   it('distinguishes loading, unavailable, and request error states accessibly', () => {
-    const { rerender } = renderWithProviders(<ReferenceBenchmarkBadge loading />)
+    const { rerender } = render(<ReferenceBenchmarkBadge loading />)
     expect(screen.getByRole('status')).toHaveTextContent('Loading reference benchmark')
 
     rerender(<ReferenceBenchmarkBadge />)
@@ -33,12 +32,7 @@ describe('ReferenceBenchmarkBadge', () => {
   })
 
   it('identifies missing upstream provenance rather than inventing a source', () => {
-    renderWithProviders(
-      <ReferenceBenchmarkBadge
-        referencePrice={0.31}
-        referenceTimestamp="2026-10-15T18:45:00.000Z"
-      />,
-    )
+    render(<ReferenceBenchmarkBadge referencePrice={0.31} referenceTimestamp="2026-10-15T18:45:00.000Z" />)
 
     expect(screen.getByText('Source: Not reported by the API')).toBeInTheDocument()
   })

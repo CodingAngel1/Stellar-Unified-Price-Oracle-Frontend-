@@ -18,6 +18,15 @@ export interface PriceData {
   confidence: number
   /** List of oracle sources that contributed to this price. */
   sources: string[]
+  /** Optional upstream quality classifications; absence means unreported, not false. */
+  qualityFlags?: PriceQualityFlags
+}
+
+/** Per-price quality classifications reported by the upstream aggregator. */
+export interface PriceQualityFlags {
+  synthetic?: boolean
+  stale?: boolean
+  imputed?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +170,8 @@ export interface PriceHistoryEntry {
    * Present only when the API includes exclusion metadata.
    */
   excludedSources?: ExcludedSourceTick[]
+  /** Optional upstream quality classifications; absence means unreported, not false. */
+  qualityFlags?: PriceQualityFlags
 }
 
 /** #461 – A single excluded source tick with its raw value and reason. */
@@ -264,6 +275,8 @@ export interface WsPriceUpdate {
    * same aggregate price (used for attribution delta computation).
    */
   sourcePrices?: Record<string, number>
+  /** Optional upstream quality classifications for this tick. */
+  qualityFlags?: PriceQualityFlags
 }
 
 /** Union of all possible WebSocket message types. */

@@ -15,6 +15,7 @@ import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
 import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
 import ReferenceBenchmarkBadge from '../components/ReferenceBenchmarkBadge'
+import { PriceQualityDisclosure } from '../components/PriceQualityDisclosure'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
@@ -239,6 +240,10 @@ export function PriceDetail() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">{formatTimestamp(price.timestamp)}</p>
+              </div>
+
+              <div className="mb-6">
+                <PriceQualityDisclosure flags={price.qualityFlags} />
               </div>
 
               {/* Sources */}

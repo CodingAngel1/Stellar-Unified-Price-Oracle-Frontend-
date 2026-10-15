@@ -13,7 +13,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import type { TooltipPayload } from 'recharts'
-import type { PriceHistoryEntry } from '../types'
+import type { PriceHistoryEntry, PriceQualityFlags } from '../types'
 import { formatChartTimeWithTz, formatPriceShort, formatTimestamp, getTimezoneAbbr } from '../utils/format'
 import { rasterizeChartToDataUrl } from '../utils/chartExport'
 import { exportPriceHistoryPdf } from '../utils/pdfExport'
@@ -46,6 +46,7 @@ interface ChartPoint {
   timestamp: number
   confidence: number
   sources: string[]
+  qualityFlags?: PriceQualityFlags
   time: string
   idx: number
   [key: string]: unknown
@@ -70,6 +71,7 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, normalised }: 
   const price = typeof raw.price === 'number' ? raw.price : (payload[0]?.value as number | undefined)
   const confidence = typeof raw.confidence === 'number' ? raw.confidence : null
   const sources: string[] = Array.isArray(raw.sources) ? raw.sources : []
+  const qualityFlags = raw.qualityFlags
 
   // % change vs previous visible point
   let pctChange: number | null = null
@@ -115,6 +117,18 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, normalised }: 
             ))}
           </div>
         </div>
+      )}
+      {qualityFlags ? (
+        <div className="mt-1.5 border-t border-gray-800 pt-1.5">
+          <p className="mb-1 text-gray-500">Quality flags reported by API</p>
+          {(['synthetic', 'stale', 'imputed'] as const).map((flag) => (
+            <p key={flag} className="text-gray-300">
+              {flag}: {qualityFlags[flag] === undefined ? 'not reported' : qualityFlags[flag] ? 'yes' : 'no'}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-1.5 border-t border-gray-800 pt-1.5 text-gray-500">Quality flags not reported by API</p>
       )}
       {payload.slice(1).map((p, i) => {
         const color = typeof p.color === 'string' ? p.color : '#fff'

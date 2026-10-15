@@ -10,6 +10,13 @@ export const PriceDataSchema = z.object({
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
+  qualityFlags: z
+    .object({
+      synthetic: z.boolean().optional(),
+      stale: z.boolean().optional(),
+      imputed: z.boolean().optional(),
+    })
+    .optional(),
 })
 
 /** Pair-scoped independent benchmark observation. */
@@ -37,6 +44,7 @@ export const PriceHistoryEntrySchema = z.object({
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
   excludedSources: z.array(ExcludedSourceTickSchema).optional(),
+  qualityFlags: PriceDataSchema.shape.qualityFlags,
 })
 
 export const PriceHistoryResponseSchema = z.object({
@@ -209,6 +217,7 @@ export const WsPriceUpdateSchema = z.object({
    * Keys are source names; values are individual source prices.
    */
   sourcePrices: z.record(z.string(), z.number()).optional(),
+  qualityFlags: PriceDataSchema.shape.qualityFlags,
   /** Optional monotonic sequence number for duplicate detection. */
   seq: z.number().optional(),
 })

@@ -35,3 +35,29 @@ markers are API-derived, are not user-dismissible, and are not generated for
 history points without exclusion metadata. When the history API omits
 `excludedSources`, the chart has no incident markers; the frontend does not
 infer incidents from price movements or confidence scores.
+
+## Synthetic, stale, and imputed values
+
+The price detail view and historical chart tooltip expose the API's optional
+`qualityFlags` object. Each of `synthetic`, `stale`, and `imputed` is shown as
+reported yes/no, or as **Not reported by API** when absent. Missing metadata is
+not treated as false. Historical points with a true flag receive a chart marker;
+false or absent flags do not. The frontend does not remove, replace, synthesize,
+or impute a reported price based on these classifications; it preserves the
+upstream value and labels the classification.
+
+For complete disclosure, the upstream API must include `qualityFlags` on
+`GET /api/prices/:pair`, each `GET /api/prices/:pair/history` entry, and
+WebSocket `price_update` messages when known:
+
+```json
+{
+  "synthetic": false,
+  "stale": true,
+  "imputed": false
+}
+```
+
+Each flag is optional because upstream classification may be unknown. The
+backend must define and supply the authoritative classification; the frontend
+does not infer it from the price, confidence, timestamp, or source count.
