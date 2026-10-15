@@ -114,6 +114,34 @@ const es = {
       'La confianza refleja cuán consistente es el precio entre las fuentes oracle. 100% significa que todas las fuentes coinciden exactamente.',
   },
 
+  metricHelp: {
+    docsTitle: 'Cómo entender las métricas de precios',
+    helpFor: 'Ayuda: {{topic}}',
+    readDocs: 'Leer la guía de métricas',
+    topics: {
+      confidence: {
+        title: 'Confianza',
+        description:
+          'Puntuación de 0 a 1 que indica cuánto coinciden las fuentes oracle disponibles. 0,95 equivale a un 95% de confianza; no es la probabilidad de que el precio sea correcto.',
+      },
+      divergence: {
+        title: 'Divergencia',
+        description:
+          'Diferencia porcentual entre el agregado fuera de la cadena y el último valor del oráculo en cadena. Una diferencia mayor puede indicar retrasos o desacuerdo entre fuentes.',
+      },
+      staleness: {
+        title: 'Actualidad de los datos',
+        description:
+          'Tiempo transcurrido desde que se informó este precio. Los datos antiguos pueden no reflejar el mercado actual; el umbral de actualidad configurado indica cuándo se consideran obsoletos.',
+      },
+      weights: {
+        title: 'Pesos de agregación',
+        description:
+          'Proporción que aporta cada fuente activa al precio ponderado. Los pesos activos suman el 100%; las fuentes excluidas no aportan nada.',
+      },
+    },
+  },
+
   table: {
     ariaLabel: 'Tabla de feeds de precios',
     columns: {

@@ -120,8 +120,35 @@ const he = {
     setAlert: 'הגדר התראה',
     ariaLabel: 'הצג פרטים עבור {{pair}}',
     alertAriaLabel: 'הגדר התראה עבור {{pair}}',
-    confidenceTooltip:
-      'הביטחון משקף עד כמה המחיר עקבי בין מקורות ה-Oracle. 100% אומר שכל המקורות מסכימים לחלוטין.',
+    confidenceTooltip: 'הביטחון משקף עד כמה המחיר עקבי בין מקורות ה-Oracle. 100% אומר שכל המקורות מסכימים לחלוטין.',
+  },
+
+  metricHelp: {
+    docsTitle: 'הבנת מדדי המחיר',
+    helpFor: 'עזרה: {{topic}}',
+    readDocs: 'לקריאת מדריך המדדים',
+    topics: {
+      confidence: {
+        title: 'רמת ביטחון',
+        description:
+          'ציון בין 0 ל-1 שמתאר עד כמה מקורות ה-Oracle הזמינים מסכימים. 0.95 הוא 95% ביטחון; אין פירושו שההסתברות שהמחיר נכון היא 95%.',
+      },
+      divergence: {
+        title: 'סטייה',
+        description:
+          'ההפרש באחוזים בין המצרף מחוץ לשרשרת לבין הערך העדכני ביותר של Oracle בשרשרת. הפרש גדול עשוי להעיד על עיכוב בפרסום או על אי-הסכמה בין המקורות.',
+      },
+      staleness: {
+        title: 'עדכניות הנתונים',
+        description:
+          'הזמן שחלף מאז דיווח המחיר. נתונים ישנים עשויים שלא לשקף את תנאי השוק הנוכחיים; סף העדכניות שהוגדר קובע מתי הנתונים נחשבים מיושנים.',
+      },
+      weights: {
+        title: 'משקלי הצבירה',
+        description:
+          'החלק שכל מקור Oracle פעיל תורם למצרף המשוקלל. המשקלים הפעילים מסתכמים ב-100%; מקורות שהוחרגו אינם תורמים.',
+      },
+    },
   },
 
   // ── PriceTableView ────────────────────────────────────────────────────────
@@ -233,7 +260,7 @@ const he = {
       channelLabel: 'ערוץ עבור שלב {{step}}',
       delayLabel: 'עיכוב בדקות עבור שלב {{step}}',
       removeStep: 'הסר שלב {{step}}',
-      minutesSuffix: 'דק\'',
+      minutesSuffix: "דק'",
       channel_inApp: 'בתוך האפליקציה',
       channel_email: 'אימייל',
       channel_webPush: 'התראת דחיפה',
@@ -511,7 +538,8 @@ const he = {
   // ── Source descriptions ───────────────────────────────────────────────────
   sources: {
     chainlink: 'Chainlink היא רשת Oracle מבוזרת המספקת נתוני מחיר עמידים בפני חבלה ממספקי נתונים פרמיום.',
-    redstone: 'RedStone הוא Oracle מודולרי שמזרים עדכוני מחיר חתומים לפי דרישה, ומפחית עלויות גז על ידי אחסון נתונים מחוץ לשרשרת.',
+    redstone:
+      'RedStone הוא Oracle מודולרי שמזרים עדכוני מחיר חתומים לפי דרישה, ומפחית עלויות גז על ידי אחסון נתונים מחוץ לשרשרת.',
     band: 'Band Protocol מצבר נתוני עולם אמיתי ממקורות מרובים ומאפשר אותם על-שרשרת דרך מאמתים מוסמכים.',
     reflector: 'Reflector הוא Oracle ילידי Stellar המפרסם מחירי נכסים ישירות על רשת Stellar.',
     defaultTooltip: '{{source}} תרם עדכון מחיר לערך המצטבר הזה.',
@@ -523,7 +551,8 @@ const he = {
       ariaLabel: 'חלק סקירה כללית של השוק',
       liveStatus: 'חי · כל ה-Oracles פעילים',
       title: 'Stellar Unified Price Oracle',
-      subtitle: 'מחירי נכסים מצטברים בזמן אמת מ-Chainlink, Redstone, Band ו-Reflector — מוזרמים ישירות לאפליקציה שלך דרך REST ו-WebSocket.',
+      subtitle:
+        'מחירי נכסים מצטברים בזמן אמת מ-Chainlink, Redstone, Band ו-Reflector — מוזרמים ישירות לאפליקציה שלך דרך REST ו-WebSocket.',
       cta: 'פתח לוח בקרה',
       ctaAriaLabel: 'פתח את לוח בקרת Oracle המחירים',
       apiDocs: 'תיעוד API',

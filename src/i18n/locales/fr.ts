@@ -114,6 +114,34 @@ const fr = {
       'La confiance reflète la cohérence du prix entre les sources oracle. 100% signifie que toutes les sources concordent exactement.',
   },
 
+  metricHelp: {
+    docsTitle: 'Comprendre les métriques de prix',
+    helpFor: 'Aide : {{topic}}',
+    readDocs: 'Lire le guide des métriques',
+    topics: {
+      confidence: {
+        title: 'Confiance',
+        description:
+          'Score de 0 à 1 indiquant le degré de concordance des sources oracle disponibles. 0,95 correspond à 95% de confiance ; ce n’est pas la probabilité que le prix soit correct.',
+      },
+      divergence: {
+        title: 'Divergence',
+        description:
+          'Écart en pourcentage entre l’agrégat hors chaîne et la dernière valeur de l’oracle sur chaîne. Un écart plus important peut signaler un retard de publication ou un désaccord entre sources.',
+      },
+      staleness: {
+        title: 'Fraîcheur des données',
+        description:
+          'Temps écoulé depuis la publication de ce prix. Des données anciennes peuvent ne plus refléter le marché ; le seuil de fraîcheur configuré indique à partir de quand elles sont considérées comme obsolètes.',
+      },
+      weights: {
+        title: 'Pondérations d’agrégation',
+        description:
+          'Part apportée par chaque source oracle active à un agrégat pondéré. Les pondérations actives totalisent 100% ; les sources exclues ne contribuent pas.',
+      },
+    },
+  },
+
   table: {
     ariaLabel: 'Tableau des flux de prix',
     columns: {
