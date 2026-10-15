@@ -744,8 +744,14 @@ interface PriceData {
   timestamp: number    // Unix timestamp (milliseconds)
   confidence: number   // 0.0 (no confidence) to 1.0 (certain)
   sources: string[]    // ["chainlink", "redstone", "band", "reflector"]
+  sourceTickProvenanceUrl?: string // Optional HTTPS link to source-tick provenance
 }
 ```
+
+`sourceTickProvenanceUrl` must be a credential-free HTTPS URL supplied by the API.
+The frontend does not construct tick links; when this optional field is absent,
+source-tick provenance is unavailable. See
+[`PRICE_TRANSPARENCY.md`](./PRICE_TRANSPARENCY.md) for related data dependencies.
 
 **Confidence Score:**
 - `0.0–0.3`: Low confidence (use with caution)
