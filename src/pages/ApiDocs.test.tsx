@@ -4,10 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '../context/ToastContext'
 import { PreferencesProvider } from '../preferences/PreferencesContext'
+import { clearStoredErrorReports, getStoredErrorReports } from '../utils/errorReporting'
 import { ApiDocs } from './ApiDocs'
 
 afterEach(() => {
   cleanup()
+  clearStoredErrorReports()
   vi.unstubAllGlobals()
 })
 
@@ -67,6 +69,7 @@ describe('API docs SDK playground', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Set a valid pair path')
     expect(mockFetch).not.toHaveBeenCalled()
+    expect(getStoredErrorReports()).toHaveLength(0)
   })
 
   it('supports keyboard navigation and exposes the selected snippet as a tab panel', async () => {
@@ -79,5 +82,27 @@ describe('API docs SDK playground', () => {
 
     expect(screen.getAllByRole('tab', { name: 'JavaScript' })[0]).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tabpanel', { name: 'JavaScript example for /api/prices' })).toBeInTheDocument()
+  })
+
+  it('shows the same trace identifier in the failure message and stored request report', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Service unavailable' }), {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+
+    renderApiDocs()
+    await user.click(screen.getAllByRole('button', { name: 'Try it out' })[0])
+
+    const alert = await screen.findByRole('alert')
+    const traceId = alert.textContent?.match(/Trace ID: (trace-[\w-]+)/)?.[1]
+    expect(traceId).toBeTruthy()
+    expect(getStoredErrorReports().at(-1)?.traceId).toBe(traceId)
   })
 })

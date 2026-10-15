@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { config } from '../config'
 import { OracleClient } from '../sdk/client'
+import { createClientTraceId, reportNetworkError } from '../utils/errorReporting'
 
 /** How long the "Copied!" confirmation stays visible after copying a snippet. */
 const COPY_FEEDBACK_RESET_MS = 1500
@@ -213,6 +214,7 @@ function TryItOut({ endpoint, path, setPath }: { endpoint: Endpoint; path: strin
     setCacheStatus(null)
     setLatency(null)
     setHeaders({})
+    const traceId = createClientTraceId()
     const startedAt = performance.now()
     try {
       const base = config.apiUrl.replace(/\/api$/, '')
@@ -230,18 +232,41 @@ function TryItOut({ endpoint, path, setPath }: { endpoint: Endpoint; path: strin
       setHeaders(responseHeaders)
       setCacheStatus(readCacheStatus(res.headers))
       const text = await res.text()
+      let requestError: string | null = null
       try {
         const parsed: unknown = JSON.parse(text)
         setResult(JSON.stringify(parsed, null, 2))
-        if (!res.ok && typeof parsed === 'object' && parsed !== null && 'message' in parsed)
-          setError(String(parsed.message))
+        if (!res.ok) {
+          requestError =
+            typeof parsed === 'object' && parsed !== null && 'message' in parsed
+              ? String(parsed.message)
+              : `${res.status} ${res.statusText}: ${text}`
+        }
       } catch {
         if (res.ok) setResult(text)
-        else setError(`${res.status} ${res.statusText}: ${text}`)
+        else requestError = `${res.status} ${res.statusText}: ${text}`
+      }
+      if (requestError) {
+        setError(`${requestError}\nTrace ID: ${traceId}`)
+        reportNetworkError(requestError, {
+          method: endpoint.method,
+          url: `${base}${path}`,
+          status: res.status,
+          statusText: res.statusText,
+          responseTime: performance.now() - startedAt,
+          traceId,
+        })
       }
     } catch (err) {
       setLatency(Math.round(performance.now() - startedAt))
-      setError(err instanceof Error ? err.message : 'Request failed')
+      const message = err instanceof Error ? err.message : 'Request failed'
+      setError(`${message}\nTrace ID: ${traceId}`)
+      reportNetworkError(message, {
+        method: endpoint.method,
+        url: `${config.apiUrl.replace(/\/api$/, '')}${path}`,
+        responseTime: performance.now() - startedAt,
+        traceId,
+      })
     } finally {
       setLoading(false)
     }
@@ -253,22 +278,40 @@ function TryItOut({ endpoint, path, setPath }: { endpoint: Endpoint; path: strin
     setResult(null)
     setError(null)
     setLatency(null)
+    const traceId = createClientTraceId()
+    let requestStarted = false
     const startedAt = performance.now()
     try {
       const baseUrl = config.apiUrl.replace(/\/api$/, '')
       const client = new OracleClient({ baseUrl, maxRetries: 0 })
       let value: unknown
-      if (endpoint.sdkMethod === 'getPrices') value = await client.getPrices()
-      else if (endpoint.sdkMethod === 'getPrice') value = await client.getPrice(pairFromPath(path))
-      else {
+      if (endpoint.sdkMethod === 'getPrices') {
+        requestStarted = true
+        value = await client.getPrices()
+      } else if (endpoint.sdkMethod === 'getPrice') {
+        const pair = pairFromPath(path)
+        requestStarted = true
+        value = await client.getPrice(pair)
+      } else {
         const parsedPath = new URL(path, window.location.origin)
         const limit = Number(parsedPath.searchParams.get('limit') ?? 10)
         const offset = Number(parsedPath.searchParams.get('offset') ?? 0)
-        value = await client.getHistory(pairFromPath(parsedPath.pathname), limit, offset)
+        const pair = pairFromPath(parsedPath.pathname)
+        requestStarted = true
+        value = await client.getHistory(pair, limit, offset)
       }
       setResult(JSON.stringify(value, null, 2))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'SDK request failed')
+      const message = err instanceof Error ? err.message : 'SDK request failed'
+      setError(requestStarted ? `${message}\nTrace ID: ${traceId}` : message)
+      if (requestStarted) {
+        reportNetworkError(message, {
+          method: 'GET',
+          url: `${config.apiUrl.replace(/\/api$/, '')}${path}`,
+          responseTime: performance.now() - startedAt,
+          traceId,
+        })
+      }
     } finally {
       setLatency(Math.round(performance.now() - startedAt))
       setLoading(false)
