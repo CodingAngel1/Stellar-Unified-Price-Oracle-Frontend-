@@ -24,9 +24,21 @@ export interface ReferenceBenchmarkBadgeProps {
   biasAlert?: boolean;
   /** Optional bias threshold (fraction) that triggered the alert. */
   biasThreshold?: number | null;
+  /** ISO timestamp supplied by the reference API. */
+  referenceTimestamp?: string | null;
+  /** Provider identifier supplied by the reference API. */
+  referenceSource?: string | null;
+  /** Whether the read-only benchmark request is in flight. */
+  loading?: boolean;
+  /** Benchmark request/contract validation error. */
+  error?: string | null;
+  /** Age after which a benchmark observation is labelled stale. Defaults to two minutes. */
+  staleAfterMs?: number;
   /** Optional className passthrough. */
   className?: string;
 }
+
+const DEFAULT_STALE_AFTER_MS = 120_000;
 
 function formatPrice(value: number | null | undefined, currency?: string): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
@@ -55,10 +67,18 @@ const ReferenceBenchmarkBadge: React.FC<ReferenceBenchmarkBadgeProps> = ({
   deviation,
   biasAlert = false,
   biasThreshold,
+  referenceTimestamp,
+  referenceSource,
+  loading = false,
+  error,
+  staleAfterMs = DEFAULT_STALE_AFTER_MS,
   className,
 }) => {
   const hasReference =
     referencePrice !== null && referencePrice !== undefined && Number.isFinite(referencePrice);
+  const observedAt = referenceTimestamp ? Date.parse(referenceTimestamp) : Number.NaN;
+  const hasTimestamp = Number.isFinite(observedAt);
+  const isStale = hasTimestamp && Date.now() - observedAt > staleAfterMs;
 
   return (
     <div
@@ -122,6 +142,27 @@ const ReferenceBenchmarkBadge: React.FC<ReferenceBenchmarkBadgeProps> = ({
         aggregate.
       </div>
 
+      {loading && <div role="status">Loading reference benchmark…</div>}
+      {error && (
+        <div role="alert" className="text-red-400 text-[11px]">
+          Reference benchmark unavailable: {error}
+        </div>
+      )}
+      {hasReference && (
+        <div className="text-[11px] text-gray-400" data-testid="reference-benchmark-provenance">
+          <div>Source: {referenceSource || 'Not reported by the API'}</div>
+          <div>
+            Observed:{' '}
+            {hasTimestamp ? new Date(observedAt).toLocaleString() : 'Timestamp not reported by the API'}
+          </div>
+          {isStale && (
+            <span className="font-semibold text-amber-400" role="status">
+              Stale benchmark observation
+            </span>
+          )}
+        </div>
+      )}
+
       {biasAlert && (
         <div
           role="alert"
@@ -136,8 +177,8 @@ const ReferenceBenchmarkBadge: React.FC<ReferenceBenchmarkBadgeProps> = ({
         </div>
       )}
 
-      {!hasReference && (
-        <div style={{ color: '#8a8a8a', fontSize: 11 }}>Reference source unavailable.</div>
+      {!hasReference && !loading && !error && (
+        <div style={{ color: '#8a8a8a', fontSize: 11 }}>Reference source unavailable for this pair.</div>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSwr } from '../hooks/useSwr'
 import { usePriceHistory } from '../hooks/usePriceHistory'
+import { useReferenceDeviation } from '../hooks/useReferenceDeviation'
 import { fetchPrice } from '../api/rest'
 import { PriceDetailSkeleton } from '../components/PriceDetailSkeleton'
 import { CsvImportZone } from '../components/CsvImportZone'
@@ -13,6 +14,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
 import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
+import ReferenceBenchmarkBadge from '../components/ReferenceBenchmarkBadge'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
@@ -131,6 +133,10 @@ export function PriceDetail() {
     error: historyError,
     loadMore,
   } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, { pageSize: 100 })
+  const reference = useReferenceDeviation(
+    history.map((entry) => ({ timestamp: new Date(entry.timestamp).toISOString(), price: entry.price })),
+    { pair: isInvalidPair ? '' : decodedPair },
+  )
 
   // Benchmark pair history — fetched only when a benchmark pair is selected
   const { history: benchmarkHistory, loading: benchmarkHistoryLoading } = usePriceHistory(benchmarkPair, {
@@ -266,6 +272,16 @@ export function PriceDetail() {
               {/* Benchmark comparison section */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Benchmark comparison</p>
+                <ReferenceBenchmarkBadge
+                  className="mb-4 text-gray-300"
+                  referencePrice={reference.latestReference}
+                  aggregatePrice={price.price}
+                  deviation={reference.series[reference.series.length - 1]?.deviation}
+                  referenceTimestamp={reference.latestReferencePoint?.timestamp}
+                  referenceSource={reference.latestReferencePoint?.source}
+                  loading={reference.loading}
+                  error={reference.error?.message}
+                />
                 <div className="flex flex-wrap items-center gap-4 mb-4">
                   {/* Benchmark pair picker */}
                   <div className="flex items-center gap-2">

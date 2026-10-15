@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { z } from 'zod';
 
 /**
  * Reference-price oracle hook (issue #664).
@@ -9,11 +10,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  */
 
 export interface ReferencePricePoint {
+  /** Asset pair requested from the independent benchmark API. */
+  pair: string;
   /** ISO timestamp of the observation. */
   timestamp: string;
   /** Benchmark price. Evaluation only — not tradable. */
   price: number;
+  /** Upstream benchmark provider, when the API reports it. */
+  source?: string | null;
 }
+
+const ReferencePricePointSchema = z.object({
+  pair: z.string().min(1),
+  timestamp: z.string().datetime({ offset: true }),
+  price: z.number().finite(),
+  source: z.string().min(1).nullable().optional(),
+});
 
 export interface ReferenceDeviationPoint {
   timestamp: string;
@@ -26,6 +38,8 @@ export interface ReferenceDeviationPoint {
 }
 
 export interface ReferenceDeviationOptions {
+  /** Pair to request; empty pairs disable the benchmark fetch. */
+  pair?: string;
   /** Rolling window (in points) used to detect sustained bias. */
   windowSize?: number;
   /** Absolute mean deviation above which a sustained-bias alert fires. */
@@ -33,7 +47,7 @@ export interface ReferenceDeviationOptions {
   /** Polling interval in ms for the read-only reference feed. */
   pollIntervalMs?: number;
   /** Injectable fetcher (defaults to the read-only reference endpoint). */
-  fetcher?: (signal?: AbortSignal) => Promise<ReferencePricePoint[]>;
+  fetcher?: (pair: string, signal?: AbortSignal) => Promise<ReferencePricePoint[]>;
 }
 
 export interface ReferenceDeviationResult {
@@ -45,6 +59,8 @@ export interface ReferenceDeviationResult {
   biasAlert: boolean;
   /** Latest benchmark price, for evaluation only. */
   latestReference: number | null;
+  /** Latest pair-matched observation, including its upstream timestamp and source. */
+  latestReferencePoint: ReferencePricePoint | null;
   loading: boolean;
   error: Error | null;
   /** Force a refresh of the read-only reference feed. */
@@ -60,8 +76,8 @@ const DEFAULT_POLL_INTERVAL = 60_000;
  * intentionally kept separate from every aggregation source so it can act as
  * independent ground truth.
  */
-async function defaultFetcher(signal?: AbortSignal): Promise<ReferencePricePoint[]> {
-  const res = await fetch('/api/reference-price', {
+async function defaultFetcher(pair: string, signal?: AbortSignal): Promise<ReferencePricePoint[]> {
+  const res = await fetch(`/api/reference-price?pair=${encodeURIComponent(pair)}`, {
     method: 'GET',
     signal,
     headers: { Accept: 'application/json' },
@@ -69,8 +85,11 @@ async function defaultFetcher(signal?: AbortSignal): Promise<ReferencePricePoint
   if (!res.ok) {
     throw new Error(`Reference oracle request failed: ${res.status}`);
   }
-  const data = (await res.json()) as ReferencePricePoint[];
-  return Array.isArray(data) ? data : [];
+  const data: unknown = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error('Reference oracle response must be an array');
+  }
+  return data.map((point) => ReferencePricePointSchema.parse(point)).filter((point) => point.pair === pair);
 }
 
 /**
@@ -135,11 +154,13 @@ export function useReferenceDeviation(
   options: ReferenceDeviationOptions = {},
 ): ReferenceDeviationResult {
   const {
+    pair: requestedPair,
     windowSize = DEFAULT_WINDOW,
     biasThreshold = DEFAULT_BIAS_THRESHOLD,
     pollIntervalMs = DEFAULT_POLL_INTERVAL,
     fetcher = defaultFetcher,
   } = options;
+  const pair = requestedPair ?? '';
 
   const [referenceSeries, setReferenceSeries] = useState<ReferencePricePoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -151,15 +172,23 @@ export function useReferenceDeviation(
   const refresh = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
+    if (!pair) {
+      setReferenceSeries([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    setReferenceSeries([]);
     const controller = new AbortController();
     let cancelled = false;
 
     const load = async () => {
       setLoading(true);
       try {
-        const points = await fetcherRef.current(controller.signal);
+        const points = await fetcherRef.current(pair, controller.signal);
         if (!cancelled) {
-          setReferenceSeries(points);
+          setReferenceSeries(points.filter((point) => point.pair === pair));
           setError(null);
         }
       } catch (err) {
@@ -179,7 +208,7 @@ export function useReferenceDeviation(
       clearInterval(timer);
       controller.abort();
     };
-  }, [pollIntervalMs, nonce]);
+  }, [pair, pollIntervalMs, nonce]);
 
   const series = useMemo<ReferenceDeviationPoint[]>(() => {
     const referenceByTime = new Map(
@@ -214,12 +243,14 @@ export function useReferenceDeviation(
     if (referenceSeries.length === 0) return null;
     return referenceSeries[referenceSeries.length - 1].price;
   }, [referenceSeries]);
+  const latestReferencePoint = referenceSeries[referenceSeries.length - 1] ?? null;
 
   return {
     series,
     rollingBias,
     biasAlert,
     latestReference,
+    latestReferencePoint,
     loading,
     error,
     refresh,

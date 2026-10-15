@@ -12,6 +12,14 @@ export const PriceDataSchema = z.object({
   sources: z.array(z.string().min(1)),
 })
 
+/** Pair-scoped independent benchmark observation. */
+export const ReferencePricePointSchema = z.object({
+  pair: z.string().min(1),
+  timestamp: z.string().datetime({ offset: true }),
+  price: z.number().finite(),
+  source: z.string().min(1).nullable().optional(),
+})
+
 /**
  * Strict Zod schema for {@link import('../types/price').PriceHistoryEntry}.
  * All fields are required. Extra properties are stripped.
