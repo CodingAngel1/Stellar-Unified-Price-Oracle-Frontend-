@@ -114,6 +114,11 @@ value is on its way.
 including the [API docs "Try it out" playground](../src/pages/ApiDocs.tsx) —
 can see whether a given read came from the edge cache or the origin.
 
+The [in-app API playground](/api-docs) includes runnable SDK examples for
+pair prices, all prices, and price history. It invokes the same official
+`OracleClient` implementation as the published SDK and displays live responses;
+SDK examples are not offered for endpoints the SDK does not expose.
+
 SDKs that layer their own client-side cache (e.g. the IndexedDB cache used by
 this frontend, see [`docs/STORAGE_BUDGET.md`](./STORAGE_BUDGET.md)) should
 treat `max-age` as a floor, not a ceiling — it's fine to hold a value longer
