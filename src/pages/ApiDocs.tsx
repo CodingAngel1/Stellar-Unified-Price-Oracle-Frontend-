@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { config } from '../config'
+import { METRIC_HELP_TOPICS, type MetricHelpTopic } from '../data/metricHelp'
 
 /** How long the "Copied!" confirmation stays visible after copying a snippet. */
 const COPY_FEEDBACK_RESET_MS = 1500
@@ -395,6 +396,22 @@ export function ApiDocs() {
           <EndpointCard key={`${ep.method}-${ep.path}`} endpoint={ep} />
         ))}
       </div>
+
+      <section id="metric-help" aria-labelledby="metric-help-heading" className="mt-10 border-t border-gray-800 pt-6">
+        <h2 id="metric-help-heading" className="text-lg font-semibold text-gray-900 dark:text-white">
+          {t('metricHelp.docsTitle')}
+        </h2>
+        <div className="mt-3 space-y-4">
+          {(
+            Object.entries(METRIC_HELP_TOPICS) as [MetricHelpTopic, (typeof METRIC_HELP_TOPICS)[MetricHelpTopic]][]
+          ).map(([topic, definition]) => (
+            <article key={topic} id={definition.docsAnchor}>
+              <h3 className="font-medium text-gray-800 dark:text-gray-200">{t(definition.titleKey)}</h3>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t(definition.descriptionKey)}</p>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

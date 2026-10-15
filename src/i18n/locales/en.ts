@@ -118,6 +118,34 @@ const en = {
       'Confidence reflects how consistent the price is across oracle sources. 100% means all sources agree exactly.',
   },
 
+  metricHelp: {
+    docsTitle: 'Understanding price metrics',
+    helpFor: 'Help: {{topic}}',
+    readDocs: 'Read the metric guide',
+    topics: {
+      confidence: {
+        title: 'Confidence',
+        description:
+          'A score from 0 to 1 describing how strongly the available oracle sources agree. 0.95 is 95% confidence; it is not a probability that the price is correct.',
+      },
+      divergence: {
+        title: 'Divergence',
+        description:
+          'The percentage difference between the off-chain aggregate and the latest on-chain oracle value. Larger differences can indicate delayed publication or a source disagreement.',
+      },
+      staleness: {
+        title: 'Data freshness',
+        description:
+          'How long ago this price was reported. Older data may no longer reflect current market conditions; the configured freshness threshold marks when it is stale.',
+      },
+      weights: {
+        title: 'Aggregation weights',
+        description:
+          'The share each active oracle source contributes to a weighted aggregate. Active weights add up to 100%; excluded sources contribute nothing.',
+      },
+    },
+  },
+
   // ── PriceTableView ────────────────────────────────────────────────────────
   table: {
     ariaLabel: 'Price feeds table',
@@ -253,13 +281,15 @@ const en = {
     simulate: {
       title: 'Test alert',
       run: 'Run simulation',
-      description: 'Replays a synthetic price series through the same evaluation logic used live, marking exactly where this alert would fire.',
+      description:
+        'Replays a synthetic price series through the same evaluation logic used live, marking exactly where this alert would fire.',
       idle: 'Run a simulation to see how this alert behaves without touching your live configuration.',
     },
     // ── Per-alert channel routing (#492) ──────────────────────────────────
     channels: {
       title: 'Notify via',
-      description: 'Choose where this alert is delivered. Leave empty to use the channels configured in your notification settings.',
+      description:
+        'Choose where this alert is delivered. Leave empty to use the channels configured in your notification settings.',
       useGlobal: 'Use global defaults',
       noneConfigured: 'No channels configured — set up channels in Notification Settings first.',
     },
@@ -388,7 +418,8 @@ const en = {
     },
     breakout: {
       name: 'Breakout',
-      description: 'Momentum confirmed across two windows: a strong 1-hour move still accelerating in the last 15 minutes.',
+      description:
+        'Momentum confirmed across two windows: a strong 1-hour move still accelerating in the last 15 minutes.',
       useCase: 'Spot a move that is more than noise — the trend is confirmed, not just starting.',
     },
     pegBreak: {

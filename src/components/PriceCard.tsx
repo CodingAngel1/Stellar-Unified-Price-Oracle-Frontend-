@@ -53,6 +53,7 @@ import { usePreferences } from '../preferences/PreferencesContext'
 import { useActiveSource } from '../hooks/useActiveSource'
 import { FreshnessBadge } from './FreshnessBadge'
 import { Tooltip } from './Tooltip'
+import { MetricHelp } from './MetricHelp'
 
 const SOURCE_COLORS: Record<string, string> = {
   // Cards are always dark (bg-gray-900), so badge text always uses the
@@ -175,13 +176,6 @@ export const PriceCard = memo(function PriceCard({
 
         <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPrice(price.price)}</div>
 
-        <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
-          <FreshnessBadge timestamp={price.timestamp} refreshIntervalMs={preferences.refreshInterval} />
-          <Tooltip content={t('priceCard.confidenceTooltip')}>
-            <span className="text-cyan-400">{t('priceCard.confidence', { value: confidencePct })}</span>
-          </Tooltip>
-        </div>
-
         <div className="flex flex-wrap gap-1.5">
           {price.sources.map((src) => (
             <Tooltip
@@ -197,12 +191,29 @@ export const PriceCard = memo(function PriceCard({
               <span
                 className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${SOURCE_COLORS[src] ?? 'bg-gray-800 text-gray-300 border-gray-700'} ${src === activeSource ? 'ring-1 ring-cyan-400' : ''}`}
               >
-                {src === activeSource && <span aria-hidden="true">● </span>}
+                {src === activeSource && (
+                  <span aria-hidden="true" className="me-1">
+                    ●
+                  </span>
+                )}
                 {src}
               </span>
             </Tooltip>
           ))}
         </div>
+      </div>
+
+      <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
+        <span className="inline-flex items-center">
+          <FreshnessBadge timestamp={price.timestamp} refreshIntervalMs={preferences.refreshInterval} />
+          <MetricHelp topic="staleness" />
+        </span>
+        <span className="inline-flex items-center">
+          <Tooltip content={t('priceCard.confidenceTooltip')}>
+            <span className="text-cyan-400">{t('priceCard.confidence', { value: confidencePct })}</span>
+          </Tooltip>
+          <MetricHelp topic="confidence" />
+        </span>
       </div>
 
       <div className="mt-3 pt-3 border-t border-gray-800">
