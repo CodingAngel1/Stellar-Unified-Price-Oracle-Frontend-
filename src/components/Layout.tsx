@@ -13,6 +13,7 @@ import {
   preloadDashboard,
   preloadGovernance,
   preloadLanding,
+  preloadPortfolio,
   preloadSettingsPanel,
 } from '../utils/chunks'
 import { QueuedRequestsBadge } from './QueuedRequestsBadge'
@@ -100,6 +101,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
     { path: '/dashboard', label: t('nav.dashboard'), preload: preloadDashboard },
     { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
     { path: '/governance', label: 'Governance', preload: preloadGovernance },
+    { path: '/portfolio', label: 'Portfolio', preload: preloadPortfolio },
     { path: '/webhooks', label: 'Webhooks' },
   ]
 
@@ -244,7 +246,10 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
           {t('footer.securityLink')}
         </NavLink>
         <span aria-hidden="true"> · </span>
-        <NavLink to="/transparency" className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400">
+        <NavLink
+          to="/transparency"
+          className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400"
+        >
           Transparency
         </NavLink>
         <span aria-hidden="true"> · </span>
@@ -292,6 +297,17 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
                 strokeWidth={2}
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
+            </svg>
+          }
+        />
+
+        <BottomTab
+          to="/portfolio"
+          preload={preloadPortfolio}
+          label="Portfolio"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18M7 14l4-4 4 4 6-7" />
             </svg>
           }
         />
