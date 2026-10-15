@@ -15,12 +15,14 @@ export const ObservedSourceRange = memo(function ObservedSourceRange({
 }: ObservedSourceRangeProps) {
   return range ? (
     <p className={`text-xs text-gray-400 ${compact ? 'mt-2' : 'mt-3'}`}>
-      <span className="font-medium text-gray-300">Observed source range:</span>{' '}
+      <span className="font-medium text-gray-300">Observed source band (min–max):</span>{' '}
       <span className="font-mono">
         ${formatPrice(range.low)} – ${formatPrice(range.high)}
       </span>{' '}
       <span>({range.sourceCount} reported sources)</span>
-      <span className="sr-only">. This is an observed source-price range, not a statistical confidence interval.</span>
+      <span className="sr-only">
+        . This envelope uses reported source prices only; it is not a statistical confidence interval.
+      </span>
     </p>
   ) : showUnavailable ? (
     <p className={`text-xs text-gray-500 ${compact ? 'mt-2' : 'mt-3'}`} role="status">

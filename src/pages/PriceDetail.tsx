@@ -25,6 +25,7 @@ import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
 import { getObservedSourceRange } from '../utils/uncertaintyBand'
 import { ObservedSourceRange } from '../components/ObservedSourceRange'
 import { ConfidenceChangeExplanation } from '../components/ConfidenceChangeExplanation'
+import { SourceTickProvenanceLink } from '../components/SourceTickProvenanceLink'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -239,6 +240,7 @@ export function PriceDetail() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">{formatTimestamp(price.timestamp)}</p>
+                <SourceTickProvenanceLink url={price.sourceTickProvenanceUrl} />
               </div>
 
               {/* Sources */}

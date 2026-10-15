@@ -1,8 +1,8 @@
 /**
  * Price-related types for the Stellar Unified Price Oracle.
  *
- * All fields on {@link PriceData} are required and must be present in API
- * responses. The Zod schema in `src/api/schemas.ts` validates this at runtime
+ * Required fields on {@link PriceData} must be present in API responses.
+ * Optional fields are validated by the Zod schema in `src/api/schemas.ts`
  * (always in dev/test, sampled in production).
  */
 
@@ -18,6 +18,11 @@ export interface PriceData {
   confidence: number
   /** List of oracle sources that contributed to this price. */
   sources: string[]
+  /**
+   * API-provided HTTPS URL to the source-tick provenance record. Omitted when
+   * the upstream API does not provide a tick-level provenance link.
+   */
+  sourceTickProvenanceUrl?: string
 }
 
 // ---------------------------------------------------------------------------

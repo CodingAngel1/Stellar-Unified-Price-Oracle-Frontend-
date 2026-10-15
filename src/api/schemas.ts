@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isSecureProvenanceUrl } from '../utils/provenance'
 
 /**
  * Strict Zod schema for {@link import('../types/price').PriceData}.
@@ -10,6 +11,11 @@ export const PriceDataSchema = z.object({
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
+  sourceTickProvenanceUrl: z
+    .string()
+    .url()
+    .refine(isSecureProvenanceUrl, 'Source-tick provenance URL must use HTTPS without credentials')
+    .optional(),
 })
 
 /**
