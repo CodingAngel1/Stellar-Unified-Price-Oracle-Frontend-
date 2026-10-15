@@ -18,6 +18,18 @@ export interface PriceData {
   confidence: number
   /** List of oracle sources that contributed to this price. */
   sources: string[]
+  /** Canonical units and output scale, when supplied by the API. */
+  pairMetadata?: PairMetadata
+}
+
+/** Canonical units and decimal scale used to interpret an asset pair's price. */
+export interface PairMetadata {
+  /** Unit of one base asset, e.g. an API-defined token amount. */
+  baseUnit: string | null
+  /** Unit in which the base asset price is quoted. */
+  quoteUnit: string | null
+  /** Number of decimal places in the canonical price scale. */
+  priceScale: number | null
 }
 
 // ---------------------------------------------------------------------------
@@ -280,6 +292,7 @@ export type WsMessage = WsPriceUpdate | WsWelcomeMessage | WsPausedMessage | WsR
 export function isPriceData(value: unknown): value is PriceData {
   if (value == null || typeof value !== 'object') return false
   const obj = value as Record<string, unknown>
+  const pairMetadata = obj.pairMetadata
   return (
     typeof obj.assetPair === 'string' &&
     typeof obj.price === 'number' &&
@@ -289,6 +302,21 @@ export function isPriceData(value: unknown): value is PriceData {
     typeof obj.confidence === 'number' &&
     !Number.isNaN(obj.confidence) &&
     Array.isArray(obj.sources) &&
-    obj.sources.every((s: unknown) => typeof s === 'string')
+    obj.sources.every((s: unknown) => typeof s === 'string') &&
+    (pairMetadata === undefined || isPairMetadata(pairMetadata))
+  )
+}
+
+function isPairMetadata(value: unknown): value is PairMetadata {
+  if (value == null || typeof value !== 'object') return false
+  const metadata = value as Record<string, unknown>
+  return (
+    (metadata.baseUnit === null || (typeof metadata.baseUnit === 'string' && metadata.baseUnit.length > 0)) &&
+    (metadata.quoteUnit === null || (typeof metadata.quoteUnit === 'string' && metadata.quoteUnit.length > 0)) &&
+    (metadata.priceScale === null ||
+      (typeof metadata.priceScale === 'number' &&
+        Number.isInteger(metadata.priceScale) &&
+        metadata.priceScale >= 0 &&
+        metadata.priceScale <= 100))
   )
 }

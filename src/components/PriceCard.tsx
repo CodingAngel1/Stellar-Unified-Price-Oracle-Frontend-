@@ -53,6 +53,7 @@ import { usePreferences } from '../preferences/PreferencesContext'
 import { useActiveSource } from '../hooks/useActiveSource'
 import { FreshnessBadge } from './FreshnessBadge'
 import { Tooltip } from './Tooltip'
+import { PairMetadataPanel } from './PairMetadataPanel'
 
 const SOURCE_COLORS: Record<string, string> = {
   // Cards are always dark (bg-gray-900), so badge text always uses the
@@ -174,6 +175,8 @@ export const PriceCard = memo(function PriceCard({
         </div>
 
         <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPrice(price.price)}</div>
+
+        {price.pairMetadata && <PairMetadataPanel pair={assetPair} metadata={price.pairMetadata} compact />}
 
         <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
           <FreshnessBadge timestamp={price.timestamp} refreshIntervalMs={preferences.refreshInterval} />

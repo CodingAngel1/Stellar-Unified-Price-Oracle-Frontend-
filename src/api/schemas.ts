@@ -10,6 +10,13 @@ export const PriceDataSchema = z.object({
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
+  pairMetadata: z
+    .object({
+      baseUnit: z.string().min(1).nullable(),
+      quoteUnit: z.string().min(1).nullable(),
+      priceScale: z.number().int().min(0).max(100).nullable(),
+    })
+    .optional(),
 })
 
 /**

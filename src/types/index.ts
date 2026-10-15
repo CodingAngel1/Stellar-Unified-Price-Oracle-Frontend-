@@ -1,6 +1,7 @@
 // Price-related types — see src/types/price.ts for full documentation
 export type {
   PriceData,
+  PairMetadata,
   PriceSyncState,
   LivePriceEntry,
   PriceHistoryEntry,
