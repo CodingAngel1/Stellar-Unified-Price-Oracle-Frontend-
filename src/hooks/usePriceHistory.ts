@@ -39,7 +39,7 @@ interface PriceHistoryState {
   loading: boolean
   loadingMore: boolean
   error: Error | null
-  storageNearQuota: boolean
+  storageNearQuota?: boolean
   hasMore: boolean
   loadMore: () => Promise<void>
   refetch: () => Promise<void>
