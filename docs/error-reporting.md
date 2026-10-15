@@ -12,7 +12,7 @@ The Stellar Oracle frontend now includes comprehensive error reporting with Sent
 ✅ **Breadcrumb Logging** — Trace user actions leading to errors  
 ✅ **Performance Monitoring** — Track slow operations and Core Web Vitals  
 ✅ **Custom Contexts** — Add domain-specific metadata to errors  
-✅ **Request Trace IDs** — Correlate a reportable client-side failure with its UI error message  
+✅ **Request Trace IDs** — Correlate a reportable client-side failure with its UI error message
 ✅ **Error Boundaries** — React component error tracking
 ✅ **Local Storage** — Store recent errors for offline debugging  
 ✅ **Non-Blocking** — Error reporting never breaks the app  
