@@ -104,8 +104,10 @@ export interface LivePriceEntry {
 export interface SourceDelta {
   /** The oracle source identifier (e.g. "chainlink"). */
   source: string
-  /** Source price on this tick (derived from the per-source field when present, otherwise the aggregate). */
+  /** Source price on this tick (falls back to the aggregate when not reported). */
   price: number
+  /** Whether `price` was explicitly reported for this source by the API. */
+  priceIsObserved: boolean
   /** Source price on the previous tick, or `null` if this is the first observed tick. */
   prevPrice: number | null
   /** Absolute price change (price − prevPrice), or `null` on the first tick. */

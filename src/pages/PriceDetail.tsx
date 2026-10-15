@@ -22,6 +22,8 @@ import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
+import { getObservedSourceRange } from '../utils/uncertaintyBand'
+import { ObservedSourceRange } from '../components/ObservedSourceRange'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -139,6 +141,10 @@ export function PriceDetail() {
 
   const loading = priceLoading || (historyLoading && history.length === 0)
   const showEmptyState = !loading && !priceError && !price
+  const currentSourceRange = getObservedSourceRange(
+    (attributionHistory.get(decodedPair) ?? []).slice(-1)[0],
+    price?.timestamp ?? Number.POSITIVE_INFINITY,
+  )
 
   return (
     // The whole page is built from dark cards and dark-only text colours, so it
@@ -222,6 +228,7 @@ export function PriceDetail() {
                   {t('priceDetail.sections.currentPrice')}
                 </p>
                 <p className="text-5xl font-bold font-mono text-gray-100 mb-4">${formatPrice(price.price)}</p>
+                <ObservedSourceRange range={currentSourceRange} />
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">{t('priceDetail.updated', { time: timeAgo(price.timestamp) })}</span>
                   <span

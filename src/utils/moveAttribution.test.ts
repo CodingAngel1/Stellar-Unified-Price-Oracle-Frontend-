@@ -30,6 +30,7 @@ describe('computeAttribution', () => {
     expect(result.price).toBe(50000)
     expect(result.confidence).toBe(0.99)
     expect(result.previousConfidence).toBeNull()
+    expect(result.sources.every((source) => !source.priceIsObserved)).toBe(true)
     expect(result.delta).toBeNull()
     expect(result.deltaPercent).toBeNull()
 
@@ -88,6 +89,7 @@ describe('computeAttribution', () => {
     const redstone = result.sources.find((s) => s.source === 'redstone')!
 
     expect(chainlink.price).toBe(50120)
+    expect(chainlink.priceIsObserved).toBe(true)
     expect(chainlink.prevPrice).toBe(50010)
     expect(chainlink.delta).toBeCloseTo(110)
 

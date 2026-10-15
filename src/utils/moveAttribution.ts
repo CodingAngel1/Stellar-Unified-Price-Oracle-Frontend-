@@ -43,10 +43,9 @@ export function computeAttribution(
 
   // Build per-source deltas
   const sourceDeltas: SourceDelta[] = msg.sources.map((src) => {
-    // Use server-provided per-source price when available, otherwise fall back
-    // to the aggregate — this gives a useful approximation while per-source
-    // prices are not yet in the server protocol.
-    const price = sourcePrices[src] ?? msg.price
+    const sourcePrice = sourcePrices[src]
+    const priceIsObserved = Number.isFinite(sourcePrice) && sourcePrice > 0
+    const price = priceIsObserved ? sourcePrice : msg.price
     const prev = prevSources[src] ?? null
 
     const delta = prev !== null ? price - prev : null
@@ -55,7 +54,7 @@ export function computeAttribution(
     // Update state for next tick
     prevSources[src] = price
 
-    return { source: src, price, prevPrice: prev, delta, deltaPercent }
+    return { source: src, price, priceIsObserved, prevPrice: prev, delta, deltaPercent }
   })
 
   // Aggregate delta
