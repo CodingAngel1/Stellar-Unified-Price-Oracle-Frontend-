@@ -12,6 +12,7 @@ const mockConnect = vi.fn()
 const mockDisconnect = vi.fn()
 const mockSubscribe = vi.fn()
 const mockUnsubscribe = vi.fn()
+const mockRefetchPrices = vi.fn()
 let messageHandler:
   | ((msg: {
       type: 'price_update'
@@ -35,7 +36,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       isLoading: false,
       error: null,
       isFetching: false,
-      refetch: vi.fn(),
+      refetch: mockRefetchPrices,
     })),
   }
 })
@@ -147,6 +148,12 @@ function readTickPolicy(): TickCoalescerStats {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockRefetchPrices.mockResolvedValue({
+    data: [
+      { assetPair: 'BTC/USD', price: 50020, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
+      { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 0.95, sources: ['redstone'] },
+    ],
+  })
   messageHandler = null
   vi.mocked(fetchPricesBatched).mockResolvedValue({
     assetPair: 'BTC/USD',
@@ -157,7 +164,10 @@ beforeEach(() => {
   })
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 describe('PriceProvider', () => {
   it('renders children', () => {
@@ -195,6 +205,33 @@ describe('PriceProvider', () => {
         timestamp: 1700000001000,
         confidence: 0.99,
         sources: ['chainlink'],
+      })
+    })
+
+    it('reconciles live prices against REST when a backgrounded tab becomes visible', async () => {
+      render(<TestConsumer />, { wrapper: Wrapper })
+
+      act(() => {
+        messageHandler?.({
+          type: 'price_update',
+          assetPair: 'BTC/USD',
+          price: 50010,
+          timestamp: Date.now() - 60_000,
+          confidence: 0.99,
+          sources: ['chainlink'],
+        })
+      })
+      await waitFor(() => expect(screen.getByTestId('live-size')).toHaveTextContent('1'))
+
+      const hidden = vi.spyOn(document, 'hidden', 'get')
+      hidden.mockReturnValue(true)
+      act(() => document.dispatchEvent(new Event('visibilitychange')))
+      hidden.mockReturnValue(false)
+      act(() => document.dispatchEvent(new Event('visibilitychange')))
+
+      await waitFor(() => {
+        expect(mockRefetchPrices).toHaveBeenCalledTimes(1)
+        expect(screen.getByTestId('live-size')).toHaveTextContent('0')
       })
     })
 

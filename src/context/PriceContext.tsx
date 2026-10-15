@@ -250,6 +250,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   // and used as the display source when the REST fetch has no data (first offline load).
   const [offlineSnapshot, setOfflineSnapshot] = useState<OfflineSnapshot | null>(null)
   const wasOfflineRef = useRef(false)
+  const wasDocumentHiddenRef = useRef(typeof document !== 'undefined' && document.hidden)
   const { addToast } = useToast()
 
   useEffect(() => {
@@ -286,6 +287,40 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
     return unsubscribeFromRateLimit
   }, [])
+
+  // Background tabs can have their timers and realtime socket throttled. When
+  // the user returns, fetch an authoritative REST snapshot immediately and
+  // discard only live values that are no newer than that snapshot.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        wasDocumentHiddenRef.current = true
+        return
+      }
+      if (!wasDocumentHiddenRef.current) return
+      wasDocumentHiddenRef.current = false
+
+      void refetchPrices().then(({ data }) => {
+        if (!data) return
+        const restTimestamps = new Map(data.map((price) => [price.assetPair, price.timestamp]))
+        setLivePrices((current) => {
+          let changed = false
+          const next = new Map(current)
+          for (const [pair, entry] of current) {
+            const restTimestamp = restTimestamps.get(pair)
+            if (restTimestamp !== undefined && entry.data.timestamp <= restTimestamp) {
+              next.delete(pair)
+              changed = true
+            }
+          }
+          return changed ? next : current
+        })
+      })
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [refetchPrices])
 
   // ── REST revalidation ─────────────────────────────────────────────────────
 

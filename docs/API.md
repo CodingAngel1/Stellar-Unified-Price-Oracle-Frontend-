@@ -576,6 +576,13 @@ them. Browsers intentionally hide some transport details, so this is a best-
 effort classification; a `1006` does not prove whether the underlying cause
 was a browser policy or a network intermediary.
 
+When a tab returns to the foreground after being hidden, the frontend
+immediately fetches a fresh all-prices REST snapshot. Live WebSocket values
+that are not newer than that response are discarded so the dashboard cannot
+remain stuck on prices received before background throttling. If the REST
+request fails or returns no data, existing values remain visible and normal
+polling continues; no synthetic price is used.
+
 ### Message Types
 
 #### Subscribe Message
