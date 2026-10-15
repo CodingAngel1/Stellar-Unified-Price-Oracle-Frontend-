@@ -220,6 +220,30 @@ test.describe('Price Detail page', () => {
     })
   })
 
+  test('high contrast baseline — desktop', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop)
+    await setColorScheme(page, 'dark')
+    await page.goto('/prices/BTC%2FUSD')
+    await page.waitForLoadState('networkidle')
+    await page.evaluate(() => document.documentElement.classList.add('high-contrast'))
+    await page.waitForTimeout(100)
+    await Promise.race([
+      page
+        .getByRole('button', { name: /go back/i })
+        .waitFor({ timeout: 10_000 })
+        .catch(() => {}),
+      page
+        .getByRole('alert')
+        .waitFor({ timeout: 10_000 })
+        .catch(() => {}),
+    ])
+
+    const screenshot = await stableScreenshot(page)
+    expect(screenshot).toMatchSnapshot('price-detail-high-contrast-desktop.png', {
+      maxDiffPixelRatio: 0.02,
+    })
+  })
+
   test('dark mode baseline — mobile', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.mobile)
     await setColorScheme(page, 'dark')
