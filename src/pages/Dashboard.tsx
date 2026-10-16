@@ -19,6 +19,7 @@ import { DraggablePriceGrid } from '../components/DraggablePriceGrid'
 import { AlertModal } from '../components/AlertModal'
 import { AlertBadge } from '../components/AlertBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
+import { RealtimeUpdateDiagnostics } from '../components/RealtimeUpdateDiagnostics'
 import { NotificationChannelsModal } from '../components/NotificationChannelsModal'
 import { FilterPanel, readFilterState, countActiveFilters } from '../components/FilterPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
@@ -54,6 +55,7 @@ export function Dashboard() {
     livePrices,
     wsStatus,
     diagnostics,
+    tickPolicy,
     rateLimitStatus,
     rateLimitRetryAfterMs,
     refetchPrices,
@@ -553,6 +555,7 @@ export function Dashboard() {
             retryAfterMs={rateLimitRetryAfterMs}
             diagnostics={diagnostics}
           />
+          <RealtimeUpdateDiagnostics stats={tickPolicy} />
         </div>
       </div>
 
