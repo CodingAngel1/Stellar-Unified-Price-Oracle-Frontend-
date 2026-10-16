@@ -16,6 +16,14 @@ price-history API. Loading, empty history, failed requests, and stale history
 are called out rather than replaced with estimated values. This is price
 tracking only; it does not infer a portfolio cost basis or synchronize balances.
 
+The provider outage scenario identifies fresh priced holdings whose current
+aggregate lists the selected provider and reports their quote-currency
+notional. It is not an outage loss estimate: the API has no source-specific
+replacement quotes or health state. The spread stress lets the user enter an
+assumed one-sided adverse percentage and calculates the corresponding
+hypothetical notional reduction; it is explicitly not a measured spread or
+forecast. Stale and unpriced holdings are excluded.
+
 ## API dependencies for advanced previews
 
 Provider outage impact and historical aggregation-threshold recalculation need
