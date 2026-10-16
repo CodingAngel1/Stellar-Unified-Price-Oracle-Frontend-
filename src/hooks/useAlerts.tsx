@@ -1,5 +1,5 @@
-import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import { useState, useCallback, useEffect, useRef, createContext, useContext, ReactNode } from 'react'
+import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import type {
   Alert,
   AlertHistoryEntry,
@@ -18,7 +18,7 @@ import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
 import { evaluateCompoundCondition } from '../utils/alertEvaluator'
 import {
-  loadAlertHistory,
+  loadAlertHistorySnapshot,
   saveAlertHistoryDebounced,
   flushAlertHistory,
   buildTriggerHistoryEntry,
@@ -265,7 +265,9 @@ const AlertsContext = createContext<AlertsContextType | null>(null)
  */
 export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
-  const [history, setHistory] = useState<AlertHistoryEntry[]>(loadAlertHistory)
+  const [initialHistory] = useState(loadAlertHistorySnapshot)
+  const [history, setHistory] = useState<AlertHistoryEntry[]>(initialHistory.entries)
+  const [historyStatus] = useState(initialHistory.status)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
 
   // #504 — report alert history length to the memory profiling harness.
@@ -681,6 +683,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     unsnoozeAlert,
     reEnableAlert,
     alertHistory: history,
+    alertHistoryStatus: historyStatus,
     clearAlertHistory,
     alertCreateAllowed: alertRateLimit.allowed,
     alertCreateCooldownSec: alertRateLimit.cooldownSec,

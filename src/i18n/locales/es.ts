@@ -343,6 +343,16 @@ const es = {
       clearConfirm: '¿Borrar todo el historial de alertas? Esta acción no se puede deshacer.',
       exportCsv: 'Exportar CSV',
       exportJson: 'Exportar JSON',
+      sourceNote:
+        'Se almacena solo en este navegador; se conservan como máximo los 500 registros más recientes. La exportación incluye los resultados de búsqueda actuales. Las horas están en UTC. No es un registro de auditoría verificado por el servidor.',
+      storageUnavailable:
+        'El almacenamiento del navegador no está disponible. Solo se pueden mostrar registros de esta sesión y quizá no se conserven.',
+      storageError:
+        'No se pudo leer el historial guardado; que esté vacío no confirma que no se hayan activado alertas.',
+      retentionLimit: 'Se alcanzó el límite de 500 registros; es posible que se hayan descartado eventos anteriores.',
+      exporting: 'Preparando la exportación del historial de alertas…',
+      exportComplete: 'La exportación del historial de alertas está lista.',
+      exportFailed: 'No se pudo exportar el historial de alertas. Inténtalo de nuevo.',
       count_one: '{{count}} alerta disparada',
       count_other: '{{count}} alertas disparadas',
       priceAt: 'Precio: ${{price}}',

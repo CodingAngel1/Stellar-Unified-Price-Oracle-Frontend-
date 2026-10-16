@@ -12,6 +12,7 @@ import {
   priceDataToCsvRows,
   historyToCsvRows,
   alertHistoryToCsvRows,
+  alertHistoryToAuditJson,
   exportFilename,
   buildXlsx,
   priceDataToXlsx,
@@ -107,7 +108,7 @@ export class ExportWorker {
     let mimeType: string
 
     if (format === 'json') {
-      data = JSON.stringify(entries, null, 2)
+      data = alertHistoryToAuditJson(entries)
       mimeType = 'application/json'
     } else if (format === 'xlsx') {
       const { rows, headers } = alertHistoryToCsvRows(entries)

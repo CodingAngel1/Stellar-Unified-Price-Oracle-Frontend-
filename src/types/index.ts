@@ -275,6 +275,8 @@ export interface AlertsContextType {
   reEnableAlert: (id: string) => void
   // Alert history log (#309)
   alertHistory: AlertHistoryEntry[]
+  /** Initial browser-storage read state for the local alert history log. */
+  alertHistoryStatus: 'ready' | 'unavailable' | 'error'
   clearAlertHistory: () => void
   /** Rate-limit info for alert creation — used by UI to disable buttons and show countdown. */
   alertCreateAllowed: boolean

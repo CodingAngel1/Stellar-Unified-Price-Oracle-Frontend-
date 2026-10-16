@@ -164,7 +164,10 @@ export const AlertHistoryEntrySchema = z.object({
   id: z.string(),
   alertId: z.string(),
   assetPair: z.string(),
-  triggeredAt: z.number(),
+  triggeredAt: z
+    .number()
+    .finite()
+    .refine((timestamp) => Number.isFinite(new Date(timestamp).getTime())),
   price: z.number(),
   triggerOnce: z.boolean(),
   percentageMode: z.boolean().default(false),
