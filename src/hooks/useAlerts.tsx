@@ -33,6 +33,7 @@ import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../serv
 import { stepRetest, initialRetestState } from '../utils/retestDetector'
 import { registerMemoryProbe } from '../utils/memoryProfiler'
 import { useRateLimit } from './useRateLimit'
+import { isAlertExpired } from '../utils/alertLifecycle'
 
 const alertsChannel = createBroadcastChannel<Alert[]>('kiro-alerts')
 const alertsHistoryChannel = createBroadcastChannel<AlertHistoryEntry[]>('kiro-alerts-history')
@@ -291,9 +292,17 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => {
       const now = Date.now()
       setAlerts((prev) => {
-        const changed = prev.some((a) => a.snoozedUntil !== null && a.snoozedUntil <= now)
+        const changed = prev.some(
+          (a) =>
+            (a.snoozedUntil !== null && a.snoozedUntil <= now) ||
+            (a.active && isAlertExpired(a.expiresAt, now)),
+        )
         if (!changed) return prev
-        return prev.map((a) => (a.snoozedUntil !== null && a.snoozedUntil <= now ? { ...a, snoozedUntil: null } : a))
+        return prev.map((a) => ({
+          ...a,
+          snoozedUntil: a.snoozedUntil !== null && a.snoozedUntil <= now ? null : a.snoozedUntil,
+          active: isAlertExpired(a.expiresAt, now) ? false : a.active,
+        }))
       })
     }, 30_000)
     return () => clearInterval(interval)
@@ -306,6 +315,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     const firedEntries: AlertHistoryEntry[] = []
 
     const newAlerts = alerts.map((alert) => {
+      if (isAlertExpired(alert.expiresAt, now)) {
+        if (alert.active) changed = true
+        return alert.active ? { ...alert, active: false } : alert
+      }
       // Skip inactive alerts
       if (!alert.active) return alert
 
@@ -581,6 +594,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         lastTriggeredAt: null,
         fireCount: 0,
         snoozedUntil: null,
+        expiresAt: alert.expiresAt ?? null,
+        reviewAt: alert.reviewAt ?? null,
         percentageBaselinePrice: null,
         percentageBaselineTimestamp: null,
         escalationState: null,

@@ -154,6 +154,8 @@ export const AlertSchema = z.object({
   active: z.boolean(),
   createdAt: z.number(),
   lastTriggeredAt: z.number().nullable(),
+  expiresAt: z.number().nullable().default(null),
+  reviewAt: z.number().nullable().default(null),
 })
 
 export const AlertsArraySchema = z.array(AlertSchema)

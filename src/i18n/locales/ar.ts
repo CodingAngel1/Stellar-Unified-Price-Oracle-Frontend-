@@ -206,6 +206,7 @@ const ar = {
       mustBePositive: 'يجب أن يكون رقماً موجباً',
       upperGreaterThanLower: 'يجب أن يكون أكبر من الحد الأدنى',
       lowerLessThanUpper: 'يجب أن يكون أصغر من الحد الأعلى',
+      invalidDate: 'أدخل تاريخاً صالحاً',
     },
     conditions: {
       title: 'شروط إضافية',
@@ -242,6 +243,12 @@ const ar = {
       error_invalidDelay: 'الخطوة {{step}}: يجب أن يكون التأخير عدد دقائق غير سالب',
       error_outOfOrder: 'الخطوة {{step}}: لا يمكن أن يكون التأخير أبكر من الخطوة السابقة',
     },
+    lifecycle: {
+      title: 'دورة حياة القاعدة',
+      expiryLabel: 'تاريخ الانتهاء (اختياري)',
+      reviewLabel: 'تذكير بالمراجعة (اختياري)',
+      description: 'يعطّل تاريخ الانتهاء القاعدة في نهاية ذلك اليوم المحلي. تاريخ المراجعة للتذكير فقط.',
+    },
     presets: {
       title: 'ابدأ من قالب جاهز',
       myPresets: 'قوالبي',
@@ -259,6 +266,13 @@ const ar = {
     newBadge: '{{count}} جديد',
     empty: 'لم يتم ضبط أي تنبيهات بعد',
     close: 'إغلاق لوحة التنبيهات',
+    lifecycle: {
+      title: 'جدول القاعدة',
+      expired: 'منتهي',
+      expiresOn: 'ينتهي {{date}}',
+      reviewDue: 'حان موعد المراجعة',
+      reviewOn: 'مراجعة {{date}}',
+    },
     sections: {
       triggered: 'مُفعَّل',
       active: 'تنبيهات نشطة',

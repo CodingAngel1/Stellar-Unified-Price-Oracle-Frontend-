@@ -197,6 +197,7 @@ const fr = {
       mustBePositive: 'Doit être un nombre positif',
       upperGreaterThanLower: 'Doit être supérieur au seuil inférieur',
       lowerLessThanUpper: 'Doit être inférieur au seuil supérieur',
+      invalidDate: 'Saisissez une date valide',
     },
     conditions: {
       title: 'Conditions supplémentaires',
@@ -238,6 +239,13 @@ const fr = {
       title: 'Notifier en cas de re-test',
       description: 'Se déclenche aussi si le prix revient dans ce niveau franchi après en être sorti.',
     },
+    lifecycle: {
+      title: 'Cycle de vie de la règle',
+      expiryLabel: "Date d'expiration (facultative)",
+      reviewLabel: 'Rappel de révision (facultatif)',
+      description:
+        'La date d’expiration désactive la règle à la fin de cette journée locale. La révision est un simple rappel.',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: "Tester l'alerte",
@@ -270,6 +278,13 @@ const fr = {
     newBadge: '{{count}} Nouvelle(s)',
     empty: 'Aucune alerte configurée',
     close: "Fermer le panneau d'alertes",
+    lifecycle: {
+      title: 'Calendrier de la règle',
+      expired: 'Expirée',
+      expiresOn: 'Expire le {{date}}',
+      reviewDue: 'Révision due',
+      reviewOn: 'Révision le {{date}}',
+    },
     sections: {
       triggered: 'Déclenchées',
       active: 'Alertes actives',

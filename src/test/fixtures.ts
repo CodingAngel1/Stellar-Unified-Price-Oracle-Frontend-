@@ -34,6 +34,8 @@ export function makeAlert(overrides: Partial<Alert> = {}): Alert {
     active: true,
     createdAt: 1_700_000_000_000,
     lastTriggeredAt: null,
+    expiresAt: null,
+    reviewAt: null,
     ...overrides,
   }
 }

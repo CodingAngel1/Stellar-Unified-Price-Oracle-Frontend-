@@ -28,6 +28,7 @@ import type { AlertFormData, LivePriceEntry, PriceData, SourceHealth } from '../
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
 import { buildConditionGroupFromFormData } from '../utils/alertEvaluator'
+import { localDateToTimestamp } from '../utils/alertLifecycle'
 import { deriveSourceHealths } from '../utils/sourceHealth'
 import { WORKSPACE_PARAM, type Workspace } from '../utils/workspaceShare'
 import { OnboardingTour, resetTour } from '../components/OnboardingTour'
@@ -269,6 +270,8 @@ export function Dashboard() {
         channels: data.channels.length > 0 ? data.channels : null,
         // #491 – retest alert mode.
         retestMode: data.retestMode,
+        expiresAt: localDateToTimestamp(data.expiryDate, true),
+        reviewAt: localDateToTimestamp(data.reviewDate),
       })
       setModalOpen(false)
     },

@@ -206,6 +206,7 @@ const en = {
       mustBePositive: 'Must be a positive number',
       upperGreaterThanLower: 'Must be greater than lower threshold',
       lowerLessThanUpper: 'Must be less than upper threshold',
+      invalidDate: 'Enter a valid date',
     },
     // ── Compound AND/OR condition builder (#485) ──────────────────────────
     conditions: {
@@ -249,6 +250,12 @@ const en = {
       title: 'Notify on retest',
       description: 'Also fire if the price re-enters this breached level after it exits.',
     },
+    lifecycle: {
+      title: 'Rule lifecycle',
+      expiryLabel: 'Expiry date (optional)',
+      reviewLabel: 'Review reminder (optional)',
+      description: 'Expiry disables this rule at the end of that local date. Review dates are reminders only.',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: 'Test alert',
@@ -283,6 +290,13 @@ const en = {
     newBadge: '{{count}} New',
     empty: 'No alerts set yet',
     close: 'Close alert panel',
+    lifecycle: {
+      title: 'Rule schedule',
+      expired: 'Expired',
+      expiresOn: 'Expires {{date}}',
+      reviewDue: 'Review due',
+      reviewOn: 'Review {{date}}',
+    },
     sections: {
       triggered: 'Triggered',
       active: 'Active Alerts',

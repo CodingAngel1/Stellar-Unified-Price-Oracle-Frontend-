@@ -106,6 +106,13 @@ describe('useAlerts', () => {
     expect(result.current.activeCount).toBe(1)
   })
 
+  it('disables an expired rule even when its price feed is unavailable', () => {
+    seedLegacyAlert({ expiresAt: Date.now() - 1 })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    expect(result.current.alerts[0].active).toBe(false)
+    expect(result.current.alerts[0].expiresAt).toBeLessThan(Date.now())
+  })
+
   it('adds an alert', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {

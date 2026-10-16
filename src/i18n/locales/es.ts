@@ -196,6 +196,7 @@ const es = {
       mustBePositive: 'Debe ser un número positivo',
       upperGreaterThanLower: 'Debe ser mayor que el umbral inferior',
       lowerLessThanUpper: 'Debe ser menor que el umbral superior',
+      invalidDate: 'Introduce una fecha válida',
     },
     conditions: {
       title: 'Condiciones adicionales',
@@ -237,6 +238,12 @@ const es = {
       title: 'Notificar en retest',
       description: 'También se dispara si el precio vuelve a entrar en este nivel superado después de salir de él.',
     },
+    lifecycle: {
+      title: 'Ciclo de vida de la regla',
+      expiryLabel: 'Fecha de vencimiento (opcional)',
+      reviewLabel: 'Recordatorio de revisión (opcional)',
+      description: 'El vencimiento desactiva la regla al final de esa fecha local. La revisión solo es un recordatorio.',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: 'Probar alerta',
@@ -269,6 +276,13 @@ const es = {
     newBadge: '{{count}} Nueva',
     empty: 'No hay alertas configuradas',
     close: 'Cerrar panel de alertas',
+    lifecycle: {
+      title: 'Programación de la regla',
+      expired: 'Vencida',
+      expiresOn: 'Vence {{date}}',
+      reviewDue: 'Revisión pendiente',
+      reviewOn: 'Revisar {{date}}',
+    },
     sections: {
       triggered: 'Activadas',
       active: 'Alertas activas',

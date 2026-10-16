@@ -35,7 +35,7 @@
  * - The snooze dropdown uses standard `<button>` elements inside a `<div>`.
  * - Tab switching buttons carry `role="tab"` and `aria-selected` attributes.
  */
-import { useState, useCallback, type ReactElement } from 'react'
+import { useState, useCallback, useEffect, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAlerts } from '../hooks/useAlerts'
 import { formatPrice } from '../utils/format'
@@ -46,6 +46,7 @@ import { useAlertHealth } from '../hooks/useAlertHealth'
 import type { AlertHealthFlag } from '../utils/alertHealthCheck'
 import { AlertHistoryLog } from './AlertHistoryLog'
 import { AlertAnalyticsStrip } from './AlertAnalyticsStrip'
+import { isAlertExpired } from '../utils/alertLifecycle'
 
 /** #492 – Renders an alert's per-alert routing override, or nothing when unset. */
 function RoutingBadge({ alert }: { alert: Alert }): ReactElement | null {
@@ -119,6 +120,46 @@ function RetestBadge({ alert }: { alert: Alert }): ReactElement | null {
           ? t('alertPanel.retest.exited')
           : t('alertPanel.retest.idle')}
     </span>
+  )
+}
+
+function LifecycleBadges({ alert, now }: { alert: Alert; now: number }): ReactElement | null {
+  const { t } = useTranslation()
+  const expired = isAlertExpired(alert.expiresAt, now)
+  const reviewDue = alert.reviewAt !== null && alert.reviewAt !== undefined && alert.reviewAt <= now
+  if (
+    !expired &&
+    !reviewDue &&
+    (alert.expiresAt === null || alert.expiresAt === undefined) &&
+    (alert.reviewAt === null || alert.reviewAt === undefined)
+  )
+    return null
+
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1.5" aria-label={t('alertPanel.lifecycle.title')}>
+      {alert.expiresAt !== null && alert.expiresAt !== undefined && (
+        <span
+          className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+            expired ? 'bg-red-500/20 text-red-300' : 'bg-gray-800 text-gray-400'
+          }`}
+        >
+          {expired
+            ? t('alertPanel.lifecycle.expired')
+            : t('alertPanel.lifecycle.expiresOn', { date: new Date(alert.expiresAt).toLocaleDateString() })}
+        </span>
+      )}
+      {alert.reviewAt !== null && alert.reviewAt !== undefined && (
+        <span
+          className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+            reviewDue ? 'bg-amber-500/20 text-amber-300' : 'bg-gray-800 text-gray-400'
+          }`}
+        >
+          {reviewDue
+            ? t('alertPanel.lifecycle.reviewDue')
+            : t('alertPanel.lifecycle.reviewOn', { date: new Date(alert.reviewAt).toLocaleDateString() })}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -196,8 +237,14 @@ export function AlertPanel(): ReactElement | null {
   const { t } = useTranslation()
   const [snoozeOpenId, setSnoozeOpenId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'alerts' | 'history'>('alerts')
+  const [now, setNow] = useState(() => Date.now())
   // #493 – never-firing misconfiguration flags for active alerts.
   const { flags: healthFlags, dismiss: dismissHealthFlag } = useAlertHealth(alerts)
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleExportAnalytics = useCallback(() => {
     const HEADERS = ['alertId', 'fireCount', 'avgTimeToFire', 'maxTimeToFire', 'hitRatePerDay', 'thresholdHint']
@@ -209,7 +256,6 @@ export function AlertPanel(): ReactElement | null {
 
   if (!isPanelOpen) return null
 
-  const now = Date.now()
   const snoozedAlerts = alerts.filter((a) => a.snoozedUntil !== null && a.snoozedUntil > now)
   const triggeredAlerts = alerts.filter(
     (a) => a.lastTriggeredAt !== null && (a.snoozedUntil === null || a.snoozedUntil <= now),
@@ -243,7 +289,9 @@ export function AlertPanel(): ReactElement | null {
   }
 
   const toggleAlert = (id: string, currentActive: boolean): void => {
-    updateAlert(id, { active: !currentActive })
+    const alert = alerts.find((item) => item.id === id)
+    const resumesExpiredRule = !currentActive && isAlertExpired(alert?.expiresAt, Date.now())
+    updateAlert(id, { active: !currentActive, ...(resumesExpiredRule ? { expiresAt: null } : {}) })
   }
 
   const formatSnoozeExpiry = (snoozedUntil: number): string => {
@@ -396,6 +444,7 @@ export function AlertPanel(): ReactElement | null {
                           {t('alertPanel.triggered.priceCrossed')}{' '}
                           <span className="font-mono">{getConditionText(alert)}</span>
                         </p>
+                        <LifecycleBadges alert={alert} now={now} />
                         <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                         <RoutingBadge alert={alert} />
                         <div className="flex gap-2 flex-wrap mt-3">
@@ -492,6 +541,7 @@ export function AlertPanel(): ReactElement | null {
                             </span>
                           </div>
                           <div className="text-xs text-gray-500 font-mono">{getConditionText(alert)}</div>
+                          <LifecycleBadges alert={alert} now={now} />
                           {alert.snoozedUntil && (
                             <div className="text-xs text-purple-400 mt-0.5">
                               {formatSnoozeExpiry(alert.snoozedUntil)}
@@ -553,6 +603,7 @@ export function AlertPanel(): ReactElement | null {
                             <RetestBadge alert={alert} />
                           </div>
                           <div className="text-xs text-gray-400 font-mono">{getConditionText(alert)}</div>
+                          <LifecycleBadges alert={alert} now={now} />
                           <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                           <EscalationProgress alert={alert} />
                           <RoutingBadge alert={alert} />
@@ -619,6 +670,7 @@ export function AlertPanel(): ReactElement | null {
                             </span>
                           </div>
                           <div className="text-xs text-gray-500 font-mono">{getConditionText(alert)}</div>
+                          <LifecycleBadges alert={alert} now={now} />
                           {alert.lastTriggeredAt && (
                             <div className="text-xs text-amber-400/70 mt-0.5">
                               {t('alertPanel.fired.at', { time: new Date(alert.lastTriggeredAt).toLocaleString() })}
@@ -685,6 +737,7 @@ export function AlertPanel(): ReactElement | null {
                             )}
                           </div>
                           <div className="text-xs text-gray-500 font-mono">{getConditionText(alert)}</div>
+                          <LifecycleBadges alert={alert} now={now} />
                           <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                         </div>
                         <div className="flex items-center gap-1">

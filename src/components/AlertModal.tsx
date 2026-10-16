@@ -81,6 +81,7 @@ import { AlertSimulationChart } from './AlertSimulationChart'
 import { ConditionBuilder } from './ConditionBuilder'
 import { EscalationPolicyBuilder } from './EscalationPolicyBuilder'
 import { AlertPresetPicker } from './AlertPresetPicker'
+import { localDateToTimestamp, timestampToLocalDate } from '../utils/alertLifecycle'
 
 interface AlertModalProps {
   isOpen: boolean
@@ -221,6 +222,12 @@ export function AlertModal({
     if (!form.assetPair.trim()) {
       errors.assetPair = t('alertModal.validation.assetPairRequired')
     }
+    if (form.expiryDate && localDateToTimestamp(form.expiryDate, true) === null) {
+      errors.expiryDate = t('alertModal.validation.invalidDate')
+    }
+    if (form.reviewDate && localDateToTimestamp(form.reviewDate) === null) {
+      errors.reviewDate = t('alertModal.validation.invalidDate')
+    }
 
     if (form.percentageMode) {
       const pct = form.percentageThreshold ? Number.parseFloat(form.percentageThreshold) : null
@@ -276,6 +283,8 @@ export function AlertModal({
     channels: [],
     // #491 – retest mode off by default.
     retestMode: false,
+    expiryDate: '',
+    reviewDate: '',
   })
 
   const [form, setForm] = useState<AlertFormData>(emptyForm)
@@ -314,6 +323,8 @@ export function AlertModal({
           channels: alert.channels ?? [],
           // #491
           retestMode: alert.retestMode,
+          expiryDate: timestampToLocalDate(alert.expiresAt),
+          reviewDate: timestampToLocalDate(alert.reviewAt),
         })
       } else {
         // New alert: prefill the asset pair from the card the user clicked
@@ -882,6 +893,51 @@ export function AlertModal({
               </div>
             )}
           </div>
+
+          <fieldset className="mb-6 p-3 bg-gray-800/50 border border-gray-700 rounded-xl">
+            <legend className="px-1 text-sm font-medium text-gray-300">{t('alertModal.lifecycle.title')}</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="alert-expiry-date" className="block text-xs font-medium text-gray-400 mb-1.5">
+                  {t('alertModal.lifecycle.expiryLabel')}
+                </label>
+                <input
+                  id="alert-expiry-date"
+                  type="date"
+                  value={form.expiryDate}
+                  onChange={(e) => setAndValidate('expiryDate', e.target.value)}
+                  aria-invalid={Boolean(errors.expiryDate)}
+                  aria-describedby={errors.expiryDate ? 'alert-expiry-error' : undefined}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                />
+                {errors.expiryDate && (
+                  <p id="alert-expiry-error" role="alert" className="mt-1 text-xs text-red-400">
+                    {errors.expiryDate}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="alert-review-date" className="block text-xs font-medium text-gray-400 mb-1.5">
+                  {t('alertModal.lifecycle.reviewLabel')}
+                </label>
+                <input
+                  id="alert-review-date"
+                  type="date"
+                  value={form.reviewDate}
+                  onChange={(e) => setAndValidate('reviewDate', e.target.value)}
+                  aria-invalid={Boolean(errors.reviewDate)}
+                  aria-describedby={errors.reviewDate ? 'alert-review-error' : undefined}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                />
+                {errors.reviewDate && (
+                  <p id="alert-review-error" role="alert" className="mt-1 text-xs text-red-400">
+                    {errors.reviewDate}
+                  </p>
+                )}
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">{t('alertModal.lifecycle.description')}</p>
+          </fieldset>
 
           {/* Escalation policy (#487) */}
           <EscalationPolicyBuilder

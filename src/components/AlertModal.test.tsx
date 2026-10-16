@@ -130,6 +130,8 @@ describe('AlertModal', () => {
       escalationSteps: [],
       channels: [],
       retestMode: false,
+      expiryDate: '',
+      reviewDate: '',
     })
   })
 
@@ -157,6 +159,8 @@ describe('AlertModal', () => {
       escalationSteps: [],
       channels: [],
       retestMode: false,
+      expiryDate: '',
+      reviewDate: '',
     })
   })
 
@@ -209,6 +213,18 @@ describe('AlertModal', () => {
   it('has close button with accessible label', () => {
     render(<AlertModal {...defaultProps} />)
     expect(screen.getByLabelText('Close modal')).toBeInTheDocument()
+  })
+
+  it('submits optional expiry and review dates', async () => {
+    const onSave = vi.fn()
+    const user = userEvent.setup()
+    render(<AlertModal {...defaultProps} onSave={onSave} />)
+    fireEvent.change(screen.getByLabelText('Asset Pair'), { target: { value: 'BTC' } })
+    fireEvent.change(screen.getByLabelText('Upper Threshold'), { target: { value: '60000' } })
+    fireEvent.change(screen.getByLabelText('Expiry date (optional)'), { target: { value: '2030-04-05' } })
+    fireEvent.change(screen.getByLabelText('Review reminder (optional)'), { target: { value: '2030-05-06' } })
+    await user.click(screen.getByText('Create Alert'))
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ expiryDate: '2030-04-05', reviewDate: '2030-05-06' }))
   })
 })
 

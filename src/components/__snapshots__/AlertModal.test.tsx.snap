@@ -364,6 +364,54 @@ exports[`snapshots > create mode 1`] = `
           </p>
         </div>
       </div>
+      <fieldset
+        class="mb-6 p-3 bg-gray-800/50 border border-gray-700 rounded-xl"
+      >
+        <legend
+          class="px-1 text-sm font-medium text-gray-300"
+        >
+          Rule lifecycle
+        </legend>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        >
+          <div>
+            <label
+              class="block text-xs font-medium text-gray-400 mb-1.5"
+              for="alert-expiry-date"
+            >
+              Expiry date (optional)
+            </label>
+            <input
+              aria-invalid="false"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              id="alert-expiry-date"
+              type="date"
+              value=""
+            />
+          </div>
+          <div>
+            <label
+              class="block text-xs font-medium text-gray-400 mb-1.5"
+              for="alert-review-date"
+            >
+              Review reminder (optional)
+            </label>
+            <input
+              aria-invalid="false"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              id="alert-review-date"
+              type="date"
+              value=""
+            />
+          </div>
+        </div>
+        <p
+          class="mt-2 text-xs text-gray-500"
+        >
+          Expiry disables this rule at the end of that local date. Review dates are reminders only.
+        </p>
+      </fieldset>
       <div
         class="mb-5 p-3 bg-gray-800/50 border border-gray-700 rounded-xl"
       >
@@ -724,6 +772,54 @@ exports[`snapshots > edit mode 1`] = `
           </p>
         </div>
       </div>
+      <fieldset
+        class="mb-6 p-3 bg-gray-800/50 border border-gray-700 rounded-xl"
+      >
+        <legend
+          class="px-1 text-sm font-medium text-gray-300"
+        >
+          Rule lifecycle
+        </legend>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        >
+          <div>
+            <label
+              class="block text-xs font-medium text-gray-400 mb-1.5"
+              for="alert-expiry-date"
+            >
+              Expiry date (optional)
+            </label>
+            <input
+              aria-invalid="false"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              id="alert-expiry-date"
+              type="date"
+              value=""
+            />
+          </div>
+          <div>
+            <label
+              class="block text-xs font-medium text-gray-400 mb-1.5"
+              for="alert-review-date"
+            >
+              Review reminder (optional)
+            </label>
+            <input
+              aria-invalid="false"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              id="alert-review-date"
+              type="date"
+              value=""
+            />
+          </div>
+        </div>
+        <p
+          class="mt-2 text-xs text-gray-500"
+        >
+          Expiry disables this rule at the end of that local date. Review dates are reminders only.
+        </p>
+      </fieldset>
       <div
         class="mb-5 p-3 bg-gray-800/50 border border-gray-700 rounded-xl"
       >
@@ -1253,6 +1349,54 @@ exports[`snapshots > with suggestions 1`] = `
           </p>
         </div>
       </div>
+      <fieldset
+        class="mb-6 p-3 bg-gray-800/50 border border-gray-700 rounded-xl"
+      >
+        <legend
+          class="px-1 text-sm font-medium text-gray-300"
+        >
+          Rule lifecycle
+        </legend>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        >
+          <div>
+            <label
+              class="block text-xs font-medium text-gray-400 mb-1.5"
+              for="alert-expiry-date"
+            >
+              Expiry date (optional)
+            </label>
+            <input
+              aria-invalid="false"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              id="alert-expiry-date"
+              type="date"
+              value=""
+            />
+          </div>
+          <div>
+            <label
+              class="block text-xs font-medium text-gray-400 mb-1.5"
+              for="alert-review-date"
+            >
+              Review reminder (optional)
+            </label>
+            <input
+              aria-invalid="false"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              id="alert-review-date"
+              type="date"
+              value=""
+            />
+          </div>
+        </div>
+        <p
+          class="mt-2 text-xs text-gray-500"
+        >
+          Expiry disables this rule at the end of that local date. Review dates are reminders only.
+        </p>
+      </fieldset>
       <div
         class="mb-5 p-3 bg-gray-800/50 border border-gray-700 rounded-xl"
       >

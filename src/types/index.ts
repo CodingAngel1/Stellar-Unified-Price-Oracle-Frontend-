@@ -180,6 +180,10 @@ export interface Alert {
   active: boolean
   createdAt: number
   lastTriggeredAt: number | null
+  /** Local expiry instant; expired alerts are automatically disabled. */
+  expiresAt?: number | null
+  /** Local review reminder date; does not affect alert evaluation. */
+  reviewAt?: number | null
 }
 
 export interface AlertFormData {
@@ -213,6 +217,9 @@ export interface AlertFormData {
   // ── Price-level retest detection (#491) ──────────────────────────────────
   /** Whether the alert fires on re-entry to the breached zone (retest). */
   retestMode: boolean
+  /** Local date strings used by the optional lifecycle controls. */
+  expiryDate: string
+  reviewDate: string
 }
 
 /** A single record of a fired alert, kept for the alert history log (#309). */

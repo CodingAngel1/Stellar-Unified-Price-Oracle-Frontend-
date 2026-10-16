@@ -196,6 +196,7 @@ const ja = {
       mustBePositive: '正の数である必要があります',
       upperGreaterThanLower: '下限しきい値より大きい値を入力してください',
       lowerLessThanUpper: '上限しきい値より小さい値を入力してください',
+      invalidDate: '有効な日付を入力してください',
     },
     conditions: {
       title: '追加条件',
@@ -237,6 +238,12 @@ const ja = {
       title: '再テスト時に通知',
       description: '価格がこの突破済みレベルを離れた後、再び入った場合にも発火します。',
     },
+    lifecycle: {
+      title: 'ルールのスケジュール',
+      expiryLabel: '有効期限（任意）',
+      reviewLabel: '確認リマインダー（任意）',
+      description: '有効期限日の現地時間終了時にルールを無効化します。確認日はリマインダーのみです。',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: 'アラートをテスト',
@@ -267,6 +274,13 @@ const ja = {
     newBadge: '{{count}}件 新着',
     empty: 'アラートはまだ設定されていません',
     close: 'アラートパネルを閉じる',
+    lifecycle: {
+      title: 'ルールのスケジュール',
+      expired: '期限切れ',
+      expiresOn: '{{date}}に期限切れ',
+      reviewDue: '確認が必要です',
+      reviewOn: '{{date}}に確認',
+    },
     sections: {
       triggered: '発動済み',
       active: 'アクティブなアラート',

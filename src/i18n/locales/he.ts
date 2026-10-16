@@ -206,6 +206,7 @@ const he = {
       mustBePositive: 'חייב להיות מספר חיובי',
       upperGreaterThanLower: 'חייב להיות גדול מהסף התחתון',
       lowerLessThanUpper: 'חייב להיות קטן מהסף העליון',
+      invalidDate: 'יש להזין תאריך תקין',
     },
     conditions: {
       title: 'תנאים נוספים',
@@ -242,6 +243,12 @@ const he = {
       error_invalidDelay: 'שלב {{step}}: העיכוב חייב להיות מספר דקות שאינו שלילי',
       error_outOfOrder: 'שלב {{step}}: העיכוב לא יכול להיות מוקדם מהשלב הקודם',
     },
+    lifecycle: {
+      title: 'מחזור חיי הכלל',
+      expiryLabel: 'תאריך תפוגה (אופציונלי)',
+      reviewLabel: 'תזכורת לבדיקה (אופציונלי)',
+      description: 'תאריך התפוגה משבית את הכלל בסוף היום המקומי. תאריך הבדיקה הוא תזכורת בלבד.',
+    },
     presets: {
       title: 'התחל מתבנית',
       myPresets: 'התבניות שלי',
@@ -259,6 +266,13 @@ const he = {
     newBadge: '{{count}} חדש',
     empty: 'טרם הוגדרו התראות',
     close: 'סגור פאנל התראות',
+    lifecycle: {
+      title: 'לוח זמנים לכלל',
+      expired: 'פג תוקף',
+      expiresOn: 'פג תוקף ב־{{date}}',
+      reviewDue: 'מועד הבדיקה הגיע',
+      reviewOn: 'בדיקה ב־{{date}}',
+    },
     sections: {
       triggered: 'הופעל',
       active: 'התראות פעילות',
