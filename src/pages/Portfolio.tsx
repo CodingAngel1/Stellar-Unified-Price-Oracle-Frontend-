@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchAllPrices } from '../api/rest'
 import { PortfolioMovement } from '../components/PortfolioMovement'
 import { PortfolioScenario } from '../components/PortfolioScenario'
+import { HistoricalThresholdPreview } from '../components/HistoricalThresholdPreview'
 import { usePriceContext } from '../context/PriceContext'
 import { STORAGE_KEYS, readJson, writeJson } from '../utils/storage'
 import { isPortfolioHolding, valuePortfolio, type PortfolioHolding } from '../utils/portfolio'
@@ -26,13 +29,21 @@ export function Portfolio() {
     setStorageWarning(!writeJson(STORAGE_KEYS.portfolioHoldings, holdings))
   }, [holdings])
 
+  const pairs = useMemo(() => [...new Set(holdings.map(({ assetPair: pair }) => pair))].sort(), [holdings])
+  const portfolioPriceQuery = useQuery({
+    queryKey: ['portfolio-prices', pairs],
+    queryFn: ({ signal }) => fetchAllPrices(pairs, signal),
+    enabled: pairs.length > 0,
+    staleTime: 5_000,
+    refetchInterval: 30_000,
+  })
   const mergedPrices = useMemo(
     () =>
-      prices.map((price) => {
+      (portfolioPriceQuery.data ?? prices.filter((price) => pairs.includes(price.assetPair))).map((price) => {
         const live = livePrices.get(price.assetPair)
         return live && live.data.timestamp >= price.timestamp ? live.data : price
       }),
-    [prices, livePrices],
+    [livePrices, pairs, portfolioPriceQuery.data, prices],
   )
   const valuation = useMemo(() => valuePortfolio(holdings, mergedPrices), [holdings, mergedPrices])
 
@@ -127,12 +138,12 @@ export function Portfolio() {
           Browser storage is unavailable; changes will not persist after leaving this page.
         </p>
       )}
-      {pricesLoading && holdings.length > 0 && (
+      {(pricesLoading || portfolioPriceQuery.isLoading) && holdings.length > 0 && (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-400">
           Loading current oracle prices…
         </p>
       )}
-      {pricesError && (
+      {(pricesError || portfolioPriceQuery.error) && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
           Current prices could not be refreshed. Existing price values are shown only if they are still fresh.
         </p>
@@ -225,6 +236,7 @@ export function Portfolio() {
       </section>
       <PortfolioMovement holdings={valuation.holdings} />
       <PortfolioScenario holdings={valuation.holdings} />
+      <HistoricalThresholdPreview holdings={valuation.holdings} />
     </section>
   )
 }

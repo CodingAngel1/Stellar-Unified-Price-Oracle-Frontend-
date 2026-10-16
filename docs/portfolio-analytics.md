@@ -9,6 +9,9 @@ only holdings with a fresh aggregate price. Prices older than two minutes,
 future-dated prices, and missing prices are explicitly marked stale or
 unavailable and excluded from quote-value totals. A failed refresh does not
 turn stale data into a current valuation.
+Entered pairs are fetched through the existing filtered prices API and refreshed
+periodically while the page is open; the application does not assume that
+every user-entered pair is already in the dashboard's tracked feed.
 
 For each unique entered pair, price movement compares the current fresh
 aggregate quote with the earliest available point returned by the existing
@@ -33,6 +36,9 @@ source names; they do not include per-provider observations, aggregation mode,
 or the threshold parameters used at that timestamp. The interface must not
 infer a simulated historical price from that summary. A future API contract
 should expose validated per-source historical observations and the effective
-aggregation configuration (or a server-side threshold simulation endpoint).
+aggregation configuration for each point, or provide a server-side history
+simulation endpoint accepting a pair, time range, and candidate aggregation
+threshold. The preview control stages a candidate value and shows the existing
+history baseline, but never presents the baseline as a recalculated result.
 Likewise, a quantitative outage-price estimate needs source-level prices and
 the aggregation rule, not just provider membership.

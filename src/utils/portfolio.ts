@@ -1,4 +1,4 @@
-import type { PriceData } from '../types'
+import type { PriceData } from '../types/price'
 
 export interface PortfolioHolding {
   id: string

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { PriceData } from '../types'
+import type { PriceData } from '../types/price'
 import { isPortfolioHolding, valuePortfolio } from './portfolio'
 
 const prices: PriceData[] = [

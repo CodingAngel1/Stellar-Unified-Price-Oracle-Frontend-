@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PriceContextValue } from '../context/PriceContext'
 import { STORAGE_KEYS } from '../utils/storage'
@@ -29,9 +30,24 @@ vi.mock('../context/PriceContext', () => ({
   usePriceContext: () => priceContext,
 }))
 
+vi.mock('../api/rest', () => ({
+  fetchAllPrices: vi
+    .fn()
+    .mockResolvedValue([{ assetPair: 'XLM/USD', price: 0.12, timestamp: 1_000, confidence: 0.99, sources: ['band'] }]),
+}))
+
 vi.mock('../hooks/usePriceHistory', () => ({
   usePriceHistory: () => ({ history: [], loading: false, error: null }),
 }))
+
+function renderPortfolio() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <Portfolio />
+    </QueryClientProvider>,
+  )
+}
 
 describe('Portfolio', () => {
   beforeEach(() => {
@@ -41,7 +57,7 @@ describe('Portfolio', () => {
 
   it('lets a keyboard user add and remove a local holding and groups exposures', async () => {
     const user = userEvent.setup()
-    render(<Portfolio />)
+    renderPortfolio()
 
     await user.tab()
     expect(screen.getByLabelText('Asset pair')).toHaveFocus()
@@ -61,7 +77,7 @@ describe('Portfolio', () => {
   })
 
   it('rejects malformed input and reports missing prices without estimating a value', async () => {
-    render(<Portfolio />)
+    renderPortfolio()
     fireEvent.change(screen.getByLabelText('Asset pair'), { target: { value: 'not a pair' } })
     fireEvent.change(screen.getByLabelText('Amount held (base asset)'), { target: { value: '10' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add holding' }))

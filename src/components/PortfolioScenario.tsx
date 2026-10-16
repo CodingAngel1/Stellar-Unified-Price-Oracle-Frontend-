@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { SourceName } from '../types'
+import type { SourceName } from '../types/price'
 import type { ValuedHolding } from '../utils/portfolio'
 import { modelPortfolioScenario } from '../utils/portfolioScenario'
 

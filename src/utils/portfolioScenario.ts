@@ -1,4 +1,4 @@
-import type { SourceName } from '../types'
+import type { SourceName } from '../types/price'
 import type { ValuedHolding } from './portfolio'
 
 export interface QuoteImpact {
