@@ -1,16 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { usePriceContext } from '../context/PriceContext'
-import type { Alert, LivePriceEntry } from '../types'
+import type { Alert, LivePriceEntry, PriceData } from '../types'
 import { getLimiter } from '../utils/rateLimit'
 import { useAlerts, AlertsProvider } from './useAlerts'
+
+const { addToastMock } = vi.hoisted(() => ({ addToastMock: vi.fn() }))
 
 const STORAGE_KEY = 'price-alerts'
 
 vi.mock('../context/PriceContext', () => ({
   usePriceContext: vi.fn(() => ({
     livePrices: new Map(),
+    prices: [],
   })),
+}))
+
+vi.mock('../context/ToastContext', () => ({
+  useToast: () => ({ addToast: addToastMock }),
 }))
 
 vi.mock('../api/schemas', () => ({
@@ -103,7 +110,10 @@ beforeEach(() => {
   // The alert-create rate limiter is a module-level singleton (5/min); reset it
   // so earlier tests in this file don't exhaust the budget for later ones.
   getLimiter('alertCreate').reset()
-  vi.mocked(usePriceContext).mockReturnValue({ livePrices: new Map() } as ReturnType<typeof usePriceContext>)
+  vi.mocked(usePriceContext).mockReturnValue({ livePrices: new Map(), prices: [] } as ReturnType<
+    typeof usePriceContext
+  >)
+  addToastMock.mockClear()
 })
 
 afterEach(() => {
@@ -235,6 +245,57 @@ describe('useAlerts', () => {
       outcome: 'skipped',
       reason: 'price_unavailable',
     })
+  })
+
+  it('notifies on fresh client-observed source participation changes only', () => {
+    const { rerender } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const snapshot = (sources: string[], timestamp = Date.now()): PriceData => ({
+      assetPair: 'BTC/USD',
+      price: 100,
+      timestamp,
+      confidence: 0.99,
+      sources,
+    })
+
+    act(() => {
+      vi.mocked(usePriceContext).mockReturnValue({
+        livePrices: new Map(),
+        prices: [snapshot(['chainlink'])],
+      } as ReturnType<typeof usePriceContext>)
+      rerender()
+    })
+    expect(addToastMock).not.toHaveBeenCalled()
+
+    act(() => {
+      vi.mocked(usePriceContext).mockReturnValue({
+        livePrices: new Map(),
+        prices: [snapshot(['redstone'])],
+      } as ReturnType<typeof usePriceContext>)
+      rerender()
+    })
+
+    expect(addToastMock).toHaveBeenCalledTimes(2)
+    expect(addToastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'warning',
+        message: expect.stringContaining('chainlink is no longer present'),
+      }),
+    )
+    expect(addToastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        message: expect.stringContaining('redstone is present in a current aggregate again'),
+      }),
+    )
+
+    act(() => {
+      vi.mocked(usePriceContext).mockReturnValue({
+        livePrices: new Map(),
+        prices: [snapshot([], Date.now() - 6 * 60_000)],
+      } as ReturnType<typeof usePriceContext>)
+      rerender()
+    })
+    expect(addToastMock).toHaveBeenCalledTimes(2)
   })
 
   it('handles invalid localStorage data', () => {

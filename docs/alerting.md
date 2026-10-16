@@ -25,3 +25,18 @@ substituted with a fabricated value.
 
 The timeline is diagnostic session state, not a durable audit log; it resets
 when the page reloads or the user clears alert history.
+
+## Oracle source health notices
+
+The current REST/WebSocket price contract reports which sources contributed to
+an aggregate; it does not report authoritative per-source health. Notices are
+therefore limited to client-observed participation changes: a source is
+considered present if it appears in any fresh aggregate price snapshot (within
+the default five-minute stale threshold). Notices explicitly say this is not an
+upstream health report. Empty or stale snapshots do not imply a source
+transition, and the current contract cannot report a `degraded` status.
+
+Authoritative health-state alerts depend on an upstream source-health response
+or event containing each source's status and observation timestamp, validated
+by the API schema and exposed through `PriceContext`. No status or latency is
+inferred in place of that missing contract.

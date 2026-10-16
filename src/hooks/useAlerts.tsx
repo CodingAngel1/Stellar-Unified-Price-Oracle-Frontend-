@@ -11,6 +11,9 @@ import type {
 } from '../types'
 import { migrateLegacyAlertConditions } from '../types/alerts'
 import { usePriceContext } from '../context/PriceContext'
+import { useToast } from '../context/ToastContext'
+import { deriveSourceHealths } from '../utils/sourceHealth'
+import { DEFAULT_PREFERENCES } from '../preferences/constants'
 import { AlertsArraySchema } from '../api/schemas'
 import { createBroadcastChannel } from '../utils/broadcastChannel'
 import { readRaw, STORAGE_KEYS } from '../utils/storage'
@@ -272,6 +275,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const lastProcessedEvaluationRef = useRef(new Map<string, string>())
   const lastEvaluationLogRef = useRef(new Map<string, { key: string; outcome: AlertEvaluationEntry['outcome'] }>())
+  const previousSourceHealthRef = useRef<Map<string, 'healthy' | 'degraded' | 'down'> | null>(null)
 
   // #504 — report alert history length to the memory profiling harness.
   // Registered once on mount; the ref keeps the probe reading the latest
@@ -286,7 +290,38 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     importAlertHistoryToEngine()
   }, [])
 
-  const { livePrices } = usePriceContext()
+  const { livePrices, prices } = usePriceContext()
+  const { addToast } = useToast()
+
+  useEffect(() => {
+    if (!prices || prices.length === 0) return
+
+    const now = Date.now()
+    const freshPrices = prices.filter((price) => {
+      const ageMs = now - price.timestamp
+      return ageMs >= 0 && ageMs <= DEFAULT_PREFERENCES.staleThresholdMinutes * 60_000
+    })
+    if (freshPrices.length === 0) return
+
+    const current = new Map(deriveSourceHealths(freshPrices, now).map(({ source, status }) => [source, status]))
+    const previous = previousSourceHealthRef.current
+    if (previous) {
+      for (const [source, status] of current) {
+        const priorStatus = previous.get(source)
+        if (priorStatus === undefined || priorStatus === status) continue
+
+        const isUnavailable = status === 'down'
+        addToast({
+          type: isUnavailable ? 'warning' : 'success',
+          priority: 'high',
+          message: isUnavailable
+            ? `Source participation changed: ${source} is no longer present in any current aggregate. This is a client observation, not an authoritative upstream health report.`
+            : `Source participation restored: ${source} is present in a current aggregate again. This is a client observation, not an authoritative upstream health report.`,
+        })
+      }
+    }
+    previousSourceHealthRef.current = current
+  }, [prices, addToast])
 
   // Rate limiter for alert creation (max 5 per minute)
   const alertRateLimit = useRateLimit('alertCreate')
