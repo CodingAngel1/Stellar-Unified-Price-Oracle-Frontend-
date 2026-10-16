@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, createContext, useContext, Re
 import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import type {
   Alert,
+  AlertEvaluationEntry,
   AlertHistoryEntry,
   AlertsContextType,
   AlertSnoozeDuration,
@@ -16,7 +17,7 @@ import { readRaw, STORAGE_KEYS } from '../utils/storage'
 import { persistDurable } from '../utils/durableWrites'
 import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
-import { evaluateCompoundCondition } from '../utils/alertEvaluator'
+import { evaluateCompoundConditionWithTrace } from '../utils/alertEvaluator'
 import {
   loadAlertHistory,
   saveAlertHistoryDebounced,
@@ -36,6 +37,7 @@ import { useRateLimit } from './useRateLimit'
 
 const alertsChannel = createBroadcastChannel<Alert[]>('kiro-alerts')
 const alertsHistoryChannel = createBroadcastChannel<AlertHistoryEntry[]>('kiro-alerts-history')
+const EVALUATION_TIMELINE_LIMIT = 200
 
 function alertMessage(alert: Alert, currentPrice: number): string {
   return alert.percentageMode
@@ -266,7 +268,10 @@ const AlertsContext = createContext<AlertsContextType | null>(null)
 export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
   const [history, setHistory] = useState<AlertHistoryEntry[]>(loadAlertHistory)
+  const [evaluationTimeline, setEvaluationTimeline] = useState<AlertEvaluationEntry[]>([])
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const lastProcessedEvaluationRef = useRef(new Map<string, string>())
+  const lastEvaluationLogRef = useRef(new Map<string, { key: string; outcome: AlertEvaluationEntry['outcome'] }>())
 
   // #504 — report alert history length to the memory profiling harness.
   // Registered once on mount; the ref keeps the probe reading the latest
@@ -304,20 +309,64 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     let changed = false
     const now = Date.now()
     const firedEntries: AlertHistoryEntry[] = []
+    const evaluationEntries: AlertEvaluationEntry[] = []
 
     const newAlerts = alerts.map((alert) => {
+      const livePriceData = livePrices.get(alert.assetPair)
+      const groupSignature = JSON.stringify(
+        alert.conditionGroup ?? [
+          alert.percentageMode,
+          alert.upperThreshold,
+          alert.lowerThreshold,
+          alert.percentageThreshold,
+          alert.percentageWindow,
+          alert.percentageDirection,
+        ],
+      )
+      const evaluationKey = JSON.stringify([livePriceData?.data ?? null, groupSignature])
+      if (lastProcessedEvaluationRef.current.get(alert.id) === evaluationKey) return alert
+      lastProcessedEvaluationRef.current.set(alert.id, evaluationKey)
+      const recordEvaluation = (
+        outcome: AlertEvaluationEntry['outcome'],
+        reason: AlertEvaluationEntry['reason'],
+        conditions?: AlertEvaluationEntry['conditions'],
+      ) => {
+        const previous = lastEvaluationLogRef.current.get(alert.id)
+        if (previous?.key === evaluationKey && (previous.outcome === 'fired' || outcome !== 'fired')) return
+        lastEvaluationLogRef.current.set(alert.id, { key: evaluationKey, outcome })
+        evaluationEntries.push({
+          id: crypto.randomUUID(),
+          alertId: alert.id,
+          assetPair: alert.assetPair,
+          evaluatedAt: now,
+          price: livePriceData?.data.price ?? null,
+          outcome,
+          reason,
+          ...(conditions ? { conditions } : {}),
+        })
+      }
+
       // Skip inactive alerts
-      if (!alert.active) return alert
+      if (!alert.active) {
+        recordEvaluation('skipped', 'alert_inactive')
+        return alert
+      }
 
       // Skip snoozed alerts
-      if (alert.snoozedUntil !== null && alert.snoozedUntil > now) return alert
+      if (alert.snoozedUntil !== null && alert.snoozedUntil > now) {
+        recordEvaluation('skipped', 'snoozed')
+        return alert
+      }
 
-      const livePriceData = livePrices.get(alert.assetPair)
-      if (!livePriceData) return alert
+      if (!livePriceData) {
+        recordEvaluation('skipped', 'price_unavailable')
+        return alert
+      }
 
       const currentPrice = livePriceData.data.price
       let updatedAlert = { ...alert }
       let triggered = false
+      let conditionTrace: AlertEvaluationEntry['conditions'] = []
 
       if (alert.percentageMode) {
         // ── Percentage-based alert evaluation (#307) ──────────────────────
@@ -332,6 +381,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         ) {
           // Set new baseline; don't trigger on the same tick as baseline reset
           changed = true
+          recordEvaluation('skipped', 'baseline_reset')
           return {
             ...updatedAlert,
             percentageBaselinePrice: currentPrice,
@@ -350,12 +400,16 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           percentageChange: { [window]: pctChange },
           nowMs: Date.now(),
         }
-        triggered = evaluateCompoundCondition(group, state)
+        const evaluation = evaluateCompoundConditionWithTrace(group, state)
+        triggered = evaluation.matched
+        conditionTrace = evaluation.conditions
       } else {
         // ── Absolute threshold evaluation, via the compound evaluator (#485) ─
         const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
         const state: PriceEvaluationState = { price: currentPrice, nowMs: Date.now() }
-        triggered = evaluateCompoundCondition(group, state)
+        const evaluation = evaluateCompoundConditionWithTrace(group, state)
+        triggered = evaluation.matched
+        conditionTrace = evaluation.conditions
       }
 
       // ── Price-level retest detection (#491) ──────────────────────────────
@@ -471,6 +525,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           : alert.lastTriggeredAt === null || now - alert.lastTriggeredAt >= cooldownMs
 
         if (shouldFire) {
+          recordEvaluation('fired', 'condition_matched', conditionTrace)
           changed = true
           const newFireCount = (updatedAlert.fireCount ?? 0) + 1
 
@@ -502,7 +557,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
             active: !alert.triggerOnce,
           }
         }
+        recordEvaluation(
+          'matched',
+          !alert.triggerOnce && alert.lastTriggeredAt !== null && now - alert.lastTriggeredAt < cooldownMs
+            ? 'cooldown'
+            : 'condition_matched',
+          conditionTrace,
+        )
       } else {
+        recordEvaluation('not_matched', 'condition_not_met', conditionTrace)
         // Re-arm a persistent alert once its cooldown window has elapsed (#310),
         // so it can fire again next time the condition is met.
         if (!alert.triggerOnce && alert.lastTriggeredAt !== null && now - alert.lastTriggeredAt >= cooldownMs) {
@@ -522,6 +585,9 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       setHistory((prev) => appendHistoryEntries(prev, firedEntries))
       // Mirror into the time-series engine for retention/rollups/range queries.
       recordAlertEvents(firedEntries)
+    }
+    if (evaluationEntries.length > 0) {
+      setEvaluationTimeline((prev) => [...evaluationEntries].reverse().concat(prev).slice(0, EVALUATION_TIMELINE_LIMIT))
     }
   }, [livePrices, alerts])
 
@@ -703,6 +769,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   /** Clears the fired-alert history log (#309) */
   const clearAlertHistory = useCallback(() => {
     setHistory([])
+    setEvaluationTimeline([])
     clearAlertEventSeries()
   }, [])
 
@@ -721,6 +788,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     unsnoozeAlert,
     reEnableAlert,
     alertHistory: history,
+    evaluationTimeline,
     clearAlertHistory,
     alertCreateAllowed: alertRateLimit.allowed,
     alertCreateCooldownSec: alertRateLimit.cooldownSec,

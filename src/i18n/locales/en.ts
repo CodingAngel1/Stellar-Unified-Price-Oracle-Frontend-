@@ -371,6 +371,28 @@ const en = {
       tickSources: 'Contributing sources',
       sourcePrices: 'Per-source tick prices',
       tickUnavailable: 'Not provided by the price feed',
+      evaluationTimeline: 'Rule evaluation timeline ({{count}})',
+      evaluationTimelineLabel: 'Recent rule evaluations',
+      noEvaluations: 'No evaluation events yet. Waiting for a rule check.',
+      conditionResult: '{{field}} {{operator}} {{expected}}; observed {{actual}} — {{result}}',
+      matched: 'matched',
+      notMatched: 'not matched',
+      fields: {
+        price: 'Price',
+        percentageChange: 'Percentage change',
+        schedule: 'Schedule',
+      },
+      evaluationReasons: {
+        inactive: 'Rule is inactive',
+        snoozed: 'Rule is snoozed',
+        priceUnavailable: 'No current price tick was available',
+        baselineReset: 'Percentage baseline was initialized; this tick was not evaluated',
+        cooldown: 'Condition matched; waiting for cooldown to expire',
+        conditionNotMet: 'Conditions were not satisfied',
+        conditionMatched: 'Conditions were satisfied',
+        thresholdCleared: 'Threshold condition cleared',
+        notAvailable: 'Unavailable',
+      },
     },
     // ── Escalation progress (#487) ────────────────────────────────────────
     escalation: {

@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next'
 import { useAlerts } from '../hooks/useAlerts'
 import { formatPrice, formatTimestamp } from '../utils/format'
 import { loadExportUtils } from '../utils/deferredExports'
-import type { AlertHistoryEntry } from '../types'
+import type { AlertEvaluationEntry, AlertHistoryEntry } from '../types'
 
 // #507 — long alert histories (1k+ entries) render every row without this;
 // only virtualize once the list is long enough to matter so short lists keep
@@ -37,8 +37,39 @@ function conditionText(entry: AlertHistoryEntry, t: TFunction): string {
   return t('alertPanel.conditions.none')
 }
 
+const EVALUATION_REASON_KEYS: Record<AlertEvaluationEntry['reason'], string> = {
+  alert_inactive: 'alertPanel.history.evaluationReasons.inactive',
+  snoozed: 'alertPanel.history.evaluationReasons.snoozed',
+  price_unavailable: 'alertPanel.history.evaluationReasons.priceUnavailable',
+  baseline_reset: 'alertPanel.history.evaluationReasons.baselineReset',
+  cooldown: 'alertPanel.history.evaluationReasons.cooldown',
+  condition_not_met: 'alertPanel.history.evaluationReasons.conditionNotMet',
+  condition_matched: 'alertPanel.history.evaluationReasons.conditionMatched',
+  threshold_cleared: 'alertPanel.history.evaluationReasons.thresholdCleared',
+}
+
+function conditionTraceText(condition: NonNullable<AlertEvaluationEntry['conditions']>[number], t: TFunction): string {
+  const expected =
+    condition.field === 'price'
+      ? formatPrice(condition.expected)
+      : `${condition.expected}${condition.field === 'schedule' ? '' : '%'}`
+  const actual =
+    condition.actual === null
+      ? t('alertPanel.history.evaluationReasons.notAvailable')
+      : condition.field === 'price'
+        ? formatPrice(condition.actual)
+        : `${condition.actual}${condition.field === 'schedule' ? '' : '%'}`
+  return t('alertPanel.history.conditionResult', {
+    field: t(`alertPanel.history.fields.${condition.field}`),
+    operator: condition.operator,
+    expected,
+    actual,
+    result: t(condition.matched ? 'alertPanel.history.matched' : 'alertPanel.history.notMatched'),
+  })
+}
+
 export function AlertHistoryLog(): ReactElement {
-  const { alertHistory, clearAlertHistory } = useAlerts()
+  const { alertHistory, evaluationTimeline, clearAlertHistory } = useAlerts()
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -229,6 +260,45 @@ export function AlertHistoryLog(): ReactElement {
           </ul>
         </div>
       )}
+
+      <details className="mt-4 rounded-xl border border-gray-700 bg-gray-800/30">
+        <summary className="cursor-pointer rounded-xl px-3 py-2 text-sm text-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+          {t('alertPanel.history.evaluationTimeline', { count: evaluationTimeline.length })}
+        </summary>
+        {evaluationTimeline.length === 0 ? (
+          <p className="px-3 pb-3 text-xs text-gray-500">{t('alertPanel.history.noEvaluations')}</p>
+        ) : (
+          <ol
+            className="max-h-72 space-y-2 overflow-y-auto px-3 pb-3"
+            aria-label={t('alertPanel.history.evaluationTimelineLabel')}
+          >
+            {evaluationTimeline.map((entry) => (
+              <li key={entry.id} className="rounded-lg border border-gray-700/70 p-2 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <span className="font-medium text-gray-200">
+                    {entry.assetPair} · {t(EVALUATION_REASON_KEYS[entry.reason])}
+                  </span>
+                  <time className="text-gray-500" dateTime={new Date(entry.evaluatedAt).toISOString()}>
+                    {formatTimestamp(entry.evaluatedAt)}
+                  </time>
+                </div>
+                <p className="mt-1 text-gray-400">
+                  {entry.price === null
+                    ? t('alertPanel.history.evaluationReasons.notAvailable')
+                    : t('alertPanel.history.priceAt', { price: formatPrice(entry.price) })}
+                </p>
+                {entry.conditions && entry.conditions.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 pl-3 text-gray-500">
+                    {entry.conditions.map((condition) => (
+                      <li key={condition.conditionId}>{conditionTraceText(condition, t)}</li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </details>
     </div>
   )
 }

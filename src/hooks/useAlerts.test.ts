@@ -13,6 +13,36 @@ vi.mock('../context/PriceContext', () => ({
   })),
 }))
 
+vi.mock('../api/schemas', () => ({
+  AlertsArraySchema: {
+    safeParse: (data: unknown) => ({
+      success: true,
+      data: Array.isArray(data)
+        ? data.map((alert) => ({
+            fireCount: 0,
+            percentageMode: false,
+            percentageThreshold: null,
+            percentageWindow: null,
+            percentageDirection: null,
+            percentageRelativeTo: null,
+            percentageBaselinePrice: null,
+            percentageBaselineTimestamp: null,
+            snoozedUntil: null,
+            cooldownMinutes: 5,
+            conditionGroup: null,
+            escalationPolicy: null,
+            escalationState: null,
+            channels: null,
+            retestMode: false,
+            retestState: null,
+            ...alert,
+          }))
+        : data,
+    }),
+  },
+  AlertHistoryArraySchema: { safeParse: (data: unknown) => ({ success: true, data }) },
+}))
+
 function livePricesMap(pair: string, price: number): Map<string, LivePriceEntry> {
   const map = new Map<string, LivePriceEntry>()
   map.set(pair, {
@@ -190,6 +220,21 @@ describe('useAlerts', () => {
       result.current.addAlert(makeAlertInput({ assetPair: 'ETH/USD', upperThreshold: 4000 }))
     })
     expect(result.current.activeCount).toBe(1)
+  })
+
+  it('records why an active rule check was skipped when no price is available', () => {
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+
+    act(() => {
+      result.current.addAlert(makeAlertInput({ upperThreshold: 100 }))
+    })
+
+    expect(result.current.evaluationTimeline[0]).toMatchObject({
+      assetPair: 'BTC/USD',
+      price: null,
+      outcome: 'skipped',
+      reason: 'price_unavailable',
+    })
   })
 
   it('handles invalid localStorage data', () => {

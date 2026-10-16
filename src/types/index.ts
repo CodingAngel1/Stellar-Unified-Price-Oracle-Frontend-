@@ -247,6 +247,34 @@ export interface AlertHistoryEntry {
   retest?: { kind: 'breach' | 'exit' | 'retest'; cycle: number } | null
 }
 
+/** One live rule evaluation, including the reason it fired, matched, or was skipped. */
+export interface AlertEvaluationEntry {
+  id: string
+  alertId: string
+  assetPair: string
+  evaluatedAt: number
+  price: number | null
+  outcome: 'fired' | 'matched' | 'not_matched' | 'skipped'
+  reason:
+    | 'alert_inactive'
+    | 'snoozed'
+    | 'price_unavailable'
+    | 'baseline_reset'
+    | 'cooldown'
+    | 'condition_not_met'
+    | 'condition_matched'
+    | 'threshold_cleared'
+  conditions?: Array<{
+    conditionId: string
+    field: _AlertCondition['field']
+    operator: _AlertCondition['operator']
+    expected: number
+    actual: number | null
+    matched: boolean
+    reason: 'schedule_inactive' | 'condition_not_met' | null
+  }>
+}
+
 export interface AlertsContextType {
   alerts: Alert[]
   /**
@@ -282,6 +310,8 @@ export interface AlertsContextType {
   reEnableAlert: (id: string) => void
   // Alert history log (#309)
   alertHistory: AlertHistoryEntry[]
+  /** Recent rule evaluations, newest first and capped in memory. */
+  evaluationTimeline: AlertEvaluationEntry[]
   clearAlertHistory: () => void
   /** Rate-limit info for alert creation — used by UI to disable buttons and show countdown. */
   alertCreateAllowed: boolean
