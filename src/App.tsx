@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement } from 'react'
+import { lazy, useEffect, useRef, type ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
@@ -8,7 +8,7 @@ import { DashboardSkeleton } from './components/Skeletons/DashboardSkeleton'
 import { PriceDetailSkeleton } from './components/PriceDetailSkeleton'
 import { ApiDocsSkeleton } from './components/Skeletons/ApiDocsSkeleton'
 import { NotFoundSkeleton } from './components/Skeletons/NotFoundSkeleton'
-import { lazy } from 'react'
+const Portfolio = lazy(() => import('./pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 // Developer-only; the ternary is statically replaced by Vite so the chunk is
 // dropped from production bundles unless VITE_ENABLE_KPI_INSIGHTS=true.
 const KpiInsights =
@@ -122,6 +122,14 @@ export function AppContent(): ReactElement {
               element={
                 <RouteSuspense fallback={<DashboardSkeleton />}>
                   <LazyDashboard />
+                </RouteSuspense>
+              }
+            />
+            <Route
+              path="/portfolio"
+              element={
+                <RouteSuspense fallback={<DashboardSkeleton />}>
+                  <Portfolio />
                 </RouteSuspense>
               }
             />

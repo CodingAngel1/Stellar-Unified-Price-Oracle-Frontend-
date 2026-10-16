@@ -69,6 +69,8 @@ export const STORAGE_KEYS = {
   moderationReports: 'moderation-reports',
   /** Dated transparency report snapshots (#700), keyed by period. Aggregates only. */
   transparencyArchive: 'transparency-archive',
+  /** User-entered local-only portfolio positions; no account sync or PII. */
+  portfolioHoldings: 'portfolio-holdings',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]

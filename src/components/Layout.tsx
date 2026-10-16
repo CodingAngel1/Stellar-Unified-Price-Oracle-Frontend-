@@ -98,6 +98,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
   const NAV_ITEMS = [
     { path: '/', label: t('nav.home'), preload: preloadLanding },
     { path: '/dashboard', label: t('nav.dashboard'), preload: preloadDashboard },
+    { path: '/portfolio', label: 'Portfolio' },
     { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
     { path: '/governance', label: 'Governance', preload: preloadGovernance },
     { path: '/webhooks', label: 'Webhooks' },
@@ -244,7 +245,10 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
           {t('footer.securityLink')}
         </NavLink>
         <span aria-hidden="true"> · </span>
-        <NavLink to="/transparency" className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400">
+        <NavLink
+          to="/transparency"
+          className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400"
+        >
           Transparency
         </NavLink>
         <span aria-hidden="true"> · </span>
@@ -276,6 +280,16 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
                 strokeWidth={2}
                 d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
               />
+            </svg>
+          }
+        />
+
+        <BottomTab
+          to="/portfolio"
+          label="Portfolio"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18M7 14l4-4 4 4 6-7" />
             </svg>
           }
         />
