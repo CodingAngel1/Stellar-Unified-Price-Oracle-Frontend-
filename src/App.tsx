@@ -25,6 +25,7 @@ import { ErrorReporterProvider } from './context/ErrorReporterContext'
 import { WalletProvider } from './wallet/WalletContext'
 import { AuthProvider } from './auth/AuthContext'
 import { AuthCallback } from './pages/AuthCallback'
+import { Inbox } from './pages/Inbox'
 import { useWebVitals } from './hooks/useWebVitals'
 import { useAccessibility } from './hooks/useAccessibility'
 import { initAnalytics } from './hooks/useAnalytics'
@@ -150,6 +151,7 @@ export function AppContent(): ReactElement {
               }
             />
             <Route path="/webhooks" element={<Webhooks />} />
+            <Route path="/inbox" element={<Inbox />} />
             <Route path="/moderation" element={<Moderation />} />
             <Route path="/transparency" element={<Transparency />} />
             <Route

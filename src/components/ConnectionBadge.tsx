@@ -113,19 +113,20 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   const { t } = useTranslation()
   const { announce } = useAnnounce()
   const prevStatusRef = useRef<ConnectionStatus | 'rate-limited'>(status)
-  
+
   // Announce status changes to screen readers
   useEffect(() => {
     const isRateLimited = rateLimitStatus === 'limited'
     const currentKey = isRateLimited ? 'rate-limited' : status
-    
+
     if (prevStatusRef.current !== currentKey) {
       let announcement = ''
-      
+
       if (isRateLimited) {
-        announcement = retryAfterMs && retryAfterMs > 0
-          ? `API rate limited, requests will resume in ${Math.ceil(retryAfterMs / 1000)} seconds`
-          : 'API rate limited'
+        announcement =
+          retryAfterMs && retryAfterMs > 0
+            ? `API rate limited, requests will resume in ${Math.ceil(retryAfterMs / 1000)} seconds`
+            : 'API rate limited'
       } else {
         const s = STATUS_MAP[status] ?? STATUS_MAP['disconnected']
         announcement = `Connection status: ${s.label}`
@@ -133,7 +134,7 @@ export const ConnectionBadge = memo(function ConnectionBadge({
           announcement += ` (attempt ${diagnostics.retryCount} of 20)`
         }
       }
-      
+
       announce(announcement, isRateLimited || status === 'dead' ? 'assertive' : 'polite')
       prevStatusRef.current = currentKey
     }
@@ -149,14 +150,17 @@ export const ConnectionBadge = memo(function ConnectionBadge({
     : s.label
 
   // Show retry count on waiting/reconnecting states
-  if (!isRateLimited && diagnostics && diagnostics.retryCount > 0 && (status === 'waiting' || status === 'reconnecting')) {
+  if (
+    !isRateLimited &&
+    diagnostics &&
+    diagnostics.retryCount > 0 &&
+    (status === 'waiting' || status === 'reconnecting')
+  ) {
     label = `${s.label} (${diagnostics.retryCount}/${20})`
   }
 
   // #471 – visible indicator when the client has fallen back from WebSocket to SSE.
   const isSseFallback = diagnostics?.transport === 'sse'
-
-  const ariaLabel = isRateLimited ? 'API rate limited' : `WebSocket ${s.label}`
 
   let tooltipText = isRateLimited
     ? 'The API is temporarily rate limited. Requests will resume after the retry window expires.'
@@ -167,9 +171,31 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   }
 
   if (isSseFallback) {
-    tooltipText +=
-      ' Falling back to Server-Sent Events — the WebSocket upgrade failed or was blocked by the network.'
+    tooltipText += ' Falling back to Server-Sent Events — the WebSocket upgrade failed or was blocked by the network.'
   }
+
+  const cause = diagnostics?.lastReconnectCause
+  const causeLabel =
+    cause?.type === 'server' ? 'server response' : cause?.type === 'unknown' ? 'unknown cause' : cause?.type
+  const causeDetail = cause
+    ? `Last reconnect cause: ${causeLabel}${cause.closeCode ? ` (close code ${cause.closeCode})` : ''}${cause.closeReason ? ` — ${cause.closeReason}` : ''}.`
+    : ''
+  if (causeDetail) tooltipText += ` ${causeDetail}`
+
+  const counts = diagnostics?.reconnectCauseCounts
+  const causeCountsLabel = counts
+    ? `Reconnect causes: network ${counts.network}, browser ${counts.browser}, server response ${counts.server}${counts.unknown ? `, unknown ${counts.unknown}` : ''}.`
+    : ''
+  const ariaLabel = isRateLimited
+    ? 'API rate limited'
+    : [
+        `WebSocket ${s.label}`,
+        causeDetail.replace(/\.$/, ''),
+        causeCountsLabel.replace(/\.$/, ''),
+      ]
+        .filter(Boolean)
+        .join('. ')
+  const hasReconnectCauses = counts && counts.network + counts.browser + counts.server + counts.unknown > 0
 
   return (
     <Tooltip content={tooltipText}>
@@ -183,6 +209,11 @@ export const ConnectionBadge = memo(function ConnectionBadge({
           aria-hidden="true"
         />
         {label}
+        {hasReconnectCauses && (
+          <span className="ml-1 border-l border-current/20 pl-2 text-[10px] font-normal opacity-80">
+            Network {counts.network} · Browser {counts.browser} · Server response {counts.server}
+          </span>
+        )}
         {isSseFallback && (
           <span
             className="px-1 rounded bg-amber-500/20 text-amber-400 text-[10px] font-semibold uppercase tracking-wide"

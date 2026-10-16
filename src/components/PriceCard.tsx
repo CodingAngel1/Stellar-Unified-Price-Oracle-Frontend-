@@ -51,8 +51,12 @@ import type { PriceData, PriceSyncState } from '../types'
 import { formatPrice } from '../utils/format'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { useActiveSource } from '../hooks/useActiveSource'
+import type { ObservedSourceRange as ObservedSourceRangeData } from '../utils/uncertaintyBand'
 import { FreshnessBadge } from './FreshnessBadge'
+import { ObservedSourceRange } from './ObservedSourceRange'
 import { Tooltip } from './Tooltip'
+import { PairMetadataPanel } from './PairMetadataPanel'
+import { FeedSymbolDiagnostics } from './FeedSymbolDiagnostics'
 
 const SOURCE_COLORS: Record<string, string> = {
   // Cards are always dark (bg-gray-900), so badge text always uses the
@@ -96,6 +100,8 @@ interface PriceCardProps {
   selectMode?: boolean
   /** Whether this card is currently selected in multi-select mode. */
   isSelected?: boolean
+  /** Current source-reported price envelope, omitted when unavailable or stale. */
+  observedSourceRange?: ObservedSourceRangeData | null
 }
 
 export const PriceCard = memo(function PriceCard({
@@ -106,6 +112,7 @@ export const PriceCard = memo(function PriceCard({
   onAlertClick,
   selectMode,
   isSelected,
+  observedSourceRange = null,
 }: PriceCardProps) {
   const { t } = useTranslation()
   const { preferences } = usePreferences()
@@ -174,6 +181,12 @@ export const PriceCard = memo(function PriceCard({
         </div>
 
         <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPrice(price.price)}</div>
+        <ObservedSourceRange range={observedSourceRange} compact showUnavailable={false} />
+
+        {price.pairMetadata && <PairMetadataPanel pair={assetPair} metadata={price.pairMetadata} compact />}
+        {price.pairMetadata?.feedSymbols && (
+          <FeedSymbolDiagnostics pair={assetPair} feedSymbols={price.pairMetadata.feedSymbols} compact />
+        )}
 
         <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
           <FreshnessBadge timestamp={price.timestamp} refreshIntervalMs={preferences.refreshInterval} />

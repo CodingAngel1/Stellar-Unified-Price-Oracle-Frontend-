@@ -437,6 +437,8 @@ const ja = {
     confidence: '信頼度{{value}}%',
     updated: '{{time}}に更新',
     historyError: '価格履歴の読み込みに失敗しました: {{message}}',
+    historyStorageWarning:
+      'ブラウザーのストレージが上限に近づいています。ローカルに保存された価格履歴が削除される可能性がありますが、ライブ価格には影響しません。',
     emptyState: {
       title: '価格データがありません',
       detail: 'このペアの価格データはありません。',
@@ -519,6 +521,7 @@ const ja = {
     fields: {
       refreshInterval: '更新間隔',
       chartTimeRange: 'チャート時間範囲',
+      chartHistoryPageSize: 'ページごとのチャート履歴ポイント数',
       staleThreshold: '古いデータのしきい値',
     },
     accessibility: {

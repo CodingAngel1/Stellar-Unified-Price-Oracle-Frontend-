@@ -18,6 +18,9 @@ import ReferenceBenchmarkBadge from '../components/ReferenceBenchmarkBadge'
 import { PriceQualityDisclosure } from '../components/PriceQualityDisclosure'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
+import { PairMetadataPanel } from '../components/PairMetadataPanel'
+import { FeedSymbolDiagnostics } from '../components/FeedSymbolDiagnostics'
+import { ProviderPrecisionComparison } from '../components/ProviderPrecisionComparison'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
@@ -25,7 +28,7 @@ import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
-import { buildExcludedSourceAnnotations } from '../utils/qualityIncidents'
+import { CircuitBreakerStatus } from '../components/CircuitBreakerStatus'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -133,21 +136,25 @@ export function PriceDetail() {
     loadingMore,
     hasMore,
     error: historyError,
+    storageNearQuota,
     loadMore,
-  } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, { pageSize: 100 })
-  const reference = useReferenceDeviation(
-    history.map((entry) => ({ timestamp: new Date(entry.timestamp).toISOString(), price: entry.price })),
-    { pair: isInvalidPair ? '' : decodedPair },
-  )
-  const qualityAnnotations = useMemo(() => buildExcludedSourceAnnotations(history), [history])
+  } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, {
+    pageSize: preferences.chartHistoryPageSize,
+    refreshInterval: preferences.refreshInterval,
+  })
 
   // Benchmark pair history — fetched only when a benchmark pair is selected
   const { history: benchmarkHistory, loading: benchmarkHistoryLoading } = usePriceHistory(benchmarkPair, {
-    pageSize: 100,
+    pageSize: preferences.chartHistoryPageSize,
+    refreshInterval: preferences.refreshInterval,
   })
 
   const loading = priceLoading || (historyLoading && history.length === 0)
   const showEmptyState = !loading && !priceError && !price
+  const currentSourceRange = getObservedSourceRange(
+    (attributionHistory.get(decodedPair) ?? []).slice(-1)[0],
+    price?.timestamp ?? Number.POSITIVE_INFINITY,
+  )
 
   return (
     // The whole page is built from dark cards and dark-only text colours, so it
@@ -165,6 +172,8 @@ export function PriceDetail() {
         </svg>
         {t('priceDetail.back')}
       </button>
+
+      {!isInvalidPair && decodedPair && <CircuitBreakerStatus pair={decodedPair} />}
 
       {isInvalidPair ? (
         <div className="p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
@@ -185,6 +194,9 @@ export function PriceDetail() {
               {t('priceDetail.live')}
             </span>
           </div>
+
+          <PairMetadataPanel pair={price.assetPair} metadata={price.pairMetadata} />
+          <FeedSymbolDiagnostics pair={price.assetPair} feedSymbols={price.pairMetadata?.feedSymbols} />
 
           {/* Tabs — Overview (off-chain aggregated feed) vs Proof (on-chain verification) */}
           <div className="flex border-b border-gray-800 mb-6" role="tablist" aria-label="Price detail sections">
@@ -231,6 +243,7 @@ export function PriceDetail() {
                   {t('priceDetail.sections.currentPrice')}
                 </p>
                 <p className="text-5xl font-bold font-mono text-gray-100 mb-4">${formatPrice(price.price)}</p>
+                <ObservedSourceRange range={currentSourceRange} />
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">{t('priceDetail.updated', { time: timeAgo(price.timestamp) })}</span>
                   <span
@@ -240,6 +253,7 @@ export function PriceDetail() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">{formatTimestamp(price.timestamp)}</p>
+                <SourceTickProvenanceLink url={price.sourceTickProvenanceUrl} />
               </div>
 
               <div className="mb-6">
@@ -263,11 +277,37 @@ export function PriceDetail() {
                 </div>
               </div>
 
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                <h2 className="text-xs text-gray-400 uppercase tracking-wider mb-3">
+                  Normalized provider price precision
+                </h2>
+                <ProviderPrecisionComparison
+                  pair={price.assetPair}
+                  pairMetadata={price.pairMetadata}
+                  sourcePrices={price.sourcePrices}
+                  sourcePriceDecimals={price.sourcePriceDecimals}
+                  timestamp={price.timestamp}
+                />
+              </div>
+
               {/* Move attribution — rendered whenever WS attribution data is available */}
               {(() => {
                 const pairHistory = attributionHistory.get(decodedPair) ?? []
                 const latest = pairHistory[pairHistory.length - 1]
-                return latest ? <MoveAttributionPanel latest={latest} history={pairHistory} /> : null
+                const previous = pairHistory[pairHistory.length - 2]
+                return latest ? (
+                  <>
+                    <MoveAttributionPanel latest={latest} history={pairHistory} />
+                    <ConfidenceChangeExplanation latest={latest} previous={previous} />
+                  </>
+                ) : (
+                  <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                    <h2 className="text-xs text-gray-400 uppercase tracking-wider mb-3">Confidence change context</h2>
+                    <p className="text-sm text-gray-400" role="status">
+                      Waiting for live tick data to compare confidence inputs.
+                    </p>
+                  </section>
+                )
               })()}
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
@@ -387,6 +427,15 @@ export function PriceDetail() {
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">
                   {t('priceDetail.sections.priceHistory')}
                 </p>
+                {storageNearQuota && (
+                  <p
+                    className="mb-4 rounded-lg border border-amber-700/60 bg-amber-900/20 px-4 py-3 text-sm text-amber-200"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {t('priceDetail.historyStorageWarning')}
+                  </p>
+                )}
                 {historyError ? (
                   <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400" role="alert">
                     {t('priceDetail.historyError', { message: historyError.message })}

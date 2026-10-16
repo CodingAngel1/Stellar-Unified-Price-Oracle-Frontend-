@@ -46,6 +46,8 @@ export const STORAGE_KEYS = {
   alerts: 'price-alerts',
   /** Log of fired alerts, capped to the most recent entries (#309). */
   alertHistory: 'alert-history',
+  /** Read/unread state and notices in the unified inbox; bounded to 250 items. */
+  inbox: 'supo:inbox',
   /** Notification routing config. Never includes the webhook secret — see the policy above. */
   notificationChannels: 'notification-channels',
   /** Developer webhook endpoints (signing secrets remain session-only). */
@@ -325,6 +327,10 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       key: STORAGE_KEYS.alertHistory,
       description: 'Log of triggered alerts (pair + price + timestamp). No PII.',
+    },
+    {
+      key: STORAGE_KEYS.inbox,
+      description: 'Inbox notices and read state, capped at 250 items and 90 days. No PII.',
     },
     {
       key: STORAGE_KEYS.notificationChannels,
