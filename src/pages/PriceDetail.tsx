@@ -1,8 +1,9 @@
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSwr } from '../hooks/useSwr'
 import { usePriceHistory } from '../hooks/usePriceHistory'
+import { useReferenceDeviation } from '../hooks/useReferenceDeviation'
 import { fetchPrice } from '../api/rest'
 import { PriceDetailSkeleton } from '../components/PriceDetailSkeleton'
 import { CsvImportZone } from '../components/CsvImportZone'
@@ -13,6 +14,8 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
 import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
+import ReferenceBenchmarkBadge from '../components/ReferenceBenchmarkBadge'
+import { PriceQualityDisclosure } from '../components/PriceQualityDisclosure'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { PairMetadataPanel } from '../components/PairMetadataPanel'
@@ -253,6 +256,10 @@ export function PriceDetail() {
                 <SourceTickProvenanceLink url={price.sourceTickProvenanceUrl} />
               </div>
 
+              <div className="mb-6">
+                <PriceQualityDisclosure flags={price.qualityFlags} />
+              </div>
+
               {/* Sources */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">
@@ -312,6 +319,16 @@ export function PriceDetail() {
               {/* Benchmark comparison section */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Benchmark comparison</p>
+                <ReferenceBenchmarkBadge
+                  className="mb-4 text-gray-300"
+                  referencePrice={reference.latestReference}
+                  aggregatePrice={price.price}
+                  deviation={reference.series[reference.series.length - 1]?.deviation}
+                  referenceTimestamp={reference.latestReferencePoint?.timestamp}
+                  referenceSource={reference.latestReferencePoint?.source}
+                  loading={reference.loading}
+                  error={reference.error?.message}
+                />
                 <div className="flex flex-wrap items-center gap-4 mb-4">
                   {/* Benchmark pair picker */}
                   <div className="flex items-center gap-2">
@@ -452,6 +469,7 @@ export function PriceDetail() {
                       <LazyPriceChart
                         data={history}
                         pair={decodedPair}
+                        annotations={qualityAnnotations}
                         loading={historyLoading && history.length === 0}
                         loadingMore={loadingMore}
                         hasMore={hasMore}

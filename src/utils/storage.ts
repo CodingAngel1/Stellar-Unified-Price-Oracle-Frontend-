@@ -18,7 +18,8 @@
  * operation belongs on the server, not in the browser.
  *
  * What lives here today is deliberately mundane: alert thresholds, notification
- * routing config, an analytics opt-out flag, and the theme choice.
+ * routing config, an analytics opt-out flag, and the theme choice. Portfolio
+ * holdings and snapshots are kept in IndexedDB, not plain-text localStorage.
  *
  * ## Why route through this module
  *
@@ -309,7 +310,7 @@ function formatBytes(bytes: number): string {
  * |-------------|----------|--------------------------------------------------------|
  * | prices      | 5 min    | Aggregated price cache. LRU-evicted at 50 MB.          |
  * | history     | 5 min    | Price history cache. Same eviction policy.             |
- * | preferences | ∞        | User display settings. Cleared by clearAllData().      |
+ * | preferences | ∞        | User display settings and local portfolio snapshots.   |
  * | tsPoints    | per-tier | Time-series points. Retention + rollups, see           |
  * |             |          | docs/STORAGE_BUDGET.md.                                 |
  * | tsSeries    | ∞        | Time-series registrations (retention policy).          |
@@ -370,7 +371,7 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       store: 'preferences' as const,
       ttlMs: Infinity,
-      description: 'User preferences. No expiry; cleared by clearAllData().',
+      description: 'User preferences and local portfolio snapshots. No expiry; cleared by clearAllData().',
     },
     {
       store: 'tsPoints' as const,

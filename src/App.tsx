@@ -47,6 +47,7 @@ import {
   LazyLanding,
   LazyNotFound,
   LazyPriceDetail,
+  LazyPortfolio,
   LazySecurity,
   preloadDashboard,
   preloadPriceDetail,
@@ -153,6 +154,14 @@ export function AppContent(): ReactElement {
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/moderation" element={<Moderation />} />
             <Route path="/transparency" element={<Transparency />} />
+            <Route
+              path="/portfolio"
+              element={
+                <RouteSuspense fallback={<DashboardSkeleton />}>
+                  <LazyPortfolio />
+                </RouteSuspense>
+              }
+            />
             <Route path="/developer-insights" element={<DeveloperInsights />} />
             <Route
               path="/security"

@@ -14,7 +14,7 @@ import {
   ReferenceArea,
 } from 'recharts'
 import type { TooltipPayload } from 'recharts'
-import type { PriceHistoryEntry } from '../types'
+import type { PriceHistoryEntry, PriceQualityFlags } from '../types'
 import { formatChartTimeWithTz, formatPriceShort, formatTimestamp, getTimezoneAbbr } from '../utils/format'
 import { rasterizeChartToDataUrl } from '../utils/chartExport'
 import { exportPriceHistoryPdf } from '../utils/pdfExport'
@@ -38,6 +38,8 @@ export interface ChartAnnotation {
   note?: string
   /** Hex colour for the reference line. Defaults to amber. */
   color?: string
+  /** Quality annotations are API-derived and cannot be dismissed as user notes. */
+  kind?: 'quality' | 'user'
 }
 
 function sourceTimestampSummary(entry: PriceHistoryEntry): string {
@@ -86,6 +88,7 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, palette, norma
   const price = typeof raw.price === 'number' ? raw.price : (payload[0]?.value as number | undefined)
   const confidence = typeof raw.confidence === 'number' ? raw.confidence : null
   const sources: string[] = Array.isArray(raw.sources) ? raw.sources : []
+  const qualityFlags = raw.qualityFlags
 
   // % change vs previous visible point
   let pctChange: number | null = null
@@ -163,6 +166,18 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, palette, norma
             })}
           </ul>
         </div>
+      )}
+      {qualityFlags ? (
+        <div className="mt-1.5 border-t border-gray-800 pt-1.5">
+          <p className="mb-1 text-gray-500">Quality flags reported by API</p>
+          {(['synthetic', 'stale', 'imputed'] as const).map((flag) => (
+            <p key={flag} className="text-gray-300">
+              {flag}: {qualityFlags[flag] === undefined ? 'not reported' : qualityFlags[flag] ? 'yes' : 'no'}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-1.5 border-t border-gray-800 pt-1.5 text-gray-500">Quality flags not reported by API</p>
       )}
       {payload.slice(1).map((p, i) => {
         const color = typeof p.color === 'string' ? p.color : '#fff'
@@ -1169,16 +1184,20 @@ function ChartContent({
               className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
               style={{ borderColor: ann.color ?? '#f59e0b', color: ann.color ?? '#f59e0b' }}
               title={ann.note}
+              role={ann.kind === 'quality' ? 'note' : undefined}
+              aria-label={ann.kind === 'quality' ? `${ann.label}: ${ann.note ?? ''}` : undefined}
             >
               {ann.label}
-              <button
-                type="button"
-                onClick={() => setLocalAnnotations((prev) => prev.filter((a) => a.id !== ann.id))}
-                className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
-                aria-label={`Remove annotation ${ann.label}`}
-              >
-                ×
-              </button>
+              {ann.kind !== 'quality' && (
+                <button
+                  type="button"
+                  onClick={() => setLocalAnnotations((prev) => prev.filter((a) => a.id !== ann.id))}
+                  className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                  aria-label={`Remove annotation ${ann.label}`}
+                >
+                  ×
+                </button>
+              )}
             </span>
           ))}
         </div>

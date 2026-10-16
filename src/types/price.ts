@@ -199,6 +199,8 @@ export interface PriceHistoryEntry {
    * Present only when the API includes exclusion metadata.
    */
   excludedSources?: ExcludedSourceTick[]
+  /** Optional upstream quality classifications; absence means unreported, not false. */
+  qualityFlags?: PriceQualityFlags
 }
 
 /** Timestamp at which an oracle source contributed to the aggregate. */
@@ -309,6 +311,8 @@ export interface WsPriceUpdate {
    * same aggregate price (used for attribution delta computation).
    */
   sourcePrices?: Record<string, number>
+  /** Optional upstream quality classifications for this tick. */
+  qualityFlags?: PriceQualityFlags
 }
 
 /** Union of all possible WebSocket message types. */

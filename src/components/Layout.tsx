@@ -13,6 +13,7 @@ import {
   preloadDashboard,
   preloadGovernance,
   preloadLanding,
+  preloadPortfolio,
   preloadSettingsPanel,
 } from '../utils/chunks'
 import { subscribeToInbox, unreadInboxCount } from '../services/inbox'
@@ -102,6 +103,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
     { path: '/dashboard', label: t('nav.dashboard'), preload: preloadDashboard },
     { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
     { path: '/governance', label: 'Governance', preload: preloadGovernance },
+    { path: '/portfolio', label: 'Portfolio', preload: preloadPortfolio },
     { path: '/webhooks', label: 'Webhooks' },
   ]
 
@@ -264,7 +266,10 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
           {t('footer.securityLink')}
         </NavLink>
         <span aria-hidden="true"> · </span>
-        <NavLink to="/transparency" className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400">
+        <NavLink
+          to="/transparency"
+          className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400"
+        >
           Transparency
         </NavLink>
         <span aria-hidden="true"> · </span>
@@ -324,6 +329,17 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h18v14H3z M3 13h5l2 3h4l2-3h5" />
+            </svg>
+          }
+        />
+
+        <BottomTab
+          to="/portfolio"
+          preload={preloadPortfolio}
+          label="Portfolio"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18M7 14l4-4 4 4 6-7" />
             </svg>
           }
         />
