@@ -1027,6 +1027,17 @@ for pair_history in batch:
 3. Implement exponential backoff with jitter
 4. Batch requests when possible (use `/api/prices/history/batch`)
 
+## Client-side market summary export
+
+The dashboard can export its currently visible (filtered) market snapshot as
+`market-summary_<timestamp>.json`. This file is generated from the existing
+price feed response and does not require a new API endpoint. Version 1 contains
+the export generation time, each pair's price and confidence, the upstream
+source identifiers, the original observation timestamp in milliseconds and
+ISO-8601, its calculated age, and a `stale` flag using the user's configured
+staleness threshold. A stale observation is included and clearly marked; the
+export does not replace missing or unavailable upstream values with estimates.
+
 #### 404 Not Found
 
 **Problem:** Asset pair returns 404
