@@ -156,11 +156,23 @@ export interface PriceHistoryEntry {
   /** Oracle sources active at this point in time. */
   sources: string[]
   /**
+   * Optional upstream contribution timestamps, keyed by oracle source.
+   * The API must provide these; the frontend never substitutes the aggregate timestamp.
+   */
+  sourceTimestamps?: SourceTimestamp[]
+  /**
    * #461 – Oracle sources that were excluded by the aggregator at this tick
    * (e.g. outlier rejection, confidence floor breach).
    * Present only when the API includes exclusion metadata.
    */
   excludedSources?: ExcludedSourceTick[]
+}
+
+/** Timestamp at which an oracle source contributed to the aggregate. */
+export interface SourceTimestamp {
+  source: string
+  /** Unix timestamp in milliseconds. */
+  timestamp: number
 }
 
 /** #461 – A single excluded source tick with its raw value and reason. */

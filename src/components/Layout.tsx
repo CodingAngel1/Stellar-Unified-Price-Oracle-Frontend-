@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useState, type ReactNode, type ReactElement } from 'react'
+import { Suspense, useMemo, useState, useSyncExternalStore, type ReactNode, type ReactElement } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAlerts } from '../hooks/useAlerts'
@@ -15,6 +15,7 @@ import {
   preloadLanding,
   preloadSettingsPanel,
 } from '../utils/chunks'
+import { subscribeToInbox, unreadInboxCount } from '../services/inbox'
 import { QueuedRequestsBadge } from './QueuedRequestsBadge'
 import { WalletButton } from './WalletButton'
 
@@ -76,6 +77,7 @@ const PALETTE_SHORTCUT = IS_MAC ? '⌘K' : 'Ctrl K'
 
 export function Layout({ children }: { children: ReactNode }): ReactElement {
   const { activeCount, togglePanel, isPanelOpen } = useAlerts()
+  const inboxUnreadCount = useSyncExternalStore(subscribeToInbox, unreadInboxCount, () => 0)
   const { t } = useTranslation()
   const { open: openPalette } = useCommandPalette()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -179,6 +181,24 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
                 requests are queued or the server asked us to pause. */}
             <QueuedRequestsBadge />
             <WalletButton />
+            <NavLink
+              to="/inbox"
+              className={({ isActive }) =>
+                `relative flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-sm transition-colors ${
+                  isActive
+                    ? 'bg-gray-100 text-cyan-700 dark:bg-gray-800 dark:text-cyan-400'
+                    : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                }`
+              }
+              aria-label={`Inbox${inboxUnreadCount > 0 ? `, ${inboxUnreadCount} unread` : ''}`}
+            >
+              Inbox
+              {inboxUnreadCount > 0 && (
+                <span className="rounded-full bg-cyan-700 px-1.5 py-0.5 text-[10px] font-semibold text-white" aria-hidden="true">
+                  {inboxUnreadCount > 99 ? '99+' : inboxUnreadCount}
+                </span>
+              )}
+            </NavLink>
             <button
               onClick={() => setSettingsOpen(true)}
               onMouseEnter={preloadSettingsPanel}
@@ -292,6 +312,18 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
                 strokeWidth={2}
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
+
+            </svg>
+          }
+        />
+
+        <BottomTab
+          to="/inbox"
+          label={inboxUnreadCount > 0 ? `Inbox (${inboxUnreadCount})` : 'Inbox'}
+          badge={inboxUnreadCount}
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h18v14H3z M3 13h5l2 3h4l2-3h5" />
             </svg>
           }
         />
