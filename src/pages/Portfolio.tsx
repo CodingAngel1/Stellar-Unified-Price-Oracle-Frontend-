@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { PortfolioMovement } from '../components/PortfolioMovement'
 import { usePriceContext } from '../context/PriceContext'
 import { STORAGE_KEYS, readJson, writeJson } from '../utils/storage'
 import { isPortfolioHolding, valuePortfolio, type PortfolioHolding } from '../utils/portfolio'
@@ -221,6 +222,7 @@ export function Portfolio() {
           </div>
         )}
       </section>
+      <PortfolioMovement holdings={valuation.holdings} />
     </section>
   )
 }

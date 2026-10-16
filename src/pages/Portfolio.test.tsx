@@ -29,6 +29,10 @@ vi.mock('../context/PriceContext', () => ({
   usePriceContext: () => priceContext,
 }))
 
+vi.mock('../hooks/usePriceHistory', () => ({
+  usePriceHistory: () => ({ history: [], loading: false, error: null }),
+}))
+
 describe('Portfolio', () => {
   beforeEach(() => {
     localStorage.clear()

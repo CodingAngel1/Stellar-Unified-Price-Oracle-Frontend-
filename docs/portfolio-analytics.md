@@ -10,6 +10,12 @@ future-dated prices, and missing prices are explicitly marked stale or
 unavailable and excluded from quote-value totals. A failed refresh does not
 turn stale data into a current valuation.
 
+For each unique entered pair, price movement compares the current fresh
+aggregate quote with the earliest available point returned by the existing
+price-history API. Loading, empty history, failed requests, and stale history
+are called out rather than replaced with estimated values. This is price
+tracking only; it does not infer a portfolio cost basis or synchronize balances.
+
 ## API dependencies for advanced previews
 
 Provider outage impact and historical aggregation-threshold recalculation need
