@@ -23,7 +23,7 @@ import { NotificationChannelsModal } from '../components/NotificationChannelsMod
 import { FilterPanel, readFilterState, countActiveFilters } from '../components/FilterPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { ReliabilityLeaderboard } from '../components/ReliabilityLeaderboard'
-import { StaleDataWarningBanner } from '../components/StaleDataWarningBanner'
+import { OfflineSnapshotBanner } from '../components/OfflineSnapshotBanner'
 import type { AlertFormData, LivePriceEntry, PriceData, SourceHealth } from '../types'
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
@@ -646,8 +646,10 @@ export function Dashboard() {
 
       {/* Offline-first (#470): rendering the last persisted snapshot instead of a blank dashboard. */}
       {isOfflineSnapshot && offlineSnapshotSavedAt != null && (
-        <StaleDataWarningBanner
-          thresholdMinutes={Math.max(1, Math.round((Date.now() - offlineSnapshotSavedAt) / 60_000))}
+        <OfflineSnapshotBanner
+          savedAt={offlineSnapshotSavedAt}
+          isRefreshing={pricesValidating}
+          onRefresh={refetchPrices}
         />
       )}
 

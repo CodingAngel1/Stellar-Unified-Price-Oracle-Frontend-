@@ -374,6 +374,9 @@ of the global transport badge: a connected socket with no update for a pair is
 shown as waiting, and a pair without a local update for two minutes is stale.
 Disconnected transports are unavailable; cached offline prices are identified
 as an offline snapshot rather than as live subscription data.
+The offline banner shows the saved snapshot's advancing age and an accessible
+manual refresh control; refresh errors remain visible through the dashboard's
+existing request-error alert while cached values stay on screen.
 
 These indicators do not infer upstream subscription acknowledgements or oracle
 health. The current WebSocket contract has no per-pair subscribe acknowledgement,
