@@ -40,3 +40,14 @@ Authoritative health-state alerts depend on an upstream source-health response
 or event containing each source's status and observation timestamp, validated
 by the API schema and exposed through `PriceContext`. No status or latency is
 inferred in place of that missing contract.
+
+## Threshold recovery notices
+
+Each rule can opt into a recovery notice, disabled by default. When a previously
+matching condition clears, the notice is shown in-app and routed through the
+same enabled channels as the trigger (including `alert_recovered` webhooks).
+The user preference is stored with the rule. A one-time rule that has fired
+continues observing only for its recovery transition; it does not re-arm or
+fire a second trigger. If no fresh price is available, the recovery state is
+left pending until the next live evaluation instead of assuming the threshold
+cleared.

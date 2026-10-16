@@ -119,6 +119,8 @@ export const AlertSchema = z.object({
 
   // Alert type: one-time vs persistent (#312)
   triggerOnce: z.boolean(),
+  notifyOnRecovery: z.boolean().default(false),
+  breachActive: z.boolean().default(false),
   fireCount: z.number().int().min(0).default(0),
 
   // Percentage-based alert fields (#307)

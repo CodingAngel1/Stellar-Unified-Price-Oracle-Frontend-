@@ -129,6 +129,7 @@ describe('AlertModal', () => {
       escalationEnabled: false,
       escalationSteps: [],
       channels: [],
+      notifyOnRecovery: false,
       retestMode: false,
     })
   })
@@ -156,6 +157,7 @@ describe('AlertModal', () => {
       escalationEnabled: false,
       escalationSteps: [],
       channels: [],
+      notifyOnRecovery: false,
       retestMode: false,
     })
   })
@@ -177,6 +179,18 @@ describe('AlertModal', () => {
     await user.click(screen.getByRole('button', { name: /one-time/i }))
     await user.click(screen.getByText('Create Alert'))
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ triggerOnce: true }))
+  })
+
+  it('saves the recovery-notification preference', async () => {
+    const onSave = vi.fn()
+    const user = userEvent.setup()
+    render(<AlertModal {...defaultProps} onSave={onSave} />)
+    fireEvent.change(screen.getByLabelText('Asset Pair'), { target: { value: 'BTC' } })
+    fireEvent.change(screen.getByLabelText('Upper Threshold'), { target: { value: '60000' } })
+    await user.click(screen.getByRole('checkbox', { name: 'Notify when condition clears' }))
+    await user.click(screen.getByText('Create Alert'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ notifyOnRecovery: true }))
   })
 
   it('has accessible dialog role and label', () => {

@@ -41,6 +41,7 @@ import { useRateLimit } from './useRateLimit'
 const alertsChannel = createBroadcastChannel<Alert[]>('kiro-alerts')
 const alertsHistoryChannel = createBroadcastChannel<AlertHistoryEntry[]>('kiro-alerts-history')
 const EVALUATION_TIMELINE_LIMIT = 200
+type AlertNotificationKind = 'triggered' | 'recovered'
 
 function alertMessage(alert: Alert, currentPrice: number): string {
   return alert.percentageMode
@@ -50,13 +51,19 @@ function alertMessage(alert: Alert, currentPrice: number): string {
 
 // ── Per-channel dispatchers (#315, extended with Telegram/Discord for #488) ────
 
-function dispatchWebPushChannel(cfg: NotifConfig, body: string): void {
+function dispatchWebPushChannel(cfg: NotifConfig, body: string, kind: AlertNotificationKind = 'triggered'): void {
   if (cfg.webPush.enabled && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    new Notification('Price Alert Triggered', { body })
+    new Notification(kind === 'recovered' ? 'Price Alert Recovered' : 'Price Alert Triggered', { body })
   }
 }
 
-async function dispatchEmailChannel(cfg: NotifConfig, alert: Alert, currentPrice: number, body: string): Promise<void> {
+async function dispatchEmailChannel(
+  cfg: NotifConfig,
+  alert: Alert,
+  currentPrice: number,
+  body: string,
+  kind: AlertNotificationKind = 'triggered',
+): Promise<void> {
   if (!cfg.email.enabled || !cfg.email.address) return
   try {
     await fetch('/api/notifications/email', {
@@ -64,7 +71,7 @@ async function dispatchEmailChannel(cfg: NotifConfig, alert: Alert, currentPrice
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: cfg.email.address,
-        subject: 'Price Alert Triggered',
+        subject: kind === 'recovered' ? 'Price Alert Recovered' : 'Price Alert Triggered',
         message: body,
         assetPair: alert.assetPair,
         price: currentPrice,
@@ -80,6 +87,7 @@ async function dispatchWebhookChannel(
   alert: Alert,
   currentPrice: number,
   body: string,
+  kind: AlertNotificationKind = 'triggered',
 ): Promise<void> {
   if (!cfg.webhook.enabled || !cfg.webhook.url) return
   try {
@@ -87,7 +95,7 @@ async function dispatchWebhookChannel(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        type: 'alert_triggered',
+        type: kind === 'recovered' ? 'alert_recovered' : 'alert_triggered',
         assetPair: alert.assetPair,
         price: currentPrice,
         message: body,
@@ -143,18 +151,25 @@ async function dispatchDiscordChannel(
  * `resolveAlertChannels` (#492): an alert's explicit `channels` override wins,
  * otherwise every currently-enabled global channel fires.
  */
-async function dispatchNotifications(alert: Alert, currentPrice: number): Promise<void> {
+async function dispatchNotifications(
+  alert: Alert,
+  currentPrice: number,
+  kind: AlertNotificationKind = 'triggered',
+): Promise<void> {
   const cfg = loadNotifConfig()
-  const body = alertMessage(alert, currentPrice)
+  const body =
+    kind === 'recovered'
+      ? `${alert.assetPair} threshold cleared. Current price: $${currentPrice.toFixed(4)}`
+      : alertMessage(alert, currentPrice)
   const targets = resolveAlertChannels(cfg, alert.channels)
   await Promise.all([
-    targets.has('email') ? dispatchEmailChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
-    targets.has('webhook') ? dispatchWebhookChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
+    targets.has('email') ? dispatchEmailChannel(cfg, alert, currentPrice, body, kind) : Promise.resolve(),
+    targets.has('webhook') ? dispatchWebhookChannel(cfg, alert, currentPrice, body, kind) : Promise.resolve(),
     targets.has('telegram') ? dispatchTelegramChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
     targets.has('discord') ? dispatchDiscordChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
   ])
   if (targets.has('webPush')) {
-    dispatchWebPushChannel(cfg, body)
+    dispatchWebPushChannel(cfg, body, kind)
   }
 }
 
@@ -381,8 +396,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         })
       }
 
+      const recoveryWatch =
+        !alert.active &&
+        alert.triggerOnce &&
+        alert.notifyOnRecovery === true &&
+        alert.breachActive === true &&
+        alert.lastTriggeredAt !== null
+
       // Skip inactive alerts
-      if (!alert.active) {
+      if (!alert.active && !recoveryWatch) {
         recordEvaluation('skipped', 'alert_inactive')
         return alert
       }
@@ -395,6 +417,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
       if (!livePriceData) {
         recordEvaluation('skipped', 'price_unavailable')
+        return alert
+      }
+
+      const tickAgeMs = now - livePriceData.data.timestamp
+      if (
+        alert.notifyOnRecovery === true &&
+        (tickAgeMs < 0 || tickAgeMs > DEFAULT_PREFERENCES.staleThresholdMinutes * 60_000)
+      ) {
+        recordEvaluation('skipped', 'stale_price')
         return alert
       }
 
@@ -446,6 +477,13 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         triggered = evaluation.matched
         conditionTrace = evaluation.conditions
       }
+
+      const wasBreachActive = alert.breachActive ?? false
+      if (triggered !== wasBreachActive) {
+        changed = true
+        updatedAlert = { ...updatedAlert, breachActive: triggered }
+      }
+      const recoveryNotice = !triggered && wasBreachActive && alert.notifyOnRecovery === true
 
       // ── Price-level retest detection (#491) ──────────────────────────────
       // Runs every tick on the evaluated `triggered` boolean. Advances the alert's
@@ -600,7 +638,14 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           conditionTrace,
         )
       } else {
-        recordEvaluation('not_matched', 'condition_not_met', conditionTrace)
+        if (recoveryNotice) {
+          recordEvaluation('not_matched', 'threshold_cleared', conditionTrace)
+          const message = `${alert.assetPair} threshold cleared. Current price: $${currentPrice.toFixed(4)}`
+          void dispatchNotifications(updatedAlert, currentPrice, 'recovered')
+          addToast({ type: 'success', priority: 'normal', message })
+        } else {
+          recordEvaluation('not_matched', 'condition_not_met', conditionTrace)
+        }
         // Re-arm a persistent alert once its cooldown window has elapsed (#310),
         // so it can fire again next time the condition is met.
         if (!alert.triggerOnce && alert.lastTriggeredAt !== null && now - alert.lastTriggeredAt >= cooldownMs) {
@@ -624,7 +669,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     if (evaluationEntries.length > 0) {
       setEvaluationTimeline((prev) => [...evaluationEntries].reverse().concat(prev).slice(0, EVALUATION_TIMELINE_LIMIT))
     }
-  }, [livePrices, alerts])
+  }, [livePrices, alerts, addToast])
 
   // Request notification permissions
   useEffect(() => {
@@ -715,6 +760,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         // #492 – default to `null` (use the global channel set) unless the caller
         // passed an explicit per-alert routing override.
         channels: alert.channels ?? null,
+        notifyOnRecovery: alert.notifyOnRecovery ?? false,
+        breachActive: false,
         // #491 – retest tracking starts fresh for every new alert.
         retestState: null,
         id: crypto.randomUUID(),
@@ -737,7 +784,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     setAlerts((prev) =>
       prev.map((a) => {
         if (a.id !== id) return a
-        const next = { ...a, ...updates }
+        const next = {
+          ...a,
+          ...updates,
+          ...(updates.active === false ? { breachActive: false } : {}),
+        }
         // #645 – append a rule version (idempotent: runtime-only changes and
         // StrictMode double-invocation add nothing).
         recordRuleVersion(next)
@@ -795,6 +846,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
               snoozedUntil: null,
               escalationState: null,
               retestState: null,
+              breachActive: false,
             }
           : a,
       ),

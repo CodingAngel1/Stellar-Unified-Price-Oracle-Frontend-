@@ -114,6 +114,10 @@ export interface Alert {
   // ── Alert type: one-time vs persistent (#312) ────────────────────────────
   /** If true, alert fires once then auto-disables. If false, fires every time condition is met. */
   triggerOnce: boolean
+  /** Send a recovery notice when this rule's previously matched condition clears. */
+  notifyOnRecovery?: boolean
+  /** Runtime marker for a breach awaiting a recovery transition. */
+  breachActive?: boolean
   /** Number of times this alert has been triggered (persistent alerts count up) */
   fireCount: number
 
@@ -187,6 +191,7 @@ export interface AlertFormData {
   upperThreshold: string
   lowerThreshold: string
   triggerOnce: boolean
+  notifyOnRecovery: boolean
   // Percentage alert fields
   percentageMode: boolean
   percentageThreshold: string
@@ -259,6 +264,7 @@ export interface AlertEvaluationEntry {
     | 'alert_inactive'
     | 'snoozed'
     | 'price_unavailable'
+    | 'stale_price'
     | 'baseline_reset'
     | 'cooldown'
     | 'condition_not_met'

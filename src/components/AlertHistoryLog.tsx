@@ -37,10 +37,22 @@ function conditionText(entry: AlertHistoryEntry, t: TFunction): string {
   return t('alertPanel.conditions.none')
 }
 
-const EVALUATION_REASON_KEYS: Record<AlertEvaluationEntry['reason'], string> = {
+type EvaluationReasonTranslationKey =
+  | 'alertPanel.history.evaluationReasons.inactive'
+  | 'alertPanel.history.evaluationReasons.snoozed'
+  | 'alertPanel.history.evaluationReasons.priceUnavailable'
+  | 'alertPanel.history.evaluationReasons.stalePrice'
+  | 'alertPanel.history.evaluationReasons.baselineReset'
+  | 'alertPanel.history.evaluationReasons.cooldown'
+  | 'alertPanel.history.evaluationReasons.conditionNotMet'
+  | 'alertPanel.history.evaluationReasons.conditionMatched'
+  | 'alertPanel.history.evaluationReasons.thresholdCleared'
+
+const EVALUATION_REASON_KEYS: Record<AlertEvaluationEntry['reason'], EvaluationReasonTranslationKey> = {
   alert_inactive: 'alertPanel.history.evaluationReasons.inactive',
   snoozed: 'alertPanel.history.evaluationReasons.snoozed',
   price_unavailable: 'alertPanel.history.evaluationReasons.priceUnavailable',
+  stale_price: 'alertPanel.history.evaluationReasons.stalePrice',
   baseline_reset: 'alertPanel.history.evaluationReasons.baselineReset',
   cooldown: 'alertPanel.history.evaluationReasons.cooldown',
   condition_not_met: 'alertPanel.history.evaluationReasons.conditionNotMet',

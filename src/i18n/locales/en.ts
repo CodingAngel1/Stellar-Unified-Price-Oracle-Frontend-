@@ -249,6 +249,10 @@ const en = {
       title: 'Notify on retest',
       description: 'Also fire if the price re-enters this breached level after it exits.',
     },
+    recovery: {
+      title: 'Notify when condition clears',
+      description: 'Send a recovery notice through the same enabled channels when this rule stops matching.',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: 'Test alert',
@@ -386,6 +390,7 @@ const en = {
         inactive: 'Rule is inactive',
         snoozed: 'Rule is snoozed',
         priceUnavailable: 'No current price tick was available',
+        stalePrice: 'Price tick is stale; waiting for fresh data',
         baselineReset: 'Percentage baseline was initialized; this tick was not evaluated',
         cooldown: 'Condition matched; waiting for cooldown to expire',
         conditionNotMet: 'Conditions were not satisfied',

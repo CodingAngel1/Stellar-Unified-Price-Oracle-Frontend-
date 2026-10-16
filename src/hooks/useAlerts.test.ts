@@ -27,6 +27,8 @@ vi.mock('../api/schemas', () => ({
       data: Array.isArray(data)
         ? data.map((alert) => ({
             fireCount: 0,
+            notifyOnRecovery: false,
+            breachActive: false,
             percentageMode: false,
             percentageThreshold: null,
             percentageWindow: null,
@@ -50,10 +52,10 @@ vi.mock('../api/schemas', () => ({
   AlertHistoryArraySchema: { safeParse: (data: unknown) => ({ success: true, data }) },
 }))
 
-function livePricesMap(pair: string, price: number): Map<string, LivePriceEntry> {
+function livePricesMap(pair: string, price: number, timestamp = Date.now()): Map<string, LivePriceEntry> {
   const map = new Map<string, LivePriceEntry>()
   map.set(pair, {
-    data: { assetPair: pair, price, timestamp: Date.now(), confidence: 1, sources: ['test'] },
+    data: { assetPair: pair, price, timestamp, confidence: 1, sources: ['test'] },
   } as LivePriceEntry)
   return map
 }
@@ -118,6 +120,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('useAlerts', () => {
@@ -296,6 +299,75 @@ describe('useAlerts', () => {
       rerender()
     })
     expect(addToastMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('notifies once when a one-time alert condition clears on the same routed channels', () => {
+    vi.useFakeTimers()
+    const firstTick = Date.now()
+    localStorage.setItem(
+      'notification-channels',
+      JSON.stringify({
+        email: { address: '', enabled: false },
+        webPush: { enabled: false },
+        webhook: { url: 'https://example.test/alerts', enabled: true },
+        telegram: { chatId: '', enabled: false },
+        discord: { channelId: '', enabled: false },
+      }),
+    )
+    seedLegacyAlert({ triggerOnce: true, notifyOnRecovery: true, channels: ['webhook'] })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true } as Response)
+    const currentPriceContext = vi.mocked(usePriceContext)()
+    vi.mocked(usePriceContext).mockReturnValue({
+      ...currentPriceContext,
+      livePrices: livePricesMap('BTC/USD', 150),
+    })
+    const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+
+    expect(result.current.alerts[0].active).toBe(false)
+    expect(result.current.alerts[0].breachActive).toBe(true)
+
+    act(() => {
+      vi.setSystemTime(firstTick + 6 * 60_000)
+      vi.mocked(usePriceContext).mockReturnValue({
+        ...currentPriceContext,
+        livePrices: livePricesMap('BTC/USD', 90, firstTick),
+      })
+      rerender()
+    })
+
+    expect(result.current.alerts[0].breachActive).toBe(true)
+    expect(result.current.evaluationTimeline[0].reason).toBe('stale_price')
+    expect(addToastMock).not.toHaveBeenCalled()
+
+    act(() => {
+      vi.setSystemTime(firstTick + 6 * 60_000 + 1_000)
+      vi.mocked(usePriceContext).mockReturnValue({
+        ...currentPriceContext,
+        livePrices: livePricesMap('BTC/USD', 90),
+      })
+      rerender()
+    })
+
+    expect(result.current.alerts[0].breachActive).toBe(false)
+    expect(result.current.evaluationTimeline[0].reason).toBe('threshold_cleared')
+    expect(addToastMock).toHaveBeenCalledTimes(1)
+    expect(addToastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        message: expect.stringContaining('BTC/USD threshold cleared'),
+      }),
+    )
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    const payloads = fetchSpy.mock.calls.map(([, init]) => JSON.parse(String(init?.body)))
+    expect(payloads).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'alert_triggered' }),
+        expect.objectContaining({
+          type: 'alert_recovered',
+          message: expect.stringContaining('BTC/USD threshold cleared'),
+        }),
+      ]),
+    )
   })
 
   it('handles invalid localStorage data', () => {

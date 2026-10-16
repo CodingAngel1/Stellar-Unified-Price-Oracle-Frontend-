@@ -256,6 +256,7 @@ describe('buildConditionGroupFromFormData', () => {
     escalationEnabled: false,
     escalationSteps: [],
     channels: [],
+    notifyOnRecovery: false,
     retestMode: false,
   }
 

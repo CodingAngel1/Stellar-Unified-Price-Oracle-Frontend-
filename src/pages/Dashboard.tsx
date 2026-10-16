@@ -253,6 +253,7 @@ export function Dashboard() {
         upperThreshold,
         lowerThreshold,
         triggerOnce: data.triggerOnce,
+        notifyOnRecovery: data.notifyOnRecovery,
         active: true,
         percentageMode: data.percentageMode,
         percentageThreshold: data.percentageThreshold ? Number.parseFloat(data.percentageThreshold) : null,
