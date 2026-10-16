@@ -30,6 +30,11 @@ Welcome to the Stellar Unified Price Oracle API documentation. This directory co
 - Debugging strategies
 - Example implementations
 
+### [notifications.md](notifications.md)
+**Notification digest behavior** covering:
+- All-alert and per-rule digest schedules
+- Client-side schedule limitations and delivery failures
+
 ### [openapi.yaml](openapi.yaml)
 **OpenAPI 3.0 specification** with:
 - Complete endpoint definitions

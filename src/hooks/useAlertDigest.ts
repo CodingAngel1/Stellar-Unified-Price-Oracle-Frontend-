@@ -13,7 +13,7 @@
  * endpoint `dispatchEmailChannel` (in `useAlerts.tsx`) posts to for a single
  * alert fire.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Alert, AlertHistoryEntry } from '../types'
 import {
   buildAlertDigest,
@@ -37,14 +37,22 @@ export interface DigestDeliveryEntry {
   id: string
   sentAt: number
   frequency: DigestFrequency
+  ruleId?: string
   firedCount: number
   activeCount: number
   trigger: 'scheduled' | 'manual'
   ok: boolean
 }
 
+export interface RuleDigestSchedule {
+  frequency: DigestFrequency
+  lastRunAt: number | null
+  nextRunAt: number
+}
+
 const SUBSCRIPTION_KEY = 'alert-digest-subscription'
 const HISTORY_KEY = 'alert-digest-history'
+const RULE_SCHEDULES_KEY = 'alert-rule-digest-schedules'
 const MAX_HISTORY = 50
 
 const DEFAULT_SUBSCRIPTION: DigestSubscription = {
@@ -57,11 +65,15 @@ const DEFAULT_SUBSCRIPTION: DigestSubscription = {
 
 export interface UseAlertDigestReturn {
   subscription: DigestSubscription
+  ruleSchedules: Record<string, RuleDigestSchedule>
   history: DigestDeliveryEntry[]
   loading: boolean
+  error: string | null
   setEnabled: (enabled: boolean) => void
   setFrequency: (frequency: DigestFrequency) => void
+  setRuleFrequency: (ruleId: string, frequency: DigestFrequency | null) => void
   runNow: () => Promise<void>
+  runRuleNow: (ruleId: string) => Promise<void>
   unsubscribe: () => void
 }
 
@@ -93,10 +105,19 @@ async function deliverDigestEmail(
 export function useAlertDigest(alerts: Alert[], alertHistory: AlertHistoryEntry[]): UseAlertDigestReturn {
   const { data: subData, loading: subLoading } = useIdbQuery<DigestSubscription>('preferences', SUBSCRIPTION_KEY)
   const { data: historyData, loading: historyLoading } = useIdbQuery<DigestDeliveryEntry[]>('preferences', HISTORY_KEY)
+  const {
+    data: ruleScheduleData,
+    loading: ruleSchedulesLoading,
+    error: ruleSchedulesError,
+  } = useIdbQuery<Record<string, RuleDigestSchedule>>('preferences', RULE_SCHEDULES_KEY)
   const { set } = useIdbMutation()
 
   const [subscription, setSubscription] = useState<DigestSubscription>(DEFAULT_SUBSCRIPTION)
+  const [ruleSchedules, setRuleSchedules] = useState<Record<string, RuleDigestSchedule>>({})
   const [history, setHistory] = useState<DigestDeliveryEntry[]>([])
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const inFlightRules = useRef(new Set<string>())
+  const ruleSchedulesRef = useRef(ruleSchedules)
 
   useEffect(() => {
     if (!subLoading) setSubscription(subData ?? DEFAULT_SUBSCRIPTION)
@@ -105,6 +126,25 @@ export function useAlertDigest(alerts: Alert[], alertHistory: AlertHistoryEntry[
   useEffect(() => {
     if (!historyLoading) setHistory(historyData ?? [])
   }, [historyData, historyLoading])
+
+  useEffect(() => {
+    if (!ruleSchedulesLoading) {
+      const loaded = ruleScheduleData ?? {}
+      ruleSchedulesRef.current = loaded
+      setRuleSchedules(loaded)
+    }
+  }, [ruleScheduleData, ruleSchedulesLoading])
+
+  const persistRuleSchedules = useCallback(
+    (next: Record<string, RuleDigestSchedule>) => {
+      ruleSchedulesRef.current = next
+      setRuleSchedules(next)
+      void set('preferences', RULE_SCHEDULES_KEY, next).catch((err: unknown) => {
+        setSaveError(err instanceof Error ? err.message : 'Could not save digest settings')
+      })
+    },
+    [set],
+  )
 
   const persistSubscription = useCallback(
     (next: DigestSubscription) => {
@@ -118,7 +158,9 @@ export function useAlertDigest(alerts: Alert[], alertHistory: AlertHistoryEntry[
     (entry: DigestDeliveryEntry) => {
       setHistory((prev) => {
         const next = [entry, ...prev].slice(0, MAX_HISTORY)
-        void set('preferences', HISTORY_KEY, next)
+        void set('preferences', HISTORY_KEY, next).catch((err: unknown) => {
+          setSaveError(err instanceof Error ? err.message : 'Could not save digest history')
+        })
         return next
       })
     },
@@ -152,6 +194,33 @@ export function useAlertDigest(alerts: Alert[], alertHistory: AlertHistoryEntry[
     [alerts, alertHistory, persistHistoryEntry],
   )
 
+  const sendRule = useCallback(
+    async (ruleId: string, schedule: RuleDigestSchedule, trigger: 'scheduled' | 'manual') => {
+      const cfg = loadNotifConfig()
+      const payload = buildAlertDigest(alertHistory, alerts, schedule.frequency, Date.now(), ruleId)
+      const ok =
+        cfg.email.enabled && cfg.email.address
+          ? await deliverDigestEmail(
+              cfg.email.address,
+              renderDigestHtml(payload),
+              renderDigestText(payload),
+              schedule.frequency,
+            )
+          : false
+      persistHistoryEntry({
+        id: crypto.randomUUID(),
+        sentAt: Date.now(),
+        frequency: schedule.frequency,
+        ruleId,
+        firedCount: payload.fired.length,
+        activeCount: payload.active.length,
+        trigger,
+        ok,
+      })
+    },
+    [alerts, alertHistory, persistHistoryEntry],
+  )
+
   // Best-effort automation: if enabled and due, send on mount / whenever the
   // subscription or underlying alert data changes — same approximation
   // `useScheduledExports` uses for export schedules.
@@ -170,6 +239,35 @@ export function useAlertDigest(alerts: Alert[], alertHistory: AlertHistoryEntry[
     // Only re-check when the subscription itself or the data it summarizes changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscription, subLoading, alerts, alertHistory])
+
+  useEffect(() => {
+    if (ruleSchedulesLoading) return
+
+    const now = Date.now()
+    for (const [ruleId, schedule] of Object.entries(ruleSchedules)) {
+      if (
+        schedule.nextRunAt > now ||
+        inFlightRules.current.has(ruleId) ||
+        !alerts.some((alert) => alert.id === ruleId)
+      ) {
+        continue
+      }
+      inFlightRules.current.add(ruleId)
+      void sendRule(ruleId, schedule, 'scheduled')
+        .then(() => {
+          const sentAt = Date.now()
+          persistRuleSchedules({
+            ...ruleSchedulesRef.current,
+            [ruleId]: {
+              ...schedule,
+              lastRunAt: sentAt,
+              nextRunAt: computeNextDigestRun(schedule.frequency, sentAt),
+            },
+          })
+        })
+        .finally(() => inFlightRules.current.delete(ruleId))
+    }
+  }, [alerts, ruleSchedules, ruleSchedulesLoading, sendRule, persistRuleSchedules])
 
   const setEnabled = useCallback(
     (enabled: boolean) => {
@@ -191,6 +289,23 @@ export function useAlertDigest(alerts: Alert[], alertHistory: AlertHistoryEntry[
     [subscription, persistSubscription],
   )
 
+  const setRuleFrequency = useCallback(
+    (ruleId: string, frequency: DigestFrequency | null) => {
+      const next = { ...ruleSchedules }
+      if (frequency === null) {
+        delete next[ruleId]
+      } else {
+        next[ruleId] = {
+          frequency,
+          lastRunAt: ruleSchedules[ruleId]?.lastRunAt ?? null,
+          nextRunAt: computeNextDigestRun(frequency),
+        }
+      }
+      persistRuleSchedules(next)
+    },
+    [ruleSchedules, persistRuleSchedules],
+  )
+
   const runNow = useCallback(async () => {
     await send(subscription, 'manual')
     const now = Date.now()
@@ -201,6 +316,31 @@ export function useAlertDigest(alerts: Alert[], alertHistory: AlertHistoryEntry[
     })
   }, [subscription, send, persistSubscription])
 
+  const runRuleNow = useCallback(
+    async (ruleId: string) => {
+      const schedule = ruleSchedules[ruleId]
+      if (!schedule || !alerts.some((alert) => alert.id === ruleId) || inFlightRules.current.has(ruleId)) {
+        return
+      }
+      inFlightRules.current.add(ruleId)
+      try {
+        await sendRule(ruleId, schedule, 'manual')
+        const sentAt = Date.now()
+        persistRuleSchedules({
+          ...ruleSchedulesRef.current,
+          [ruleId]: {
+            ...schedule,
+            lastRunAt: sentAt,
+            nextRunAt: computeNextDigestRun(schedule.frequency, sentAt),
+          },
+        })
+      } finally {
+        inFlightRules.current.delete(ruleId)
+      }
+    },
+    [alerts, ruleSchedules, sendRule, persistRuleSchedules],
+  )
+
   // #489 — "Unsubscribe works from the digest itself": the digest's unsubscribe
   // link/button both route here, disabling the subscription without deleting its
   // history so the user can see what they unsubscribed from.
@@ -210,11 +350,15 @@ export function useAlertDigest(alerts: Alert[], alertHistory: AlertHistoryEntry[
 
   return {
     subscription,
+    ruleSchedules,
     history,
-    loading: subLoading || historyLoading,
+    loading: subLoading || historyLoading || ruleSchedulesLoading,
+    error: ruleSchedulesError ?? saveError,
     setEnabled,
     setFrequency,
+    setRuleFrequency,
     runNow,
+    runRuleNow,
     unsubscribe,
   }
 }

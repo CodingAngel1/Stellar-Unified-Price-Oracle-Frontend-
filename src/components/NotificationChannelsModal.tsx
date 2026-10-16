@@ -12,7 +12,7 @@ import {
 import { DeveloperAuthGate } from '../auth/DeveloperAuthGate'
 import { useAlerts } from '../hooks/useAlerts'
 import { useAlertDigest } from '../hooks/useAlertDigest'
-import type { DigestFrequency } from '../utils/alertDigest'
+import { summarizeCondition, type DigestFrequency } from '../utils/alertDigest'
 
 interface NotificationConfig {
   email: { address: string; enabled: boolean }
@@ -107,13 +107,26 @@ function formatDateTime(ts: number): string {
  */
 function DigestSection({ emailConfigured }: { emailConfigured: boolean }): ReactElement {
   const { alerts, alertHistory } = useAlerts()
-  const { subscription, history, setEnabled, setFrequency, runNow, unsubscribe } = useAlertDigest(alerts, alertHistory)
+  const {
+    subscription,
+    ruleSchedules,
+    history,
+    loading,
+    error,
+    setEnabled,
+    setFrequency,
+    setRuleFrequency,
+    runNow,
+    runRuleNow,
+    unsubscribe,
+  } = useAlertDigest(alerts, alertHistory)
 
   return (
     <div className="pt-4 mt-4 border-t border-gray-800 space-y-3">
       <h3 className="text-sm font-medium text-gray-300">Digest</h3>
       <p className="text-xs text-gray-500">
-        A periodic summary of fired and active alerts, sent to the email address above.
+        Periodic summaries of fired and active alerts are sent to the email address above. Choose a separate schedule
+        for each rule, or use the all-alert digest.
       </p>
       <label className="flex items-center gap-2 cursor-pointer">
         <input
@@ -127,6 +140,56 @@ function DigestSection({ emailConfigured }: { emailConfigured: boolean }): React
       </label>
       {!emailConfigured && (
         <p className="text-xs text-amber-400">Configure and enable email above to receive the digest.</p>
+      )}
+      <fieldset className="space-y-2" disabled={!emailConfigured || loading}>
+        <legend className="text-xs font-medium text-gray-400">Per-rule summaries</legend>
+        {loading ? (
+          <p className="text-xs text-gray-500" role="status">
+            Loading digest schedules…
+          </p>
+        ) : alerts.length === 0 ? (
+          <p className="text-xs text-gray-500">Create an alert rule to configure a per-rule summary.</p>
+        ) : (
+          <ul className="space-y-2">
+            {alerts.map((alert) => {
+              const schedule = ruleSchedules[alert.id]
+              return (
+                <li key={alert.id} className="flex flex-wrap items-center gap-2 text-xs">
+                  <label htmlFor={`rule-digest-${alert.id}`} className="min-w-0 flex-1 text-gray-300">
+                    {alert.assetPair}: {summarizeCondition(alert)}
+                  </label>
+                  <select
+                    id={`rule-digest-${alert.id}`}
+                    aria-label={`Summary frequency for ${alert.assetPair} ${summarizeCondition(alert)}`}
+                    value={schedule?.frequency ?? 'off'}
+                    onChange={(e) =>
+                      setRuleFrequency(alert.id, e.target.value === 'off' ? null : (e.target.value as DigestFrequency))
+                    }
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-gray-200"
+                  >
+                    <option value="off">Off</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                  {schedule && (
+                    <button
+                      type="button"
+                      onClick={() => void runRuleNow(alert.id)}
+                      className="rounded border border-gray-700 px-2 py-1 text-gray-300 hover:bg-gray-800"
+                    >
+                      Send now
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </fieldset>
+      {error && (
+        <p className="text-xs text-red-400" role="alert">
+          Digest settings error: {error}
+        </p>
       )}
       <div className="flex items-center gap-3">
         <select
