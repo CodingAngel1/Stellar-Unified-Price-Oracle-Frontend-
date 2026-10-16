@@ -19,6 +19,7 @@ import { rasterizeChartToDataUrl } from '../utils/chartExport'
 import { exportPriceHistoryPdf } from '../utils/pdfExport'
 import { loadChartExport } from '../utils/deferredExports'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { calculateRollingStatistics } from '../utils/rollingStatistics'
 
 // ---------------------------------------------------------------------------
 // #305 – Chart annotation types
@@ -46,6 +47,10 @@ interface ChartPoint {
   sources: string[]
   time: string
   idx: number
+  rollingMedian: number
+  rangeLow: number
+  rangeHigh: number
+  sampleCount: number
   [key: string]: unknown
 }
 
@@ -65,7 +70,8 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, normalised }: 
   const raw = payload[0]?.payload as ChartPoint | undefined
   if (!raw) return null
 
-  const price = typeof raw.price === 'number' ? raw.price : (payload[0]?.value as number | undefined)
+  const pricePayload = payload.filter((point) => !ROLLING_STAT_KEYS.has(String(point.dataKey)))
+  const price = typeof raw.price === 'number' ? raw.price : (pricePayload[0]?.value as number | undefined)
   const confidence = typeof raw.confidence === 'number' ? raw.confidence : null
   const sources: string[] = Array.isArray(raw.sources) ? raw.sources : []
 
@@ -100,6 +106,22 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, normalised }: 
           Confidence: <span className="text-gray-200">{(confidence * 100).toFixed(1)}%</span>
         </p>
       )}
+      {typeof raw.rollingMedian === 'number' && (
+        <div className="mt-1.5 pt-1.5 border-t border-gray-800 text-gray-300">
+          <p>
+            Rolling median:{' '}
+            <span className="font-mono">
+              {normalised ? `${raw.rollingMedian.toFixed(2)}%` : `$${formatPriceShort(raw.rollingMedian)}`}
+            </span>
+          </p>
+          <p className="text-gray-400">
+            Range ({raw.sampleCount} obs.):{' '}
+            {normalised
+              ? `${raw.rangeLow.toFixed(2)}% to ${raw.rangeHigh.toFixed(2)}%`
+              : `$${formatPriceShort(raw.rangeLow)} to $${formatPriceShort(raw.rangeHigh)}`}
+          </p>
+        </div>
+      )}
       {sources.length > 0 && (
         <div className="mt-1.5 pt-1.5 border-t border-gray-800">
           <p className="text-gray-500 mb-1">
@@ -114,7 +136,7 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, normalised }: 
           </div>
         </div>
       )}
-      {payload.slice(1).map((p, i) => {
+      {pricePayload.slice(1).map((p, i) => {
         const color = typeof p.color === 'string' ? p.color : '#fff'
         const label = p.name != null ? String(p.name) : `Series ${i + 1}`
         const value = typeof p.value === 'number' ? p.value : undefined
@@ -144,6 +166,8 @@ const TIME_RANGES: { label: string; value: TimeRange }[] = [
   { label: '30D', value: '30d' },
   { label: '1Y', value: '1y' },
 ]
+
+const ROLLING_STAT_KEYS = new Set(['rangeBandBase', 'rangeBandWidth', 'rollingMedian'])
 
 // Overlay pair colors — each additional pair gets a distinct color
 const OVERLAY_COLORS = ['#f59e0b', '#a78bfa', '#34d399', '#f87171', '#60a5fa']
@@ -284,11 +308,25 @@ function ChartContent({
 
   const tzAbbr = getTimezoneAbbr(timezone)
   const filteredData = filterByRange(data, timeRange)
+  const rollingStatistics = calculateRollingStatistics(filteredData)
 
   const chartData = filteredData
     .slice()
     .reverse()
-    .map((d, i) => ({ ...d, time: formatChartTimeWithTz(d.timestamp, timezone), idx: i }))
+    .map((d, i) => {
+      const statistic = rollingStatistics[rollingStatistics.length - 1 - i]
+      return {
+        ...d,
+        time: formatChartTimeWithTz(d.timestamp, timezone),
+        idx: i,
+        rollingMedian: statistic.median,
+        rangeLow: statistic.low,
+        rangeHigh: statistic.high,
+        rangeBandBase: statistic.low,
+        rangeBandWidth: statistic.high - statistic.low,
+        sampleCount: statistic.sampleCount,
+      }
+    })
 
   // Build overlay series (filter by range, normalise if needed)
   const hasOverlays = overlayPairs.length > 0
@@ -300,9 +338,18 @@ function ChartContent({
     if (!hasOverlays) return chartData
     // Normalise primary
     const primaryNorm = normalised ? normaliseToPercent(chartData) : null
+    const normaliseStatistic = (value: number) => {
+      const basePrice = chartData[0]?.price ?? 0
+      return normalised && basePrice !== 0 ? ((value - basePrice) / basePrice) * 100 : value
+    }
     const base = chartData.map((d, i) => ({
       ...d,
       [pair]: normalised && primaryNorm ? primaryNorm[i].pct : d.price,
+      rollingMedian: normaliseStatistic(d.rollingMedian),
+      rangeLow: normaliseStatistic(d.rangeLow),
+      rangeHigh: normaliseStatistic(d.rangeHigh),
+      rangeBandBase: normaliseStatistic(d.rangeLow),
+      rangeBandWidth: normaliseStatistic(d.rangeHigh) - normaliseStatistic(d.rangeLow),
     }))
     // Merge each overlay
     for (const op of overlayPairs) {
@@ -681,6 +728,24 @@ function ChartContent({
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-3 mb-2 text-xs" role="group" aria-label="Rolling statistics">
+        <span className="inline-flex items-center gap-1.5 text-violet-300">
+          <span className="inline-block w-5 border-t-2 border-dashed border-violet-400" aria-hidden="true" />
+          Rolling median (20 observations)
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-gray-400">
+          <span
+            className="inline-block w-5 h-2 rounded bg-violet-400/20 border border-violet-400/40"
+            aria-hidden="true"
+          />
+          Range band (rolling low–high)
+        </span>
+        <span className="text-gray-500">
+          Based on {filteredData.length} loaded observations
+          {hasMore ? '; older history may be available by scrolling.' : '.'}
+        </span>
+      </div>
+
       <div
         ref={chartWrapperRef}
         className={`flex-1 min-h-0 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -727,6 +792,25 @@ function ChartContent({
                 content={
                   <CustomTooltip tzAbbr={tzAbbr} allData={visibleData as ChartPoint[]} normalised={normalised} />
                 }
+              />
+              <Area dataKey="rangeBandBase" stackId="rolling-range" fill="transparent" stroke="transparent" />
+              <Area
+                dataKey="rangeBandWidth"
+                stackId="rolling-range"
+                fill="#a78bfa"
+                fillOpacity={0.14}
+                stroke="none"
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="rollingMedian"
+                name="Rolling median"
+                stroke="#a78bfa"
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+                dot={false}
+                isAnimationActive={false}
               />
               {/* #305 – Annotations as vertical reference lines */}
               {localAnnotations.map((ann) => {
@@ -809,6 +893,25 @@ function ChartContent({
               {/* #300 – Custom tooltip with sources, confidence, oracle count, % change */}
               <Tooltip
                 content={<CustomTooltip tzAbbr={tzAbbr} allData={visibleData as ChartPoint[]} normalised={false} />}
+              />
+              <Area dataKey="rangeBandBase" stackId="rolling-range" fill="transparent" stroke="transparent" />
+              <Area
+                dataKey="rangeBandWidth"
+                stackId="rolling-range"
+                fill="#a78bfa"
+                fillOpacity={0.14}
+                stroke="none"
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="rollingMedian"
+                name="Rolling median"
+                stroke="#a78bfa"
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+                dot={false}
+                isAnimationActive={false}
               />
               {/* #305 – Annotations as vertical reference lines */}
               {localAnnotations.map((ann) => {
@@ -985,6 +1088,12 @@ function ChartContent({
                 <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
                   Confidence
                 </th>
+                <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
+                  Rolling median
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
+                  Range low–high
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -993,6 +1102,10 @@ function ChartContent({
                   <td className="px-3 py-1.5 font-mono">{d.time}</td>
                   <td className="px-3 py-1.5 text-right font-mono">${formatPriceShort(d.price)}</td>
                   <td className="px-3 py-1.5 text-right">{(d.confidence * 100).toFixed(1)}%</td>
+                  <td className="px-3 py-1.5 text-right font-mono">${formatPriceShort(d.rollingMedian)}</td>
+                  <td className="px-3 py-1.5 text-right font-mono">
+                    ${formatPriceShort(d.rangeLow)}–${formatPriceShort(d.rangeHigh)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1010,6 +1123,8 @@ function ChartContent({
               <th scope="col">Time</th>
               <th scope="col">Price USD</th>
               <th scope="col">Confidence</th>
+              <th scope="col">Rolling median</th>
+              <th scope="col">Rolling range low to high</th>
             </tr>
           </thead>
           <tbody>
@@ -1018,6 +1133,10 @@ function ChartContent({
                 <td>{d.time}</td>
                 <td>{formatPriceShort(d.price)}</td>
                 <td>{(d.confidence * 100).toFixed(1)}%</td>
+                <td>{formatPriceShort(d.rollingMedian)}</td>
+                <td>
+                  {formatPriceShort(d.rangeLow)} to {formatPriceShort(d.rangeHigh)}
+                </td>
               </tr>
             ))}
           </tbody>

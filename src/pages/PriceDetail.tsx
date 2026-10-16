@@ -13,6 +13,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
 import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
+import { PairMovementEffectsPanel } from '../components/PairMovementEffectsPanel'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
@@ -256,6 +257,14 @@ export function PriceDetail() {
                 const latest = pairHistory[pairHistory.length - 1]
                 return latest ? <MoveAttributionPanel latest={latest} history={pairHistory} /> : null
               })()}
+
+              <PairMovementEffectsPanel
+                pair={price.assetPair}
+                history={history}
+                loading={historyLoading}
+                error={historyError}
+                staleThresholdMinutes={preferences.staleThresholdMinutes}
+              />
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
