@@ -1038,6 +1038,15 @@ ISO-8601, its calculated age, and a `stale` flag using the user's configured
 staleness threshold. A stale observation is included and clearly marked; the
 export does not replace missing or unavailable upstream values with estimates.
 
+## Rolling price-chart statistics
+
+The price-history chart derives a trailing 20-observation median and rolling
+minimum/maximum range band from the history already loaded for the selected
+chart range. Initial windows use the observations available so far. The chart
+labels when additional history is still available; statistics do not imply
+that unloaded history was included. These are client-side derived values and
+do not require a server change.
+
 #### 404 Not Found
 
 **Problem:** Asset pair returns 404

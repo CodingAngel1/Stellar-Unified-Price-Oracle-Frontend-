@@ -69,6 +69,35 @@ describe('PriceChart', () => {
     expect(screen.getByRole('button', { name: '24H time range' })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('updates rolling statistics for the selected history range', () => {
+    const now = Date.now()
+    renderWithProviders(
+      <PriceChart
+        data={[
+          { ...sampleData[0], timestamp: now - 2 * 60 * 60 * 1000 },
+          { ...sampleData[1], timestamp: now - 10 * 60 * 1000 },
+        ]}
+        pair="BTC/USD"
+      />,
+    )
+
+    expect(screen.getByRole('group', { name: 'Rolling statistics' })).toHaveTextContent(
+      'Based on 2 loaded observations',
+    )
+    fireEvent.click(screen.getByRole('button', { name: '1H time range' }))
+    expect(screen.getByRole('group', { name: 'Rolling statistics' })).toHaveTextContent(
+      'Based on 1 loaded observations',
+    )
+  })
+
+  it('exposes rolling values in the accessible data table', () => {
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Show data table' }))
+
+    expect(screen.getByRole('columnheader', { name: 'Rolling median' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Range low–high' })).toBeInTheDocument()
+  })
+
   it('renders full-screen toggle button', () => {
     renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     expect(screen.getByRole('button', { name: 'Enter full screen' })).toBeInTheDocument()
