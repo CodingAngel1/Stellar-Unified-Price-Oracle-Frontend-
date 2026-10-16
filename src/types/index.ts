@@ -8,6 +8,7 @@ export type {
   LivePriceEntry,
   PriceHistoryEntry,
   ExcludedSourceTick,
+  SourceTimestamp,
   PriceHistoryResponse,
   SourceName,
   SourceHealth,

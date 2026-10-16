@@ -25,6 +25,7 @@ import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
+import { CircuitBreakerStatus } from '../components/CircuitBreakerStatus'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -132,12 +133,17 @@ export function PriceDetail() {
     loadingMore,
     hasMore,
     error: historyError,
+    storageNearQuota,
     loadMore,
-  } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, { pageSize: 100 })
+  } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, {
+    pageSize: preferences.chartHistoryPageSize,
+    refreshInterval: preferences.refreshInterval,
+  })
 
   // Benchmark pair history — fetched only when a benchmark pair is selected
   const { history: benchmarkHistory, loading: benchmarkHistoryLoading } = usePriceHistory(benchmarkPair, {
-    pageSize: 100,
+    pageSize: preferences.chartHistoryPageSize,
+    refreshInterval: preferences.refreshInterval,
   })
 
   const loading = priceLoading || (historyLoading && history.length === 0)
@@ -159,6 +165,8 @@ export function PriceDetail() {
         </svg>
         {t('priceDetail.back')}
       </button>
+
+      {!isInvalidPair && decodedPair && <CircuitBreakerStatus pair={decodedPair} />}
 
       {isInvalidPair ? (
         <div className="p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
@@ -383,6 +391,15 @@ export function PriceDetail() {
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">
                   {t('priceDetail.sections.priceHistory')}
                 </p>
+                {storageNearQuota && (
+                  <p
+                    className="mb-4 rounded-lg border border-amber-700/60 bg-amber-900/20 px-4 py-3 text-sm text-amber-200"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {t('priceDetail.historyStorageWarning')}
+                  </p>
+                )}
                 {historyError ? (
                   <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400" role="alert">
                     {t('priceDetail.historyError', { message: historyError.message })}
