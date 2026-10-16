@@ -1,8 +1,8 @@
 /**
  * Price-related types for the Stellar Unified Price Oracle.
  *
- * All fields on {@link PriceData} are required and must be present in API
- * responses. The Zod schema in `src/api/schemas.ts` validates this at runtime
+ * Required fields on {@link PriceData} must be present in API responses.
+ * Optional fields are validated by the Zod schema in `src/api/schemas.ts`
  * (always in dev/test, sampled in production).
  */
 
@@ -131,8 +131,10 @@ export interface LivePriceEntry {
 export interface SourceDelta {
   /** The oracle source identifier (e.g. "chainlink"). */
   source: string
-  /** Source price on this tick (derived from the per-source field when present, otherwise the aggregate). */
+  /** Source price on this tick (falls back to the aggregate when not reported). */
   price: number
+  /** Whether `price` was explicitly reported for this source by the API. */
+  priceIsObserved: boolean
   /** Source price on the previous tick, or `null` if this is the first observed tick. */
   prevPrice: number | null
   /** Absolute price change (price − prevPrice), or `null` on the first tick. */
@@ -155,6 +157,10 @@ export interface MoveAttribution {
   timestamp: number
   /** Aggregate price for this tick. */
   price: number
+  /** Confidence score reported by the API for this tick (0–1). */
+  confidence: number
+  /** Confidence score reported for the preceding tick, or `null` when unavailable. */
+  previousConfidence: number | null
   /** Aggregate delta vs previous tick, or `null` on the first tick. */
   delta: number | null
   /** Aggregate delta as a percentage, or `null` when prevPrice is null or zero. */

@@ -232,6 +232,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
    * Per-pair last aggregate price — used to compute the aggregate delta.
    */
   const prevAggPriceRef = useRef<Map<string, number>>(new Map())
+  const prevConfidenceRef = useRef<Map<string, number>>(new Map())
 
   const wsRef = useRef<RealtimeClient | null>(null)
   const requestIdsRef = useRef<Map<string, number>>(new Map())
@@ -506,8 +507,10 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       }
       const prevSourcePrices = sourcePriceState.get(msg.assetPair)!
       const prevAggPrice = prevAggPriceRef.current.get(msg.assetPair) ?? null
-      const attribution = computeAttribution(msg, prevSourcePrices, prevAggPrice)
+      const prevConfidence = prevConfidenceRef.current.get(msg.assetPair) ?? null
+      const attribution = computeAttribution(msg, prevSourcePrices, prevAggPrice, prevConfidence)
       prevAggPriceRef.current.set(msg.assetPair, msg.price)
+      prevConfidenceRef.current.set(msg.assetPair, msg.confidence)
 
       const pendingAttributions = pendingAttributionsRef.current
       const buffered = pendingAttributions.get(msg.assetPair)

@@ -148,6 +148,10 @@ export function PriceDetail() {
 
   const loading = priceLoading || (historyLoading && history.length === 0)
   const showEmptyState = !loading && !priceError && !price
+  const currentSourceRange = getObservedSourceRange(
+    (attributionHistory.get(decodedPair) ?? []).slice(-1)[0],
+    price?.timestamp ?? Number.POSITIVE_INFINITY,
+  )
 
   return (
     // The whole page is built from dark cards and dark-only text colours, so it
@@ -236,6 +240,7 @@ export function PriceDetail() {
                   {t('priceDetail.sections.currentPrice')}
                 </p>
                 <p className="text-5xl font-bold font-mono text-gray-100 mb-4">${formatPrice(price.price)}</p>
+                <ObservedSourceRange range={currentSourceRange} />
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">{t('priceDetail.updated', { time: timeAgo(price.timestamp) })}</span>
                   <span
@@ -245,6 +250,7 @@ export function PriceDetail() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">{formatTimestamp(price.timestamp)}</p>
+                <SourceTickProvenanceLink url={price.sourceTickProvenanceUrl} />
               </div>
 
               {/* Sources */}
@@ -281,7 +287,20 @@ export function PriceDetail() {
               {(() => {
                 const pairHistory = attributionHistory.get(decodedPair) ?? []
                 const latest = pairHistory[pairHistory.length - 1]
-                return latest ? <MoveAttributionPanel latest={latest} history={pairHistory} /> : null
+                const previous = pairHistory[pairHistory.length - 2]
+                return latest ? (
+                  <>
+                    <MoveAttributionPanel latest={latest} history={pairHistory} />
+                    <ConfidenceChangeExplanation latest={latest} previous={previous} />
+                  </>
+                ) : (
+                  <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                    <h2 className="text-xs text-gray-400 uppercase tracking-wider mb-3">Confidence change context</h2>
+                    <p className="text-sm text-gray-400" role="status">
+                      Waiting for live tick data to compare confidence inputs.
+                    </p>
+                  </section>
+                )
               })()}
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}

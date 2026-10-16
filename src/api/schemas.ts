@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isSecureProvenanceUrl } from '../utils/provenance'
 
 /**
  * Strict Zod schema for {@link import('../types/price').PriceData}.
