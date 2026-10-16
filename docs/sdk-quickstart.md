@@ -3,6 +3,25 @@
 These examples use the published `@stellar-unified-price-oracle/sdk` package (`1.0.0`).
 The client talks to the same REST and WebSocket endpoints documented at `/api-docs`.
 
+## Runtime compatibility
+
+The SDK publishes ESM and CommonJS builds with TypeScript declarations. It does
+not bundle Fetch or WebSocket polyfills; compatibility depends on the runtime
+features available to the application.
+
+| Runtime                                                     | REST requests                                 | Live subscriptions                                                                         | Notes                                                                                                                                      |
+| ----------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Chrome, Edge, Firefox, and Safari (current stable releases) | Supported with native `fetch`                 | Supported with native `WebSocket`                                                          | Use a bundler that supports ESM for browser applications. Exact oldest supported browser versions are not pinned or tested by the project. |
+| Node.js 18+                                                 | Supported; Node.js 18 provides native `fetch` | Requires a runtime with a global `WebSocket` or an application-provided WebSocket polyfill | The SDK's `subscribe()` method reads `globalThis.WebSocket`.                                                                               |
+| React 18+                                                   | Supported through the `./react` entry point   | Supported when the host runtime provides `WebSocket`                                       | React is a peer dependency; the hooks entry point is optional.                                                                             |
+| Deno, Bun, and other JavaScript runtimes                    | Not officially verified                       | Not officially verified                                                                    | They may work when their Fetch, WebSocket, ESM, and package-resolution behavior matches the requirements above.                            |
+
+The Node.js minimum applies to REST calls (`fetch`). The SDK package does not
+declare an `engines` minimum, and the repository does not run an automated
+cross-browser or cross-runtime CI matrix; consumers should test the exact
+runtime version they deploy. CommonJS and ESM entry points are both published,
+but browser users should prefer ESM through their bundler.
+
 ## React
 
 ```bash
@@ -30,7 +49,9 @@ export function PriceCard() {
   import { OracleClient } from '@stellar-unified-price-oracle/sdk'
   const client = new OracleClient({ baseUrl: 'https://api.example.com' })
   const output = document.querySelector('#price')
-  const render = (price) => { output.textContent = `${price.assetPair}: ${price.price}` }
+  const render = (price) => {
+    output.textContent = `${price.assetPair}: ${price.price}`
+  }
   render(await client.getPrice('XLM-USD'))
   const stop = client.subscribe(['XLM-USD'], render)
   window.addEventListener('pagehide', stop, { once: true })

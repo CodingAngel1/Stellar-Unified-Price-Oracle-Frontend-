@@ -93,6 +93,15 @@ Delay = Random(0, min(1s × 2^attempt, 30s))
 Max attempts: 3
 ```
 
+### Frontend circuit-breaker status
+
+The frontend tracks failures for pair-specific price requests independently;
+all-pairs and batch endpoints keep a shared endpoint-group breaker. On a pair's
+detail page, the current state is announced as closed, open, or half-open. When
+open, the page shows the next retry time in the browser's local time zone.
+After the cooldown expires the breaker permits one half-open test request; it
+does not promise that the upstream feed has recovered.
+
 ---
 
 ## Caching (#508)
@@ -119,6 +128,11 @@ value is on its way.
 `STALE` when a stale-while-revalidate response was served) so consumers —
 including the [API docs "Try it out" playground](../src/pages/ApiDocs.tsx) —
 can see whether a given read came from the edge cache or the origin.
+
+The [in-app API playground](/api-docs) includes runnable SDK examples for
+pair prices, all prices, and price history. It invokes the same official
+`OracleClient` implementation as the published SDK and displays live responses;
+SDK examples are not offered for endpoints the SDK does not expose.
 
 SDKs that layer their own client-side cache (e.g. the IndexedDB cache used by
 this frontend, see [`docs/STORAGE_BUDGET.md`](./STORAGE_BUDGET.md)) should
