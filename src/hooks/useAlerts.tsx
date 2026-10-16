@@ -1,11 +1,12 @@
-import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import { useState, useCallback, useEffect, useRef, createContext, useContext, ReactNode } from 'react'
+import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import type {
   Alert,
   AlertHistoryEntry,
   AlertsContextType,
   AlertSnoozeDuration,
   EscalationStep,
+  MoveAttribution,
   PriceEvaluationState,
 } from '../types'
 import { migrateLegacyAlertConditions } from '../types/alerts'
@@ -16,7 +17,7 @@ import { readRaw, STORAGE_KEYS } from '../utils/storage'
 import { persistDurable } from '../utils/durableWrites'
 import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
-import { evaluateCompoundCondition } from '../utils/alertEvaluator'
+import { evaluateCompoundCondition, findFirstMatchingPrice } from '../utils/alertEvaluator'
 import {
   loadAlertHistory,
   saveAlertHistoryDebounced,
@@ -246,6 +247,7 @@ function saveAlerts(alerts: Alert[]): void {
 }
 
 const AlertsContext = createContext<AlertsContextType | null>(null)
+const EMPTY_ATTRIBUTION_HISTORY = new Map<string, MoveAttribution[]>()
 
 /**
  * Provides the {@link AlertsContextType} to its subtree.
@@ -267,6 +269,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
   const [history, setHistory] = useState<AlertHistoryEntry[]>(loadAlertHistory)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const attributionCursorRef = useRef<Map<string, MoveAttribution>>(new Map())
 
   // #504 — report alert history length to the memory profiling harness.
   // Registered once on mount; the ref keeps the probe reading the latest
@@ -281,7 +284,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     importAlertHistoryToEngine()
   }, [])
 
-  const { livePrices } = usePriceContext()
+  const { livePrices, attributionHistory = EMPTY_ATTRIBUTION_HISTORY } = usePriceContext()
 
   // Rate limiter for alert creation (max 5 per minute)
   const alertRateLimit = useRateLimit('alertCreate')
@@ -304,6 +307,18 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     let changed = false
     const now = Date.now()
     const firedEntries: AlertHistoryEntry[] = []
+    const attributionCursor = attributionCursorRef.current
+    const unprocessedTicks = new Map<string, MoveAttribution[]>()
+    for (const [pair, records] of attributionHistory) {
+      if (records.length === 0) continue
+      const previous = attributionCursor.get(pair)
+      const previousIndex = previous ? records.lastIndexOf(previous) : -1
+      unprocessedTicks.set(
+        pair,
+        previous ? (previousIndex >= 0 ? records.slice(previousIndex + 1) : records.slice(-1)) : records,
+      )
+      attributionCursor.set(pair, records[records.length - 1])
+    }
 
     const newAlerts = alerts.map((alert) => {
       // Skip inactive alerts
@@ -315,7 +330,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       const livePriceData = livePrices.get(alert.assetPair)
       if (!livePriceData) return alert
 
-      const currentPrice = livePriceData.data.price
+      let currentPrice = livePriceData.data.price
+      const sampledPrices = (unprocessedTicks.get(alert.assetPair) ?? []).map((record) => record.price)
       let updatedAlert = { ...alert }
       let triggered = false
 
@@ -341,16 +357,27 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         }
 
         const baseline = alert.percentageBaselinePrice
-        const pctChange = baseline !== 0 ? ((currentPrice - baseline) / baseline) * 100 : 0
-
         // #485 – compound evaluation against the alert's (possibly legacy-migrated) condition group
         const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
-        const state: PriceEvaluationState = { price: currentPrice, percentageChange: { [window]: pctChange }, nowMs: Date.now() }
+        const matchingPrice = findFirstMatchingPrice(group, sampledPrices, (price) => ({
+          price,
+          percentageChange: { [window]: baseline !== 0 ? ((price - baseline) / baseline) * 100 : 0 },
+          nowMs: now,
+        }))
+        if (matchingPrice !== undefined) currentPrice = matchingPrice
+        const evaluatedPctChange = baseline !== 0 ? ((currentPrice - baseline) / baseline) * 100 : 0
+        const state: PriceEvaluationState = {
+          price: currentPrice,
+          percentageChange: { [window]: evaluatedPctChange },
+          nowMs: now,
+        }
         triggered = evaluateCompoundCondition(group, state)
       } else {
         // ── Absolute threshold evaluation, via the compound evaluator (#485) ─
         const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
-        const state: PriceEvaluationState = { price: currentPrice, nowMs: Date.now() }
+        const matchingPrice = findFirstMatchingPrice(group, sampledPrices, (price) => ({ price, nowMs: now }))
+        if (matchingPrice !== undefined) currentPrice = matchingPrice
+        const state: PriceEvaluationState = { price: currentPrice, nowMs: now }
         triggered = evaluateCompoundCondition(group, state)
       }
 
@@ -483,7 +510,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       // Mirror into the time-series engine for retention/rollups/range queries.
       recordAlertEvents(firedEntries)
     }
-  }, [livePrices, alerts])
+  }, [livePrices, attributionHistory, alerts])
 
   // Request notification permissions
   useEffect(() => {

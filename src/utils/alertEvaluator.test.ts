@@ -4,6 +4,7 @@ import type { AlertCondition, ConditionGroup, PriceEvaluationState, AlertFormDat
 import {
   evaluateCondition,
   evaluateCompoundCondition,
+  findFirstMatchingPrice,
   combineConditions,
   buildConditionGroupFromFormData,
 } from './alertEvaluator'
@@ -110,6 +111,28 @@ describe('evaluateCompoundCondition — truth tables', () => {
   it('empty AND group is vacuously true; empty OR group is false', () => {
     expect(evaluateCompoundCondition({ id: 'g', logic: 'AND', conditions: [] }, { price: 1 })).toBe(true)
     expect(evaluateCompoundCondition({ id: 'g', logic: 'OR', conditions: [] }, { price: 1 })).toBe(false)
+  })
+})
+
+describe('findFirstMatchingPrice', () => {
+  it('preserves a threshold-crossing sample even when the latest rendered price is below it', () => {
+    const group: ConditionGroup = {
+      id: 'g',
+      logic: 'AND',
+      conditions: [{ id: 'cross', field: 'price', operator: 'gte', value: 10 }],
+    }
+
+    expect(findFirstMatchingPrice(group, [9, 11, 8], (price) => ({ price }))).toBe(11)
+  })
+
+  it('returns undefined when no sampled value satisfies the condition', () => {
+    const group: ConditionGroup = {
+      id: 'g',
+      logic: 'OR',
+      conditions: [{ id: 'cross', field: 'price', operator: 'gte', value: 10 }],
+    }
+
+    expect(findFirstMatchingPrice(group, [0, 8, 9], (price) => ({ price }))).toBeUndefined()
   })
 })
 
