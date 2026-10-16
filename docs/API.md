@@ -1047,6 +1047,17 @@ labels when additional history is still available; statistics do not imply
 that unloaded history was included. These are client-side derived values and
 do not require a server change.
 
+## Pair movement effects
+
+For current USD-quoted feeds, the detail page uses log-return percentage
+points: `100 × ln(current / previous)`. The base effect equals the pair
+movement because USD is the unit quote reference; the USD quote effect is
+zero. Stale observations remain marked, and fewer than two observations are
+reported as unavailable. Supporting a non-USD pair requires the history API to
+provide synchronized base/USD and quote/USD prices with timestamps on the same
+observation interval; until then the UI reports the decomposition as
+unavailable rather than estimating missing asset values.
+
 #### 404 Not Found
 
 **Problem:** Asset pair returns 404
