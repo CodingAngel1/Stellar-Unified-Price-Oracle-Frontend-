@@ -3,6 +3,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { fetchPricesBatched } from '../api/rest'
+import type { PriceData } from '../types'
 import { ATTRIBUTION_RING_BUFFER_SIZE } from '../types'
 import type { TickCoalescerStats } from '../utils/tickCoalescer'
 import { ToastProvider } from './ToastContext'
@@ -22,6 +23,7 @@ let messageHandler:
       sources: string[]
     }) => void)
   | null = null
+let statusHandler: ((status: string) => void) | null = null
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
@@ -45,6 +47,32 @@ vi.mock('../api/rest', () => ({
   fetchPricesBatched: vi.fn(),
 }))
 
+vi.mock('../api/realtimeClient', () => ({
+  RealtimeClient: vi.fn(function () {
+    return {
+      diagnostics: {
+        retryCount: 0,
+        lastConnectedAt: null,
+        totalDisconnections: 0,
+        transport: 'ws',
+        transportPath: ['ws'],
+      },
+      connect: mockConnect,
+      disconnect: mockDisconnect,
+      onMessage: vi.fn((handler) => {
+        messageHandler = handler
+        return vi.fn()
+      }),
+      onStatusChange: vi.fn((handler) => {
+        statusHandler = handler
+        return vi.fn()
+      }),
+      subscribe: mockSubscribe,
+      unsubscribe: mockUnsubscribe,
+    }
+  }),
+}))
+
 vi.mock('../api/websocket', () => ({
   // A `vi.fn()` wrapping an arrow function can't be invoked with `new`
   // (arrow functions have no `[[Construct]]`) — RealtimeClient calls
@@ -59,7 +87,10 @@ vi.mock('../api/websocket', () => ({
         messageHandler = handler
         return vi.fn()
       }),
-      onStatusChange: vi.fn(() => vi.fn()),
+      onStatusChange: vi.fn((handler) => {
+        statusHandler = handler
+        return vi.fn()
+      }),
       subscribe: mockSubscribe,
       unsubscribe: mockUnsubscribe,
       send: vi.fn(),
@@ -113,6 +144,7 @@ function TestConsumer() {
       <span data-testid="btc-live-price">{btcLive?.data.price ?? 'none'}</span>
       <span data-testid="btc-live-state">{btcLive?.syncState ?? 'none'}</span>
       <span data-testid="tick-policy">{JSON.stringify(ctx.tickPolicy ?? null)}</span>
+      <span data-testid="resync-progress">{JSON.stringify(ctx.resyncProgress ?? null)}</span>
       <span data-testid="attribution-length">{ctx.attributionHistory.get('BTC/USD')?.length ?? 0}</span>
     </div>
   )
@@ -148,6 +180,7 @@ function readTickPolicy(): TickCoalescerStats {
 beforeEach(() => {
   vi.clearAllMocks()
   messageHandler = null
+  statusHandler = null
   vi.mocked(fetchPricesBatched).mockResolvedValue({
     assetPair: 'BTC/USD',
     price: 50010,
@@ -182,6 +215,59 @@ describe('PriceProvider', () => {
   it('provides default wsStatus as disconnected', () => {
     render(<TestConsumer />, { wrapper: Wrapper })
     expect(screen.getAllByTestId('ws-status')[0].textContent).toBe('disconnected')
+  })
+
+  it('reports per-pair resynchronization progress after a reconnect and marks failed refreshes unavailable', async () => {
+    const pending = new Map<string, { resolve: (price: PriceData) => void; reject: (error: Error) => void }>()
+    vi.mocked(fetchPricesBatched).mockImplementation(
+      (pair) =>
+        new Promise<PriceData>((resolve, reject) => {
+          pending.set(pair, { resolve, reject })
+        }),
+    )
+
+    render(<TestConsumer />, { wrapper: Wrapper })
+    act(() => statusHandler?.('connected'))
+    expect(screen.getByTestId('resync-progress')).toHaveTextContent('null')
+
+    act(() => statusHandler?.('reconnecting'))
+    act(() => statusHandler?.('connected'))
+
+    await waitFor(() => {
+      expect(JSON.parse(screen.getByTestId('resync-progress').textContent ?? 'null')).toMatchObject({
+        status: 'syncing',
+        total: 2,
+        completed: 0,
+      })
+    })
+    expect(fetchPricesBatched).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      pending.get('BTC/USD')?.resolve({
+        assetPair: 'BTC/USD',
+        price: 50020,
+        timestamp: 1700000002000,
+        confidence: 0.99,
+        sources: ['chainlink'],
+      })
+    })
+    await waitFor(() => {
+      expect(JSON.parse(screen.getByTestId('resync-progress').textContent ?? 'null')).toMatchObject({
+        status: 'syncing',
+        completed: 1,
+      })
+    })
+
+    await act(async () => {
+      pending.get('ETH/USD')?.reject(new Error('refresh failed'))
+    })
+    await waitFor(() => {
+      expect(JSON.parse(screen.getByTestId('resync-progress').textContent ?? 'null')).toMatchObject({
+        status: 'partial',
+        completed: 2,
+        failed: 1,
+      })
+    })
   })
 
   it('applies websocket updates optimistically before REST confirmation', async () => {
