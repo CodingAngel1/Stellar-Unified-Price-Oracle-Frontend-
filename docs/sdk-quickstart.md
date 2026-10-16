@@ -87,6 +87,27 @@ const stop = client.subscribe(['XLM-USD', 'BTC-USD'], (price) => {
 
 Call `stop()` when the view or process no longer needs updates.
 
+## Offline local fixtures
+
+When working from a repository checkout, start the local deterministic REST
+fixture server in one terminal:
+
+```bash
+npm run sdk:fixture-server
+```
+
+Then point the SDK at it from another terminal or local frontend:
+
+```ts
+const client = new OracleClient({ baseUrl: 'http://127.0.0.1:4178' })
+const price = await client.getPrice('XLM-USD')
+```
+
+The server provides fixture responses for `getPrice`, `getPrices`, `getHistory`,
+and `createAlert`; it binds to loopback and makes no upstream requests. It does
+not implement WebSocket subscriptions. These values are examples for offline
+development only, not live or production oracle data.
+
 ## Alert conditions
 
 Alerts can combine an absolute threshold with a percentage move. The SDK sends the same shape used by the dashboard:
@@ -102,6 +123,34 @@ await client.createAlert({
 ```
 
 Use `percentageDirection: 'down'` for a fall, or `'either'` to alert in both directions. Keep the package version in this guide aligned with the published SDK release before publishing a new release.
+
+## Safe retries for mutations
+
+`createAlert` retries retryable network, rate-limit, and server failures
+automatically. The SDK reuses one `Idempotency-Key` across those attempts. For
+an application-level retry after the SDK has exhausted its attempts, reuse the
+same key for the same logical alert creation:
+
+```ts
+import { OracleError } from '@stellar-unified-price-oracle/sdk'
+
+const input = { assetPair: 'XLM-USD', upperThreshold: 1.25 }
+const idempotencyKey = crypto.randomUUID()
+
+try {
+  await client.createAlert(input, { idempotencyKey })
+} catch (error) {
+  if (!(error instanceof OracleError) || !error.retryable) throw error
+  // The server may have completed the first request even if its response was lost.
+  await client.createAlert(input, { idempotencyKey })
+}
+```
+
+Generate the key once per user action, not once per attempt. If the action can
+be resumed after a process restart, persist its key alongside that pending
+operation and reuse it; do not persist credentials. Never retry a failed
+validation or version mismatch as though it were transient. Server-side
+idempotency support is required to deduplicate the requests.
 
 ## Installing and versioning
 
