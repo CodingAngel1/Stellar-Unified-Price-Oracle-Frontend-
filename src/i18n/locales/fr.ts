@@ -261,6 +261,19 @@ const fr = {
         'Choisissez où cette alerte est livrée. Laissez vide pour utiliser les canaux configurés dans vos paramètres de notification.',
       useGlobal: 'Utiliser les valeurs par défaut globales',
       noneConfigured: "Aucun canal configuré — configurez d'abord les canaux dans les paramètres de notification.",
+      readiness: {
+        title: 'État des canaux',
+        remoteNote:
+          "Seuls la configuration locale et l'autorisation du navigateur sont vérifiées ; la livraison distante ne l'est pas.",
+        blocked: "Résolvez les problèmes d'état des canaux avant l'enregistrement.",
+        ready: 'Prêt localement',
+        disabled: 'Canal désactivé dans les paramètres de notification',
+        missingConfiguration: 'Configuration du canal manquante',
+        missingSecret: 'Secret de session manquant ; saisissez-le à nouveau dans les paramètres de notification',
+        permissionRequired: "L'autorisation de notification du navigateur n'est pas accordée",
+        permissionDenied: 'Notifications refusées ; modifiez cette autorisation dans les paramètres du navigateur',
+        unsupported: 'Les notifications du navigateur ne sont pas disponibles dans cet environnement',
+      },
     },
     presets: {
       title: "Partir d'un modèle",

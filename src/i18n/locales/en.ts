@@ -271,6 +271,18 @@ const en = {
         'Choose where this alert is delivered. Leave empty to use the channels configured in your notification settings.',
       useGlobal: 'Use global defaults',
       noneConfigured: 'No channels configured — set up channels in Notification Settings first.',
+      readiness: {
+        title: 'Channel readiness',
+        remoteNote: 'Checks verify local settings and browser permission only; remote delivery is not probed.',
+        blocked: 'Resolve the channel readiness issues before saving.',
+        ready: 'Ready locally',
+        disabled: 'Channel is disabled in notification settings',
+        missingConfiguration: 'Required channel settings are missing',
+        missingSecret: 'Session-only secret is missing; re-enter it in notification settings',
+        permissionRequired: 'Browser notification permission is not granted',
+        permissionDenied: 'Browser notification permission was denied; change it in browser settings',
+        unsupported: 'Browser notifications are unavailable in this environment',
+      },
     },
     // ── Preset library (#486) ──────────────────────────────────────────────
     presets: {

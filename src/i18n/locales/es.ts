@@ -260,6 +260,19 @@ const es = {
         'Elige dónde se entrega esta alerta. Déjalo vacío para usar los canales configurados en tus ajustes de notificación.',
       useGlobal: 'Usar valores globales por defecto',
       noneConfigured: 'No hay canales configurados: configura los canales en Ajustes de notificación primero.',
+      readiness: {
+        title: 'Disponibilidad de canales',
+        remoteNote:
+          'Solo se comprueba la configuración local y el permiso del navegador; no se verifica la entrega remota.',
+        blocked: 'Resuelve los problemas de disponibilidad antes de guardar.',
+        ready: 'Disponible localmente',
+        disabled: 'El canal está desactivado en los ajustes de notificación',
+        missingConfiguration: 'Falta la configuración necesaria del canal',
+        missingSecret: 'Falta el secreto de sesión; vuelve a introducirlo en los ajustes de notificación',
+        permissionRequired: 'No se ha concedido el permiso de notificaciones del navegador',
+        permissionDenied: 'Se denegaron las notificaciones; cambia el permiso en los ajustes del navegador',
+        unsupported: 'Las notificaciones del navegador no están disponibles en este entorno',
+      },
     },
     presets: {
       title: 'Empezar desde una plantilla',

@@ -73,15 +73,21 @@ import type {
 import { validateEscalationPolicy } from '../types/alerts'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { buildConditionGroupFromFormData } from '../utils/alertEvaluator'
+import { localDateToTimestamp, timestampToLocalDate } from '../utils/alertLifecycle'
 import { simulateAlert, type SimulatedPoint } from '../utils/alertSimulation'
+import { loadBotSecrets } from '../services/botNotifications'
 import { loadNotifConfig, getEnabledChannels } from '../services/notificationConfig'
+import {
+  areChannelsReady,
+  checkNotificationReadiness,
+  type ChannelReadinessStatus,
+} from '../services/notificationReadiness'
 import type { AlertPreset } from '../data/alertPresets'
 import { presetStorage, type CustomAlertPreset } from '../services/presetStorage'
 import { AlertSimulationChart } from './AlertSimulationChart'
 import { ConditionBuilder } from './ConditionBuilder'
 import { EscalationPolicyBuilder } from './EscalationPolicyBuilder'
 import { AlertPresetPicker } from './AlertPresetPicker'
-import { localDateToTimestamp, timestampToLocalDate } from '../utils/alertLifecycle'
 
 interface AlertModalProps {
   isOpen: boolean
@@ -99,6 +105,34 @@ interface AlertModalProps {
 }
 
 type ValidationErrors = Partial<Record<keyof AlertFormData, string>>
+
+type ReadinessTranslationKey =
+  | 'alertModal.channels.readiness.ready'
+  | 'alertModal.channels.readiness.disabled'
+  | 'alertModal.channels.readiness.missingConfiguration'
+  | 'alertModal.channels.readiness.missingSecret'
+  | 'alertModal.channels.readiness.permissionRequired'
+  | 'alertModal.channels.readiness.permissionDenied'
+  | 'alertModal.channels.readiness.unsupported'
+
+const READINESS_STATUS_KEYS: Record<ChannelReadinessStatus, ReadinessTranslationKey> = {
+  ready: 'alertModal.channels.readiness.ready',
+  disabled: 'alertModal.channels.readiness.disabled',
+  missingConfiguration: 'alertModal.channels.readiness.missingConfiguration',
+  missingSecret: 'alertModal.channels.readiness.missingSecret',
+  permissionRequired: 'alertModal.channels.readiness.permissionRequired',
+  permissionDenied: 'alertModal.channels.readiness.permissionDenied',
+  unsupported: 'alertModal.channels.readiness.unsupported',
+}
+
+const CHANNEL_NAME_KEYS = {
+  inApp: 'alertModal.escalation.channel_inApp',
+  email: 'alertModal.escalation.channel_email',
+  webPush: 'alertModal.escalation.channel_webPush',
+  webhook: 'alertModal.escalation.channel_webhook',
+  telegram: 'alertModal.escalation.channel_telegram',
+  discord: 'alertModal.escalation.channel_discord',
+} as const
 
 /**
  * #492 – Per-alert channel routing picker.
@@ -289,11 +323,22 @@ export function AlertModal({
 
   const [form, setForm] = useState<AlertFormData>(emptyForm)
   const [errors, setErrors] = useState<ValidationErrors>({})
+  const [channelReadiness, setChannelReadiness] = useState(() =>
+    checkNotificationReadiness(loadNotifConfig(), loadBotSecrets(), []),
+  )
   // #490 – cached result of the "Test alert" simulation for the current form.
   const [simResult, setSimResult] = useState<SimulatedPoint[] | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElement = useRef<HTMLElement | null>(null)
   const { containerRef, handleKeyDown: trapKeyDown } = useFocusTrap()
+
+  const refreshChannelReadiness = useCallback(() => {
+    const report = checkNotificationReadiness(loadNotifConfig(), loadBotSecrets(), form.channels)
+    setChannelReadiness(report)
+    if (areChannelsReady(report)) {
+      setErrors((previous) => ({ ...previous, channels: undefined }))
+    }
+  }, [form.channels])
 
   useEffect(() => {
     if (isOpen) {
@@ -343,6 +388,17 @@ export function AlertModal({
     }
   }, [isOpen, alert, defaultAssetPair])
 
+  useEffect(() => {
+    if (!isOpen) return
+    refreshChannelReadiness()
+    window.addEventListener('storage', refreshChannelReadiness)
+    window.addEventListener('focus', refreshChannelReadiness)
+    return () => {
+      window.removeEventListener('storage', refreshChannelReadiness)
+      window.removeEventListener('focus', refreshChannelReadiness)
+    }
+  }, [isOpen, refreshChannelReadiness])
+
   // Close on Escape from anywhere while open — the dialog's own onKeyDown only
   // fires once focus has landed inside (via requestAnimationFrame), so a document
   // listener makes close behavior race-free on slow runners.
@@ -375,6 +431,12 @@ export function AlertModal({
       // EscalationPolicyBuilder already renders the specific errors inline.
       const escalationInvalid = form.escalationEnabled && validateEscalationPolicy(form.escalationSteps).length > 0
       if (Object.keys(validationErrors).length === 0 && !escalationInvalid) {
+        const currentReadiness = checkNotificationReadiness(loadNotifConfig(), loadBotSecrets(), form.channels)
+        setChannelReadiness(currentReadiness)
+        if (!areChannelsReady(currentReadiness)) {
+          setErrors({ ...validationErrors, channels: t('alertModal.channels.readiness.blocked') })
+          return
+        }
         onSave(form)
       }
     },
@@ -967,6 +1029,29 @@ export function AlertModal({
             value={form.channels}
             onChange={(channels) => setForm((prev) => ({ ...prev, channels }))}
           />
+          <section
+            aria-labelledby="alert-channel-readiness-title"
+            aria-live="polite"
+            className="mb-6 p-3 bg-gray-800/50 border border-gray-700 rounded-xl"
+          >
+            <h3 id="alert-channel-readiness-title" className="text-sm font-medium text-gray-300 mb-2">
+              {t('alertModal.channels.readiness.title')}
+            </h3>
+            <ul className="space-y-1 text-xs">
+              {channelReadiness.map(({ channel, status }) => (
+                <li key={channel} className={`flex gap-1 ${status === 'ready' ? 'text-green-300' : 'text-amber-300'}`}>
+                  <span>{t(CHANNEL_NAME_KEYS[channel])}:</span>
+                  <span>{t(READINESS_STATUS_KEYS[status])}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] text-gray-500">{t('alertModal.channels.readiness.remoteNote')}</p>
+            {errors.channels && (
+              <p role="alert" className="mt-2 text-xs text-red-400">
+                {errors.channels}
+              </p>
+            )}
+          </section>
 
           {/* Alert simulation (#490) */}
           <AlertSimulationSection
@@ -1009,7 +1094,7 @@ export function AlertModal({
               </button>
               <button
                 type="submit"
-                disabled={rateLimited}
+                disabled={rateLimited || !areChannelsReady(channelReadiness)}
                 className="px-4 py-2.5 text-sm font-medium text-white bg-cyan-600 rounded-xl hover:bg-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 title={rateLimited ? `Too many alerts — try again in ${cooldownSec}s` : undefined}
               >

@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { cleanup, render, screen, fireEvent } from '@testing-library/react'
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { makeAlert } from '../test/fixtures'
 import { checkAccessibility } from '../test/accessibility'
+import { saveBotSecrets } from '../services/botNotifications'
+import { STORAGE_KEYS, writeJson } from '../utils/storage'
 import { AlertModal } from './AlertModal'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  localStorage.clear()
+  sessionStorage.clear()
+})
 
 const defaultProps = {
   isOpen: true,
@@ -18,6 +24,8 @@ const mockAlert = makeAlert({ id: '1', lowerThreshold: 40000 })
 describe('AlertModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    sessionStorage.clear()
   })
 
   it('should have no accessibility violations when open', async () => {
@@ -225,6 +233,34 @@ describe('AlertModal', () => {
     fireEvent.change(screen.getByLabelText('Review reminder (optional)'), { target: { value: '2030-05-06' } })
     await user.click(screen.getByText('Create Alert'))
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ expiryDate: '2030-04-05', reviewDate: '2030-05-06' }))
+  })
+
+  it('blocks saving until a selected channel is locally ready, then refreshes on focus', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    writeJson(STORAGE_KEYS.notificationChannels, {
+      email: { address: '', enabled: false },
+      webPush: { enabled: false },
+      webhook: { url: '', enabled: false },
+      telegram: { chatId: 'chat-1', enabled: true },
+      discord: { channelId: '', enabled: false },
+    })
+    render(<AlertModal {...defaultProps} onSave={onSave} />)
+    fireEvent.change(screen.getByLabelText('Asset Pair'), { target: { value: 'BTC' } })
+    fireEvent.change(screen.getByLabelText('Upper Threshold'), { target: { value: '60000' } })
+    await user.click(screen.getByRole('button', { name: 'Telegram' }))
+
+    const createButton = screen.getByRole('button', { name: 'Create Alert' })
+    expect(createButton).toBeDisabled()
+    expect(screen.getByText('Session-only secret is missing; re-enter it in notification settings')).toBeInTheDocument()
+    expect(onSave).not.toHaveBeenCalled()
+
+    saveBotSecrets({ telegramBotToken: 'session-token', discordWebhookUrl: '' })
+    window.dispatchEvent(new Event('focus'))
+    await waitFor(() => expect(createButton).toBeEnabled())
+    await user.click(createButton)
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ channels: ['telegram'] }))
   })
 })
 
