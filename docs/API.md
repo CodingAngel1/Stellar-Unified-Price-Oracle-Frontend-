@@ -103,12 +103,12 @@ these routes carry standard HTTP caching headers so any conforming
 cache (browser, CDN, SDK-level HTTP cache) can serve repeat reads without
 hitting the origin:
 
-| Endpoint | `Cache-Control` | Notes |
-|---|---|---|
-| `GET /api/prices` | `public, max-age=5, stale-while-revalidate=30` | Aggregated across all pairs; short TTL since it updates continuously. |
-| `GET /api/prices/:pair` | `public, max-age=5, stale-while-revalidate=30` | Same TTL as the all-pairs endpoint. |
-| `GET /api/prices/:pair/history` | `public, max-age=60, stale-while-revalidate=300` | Historical pages are append-only and safe to cache longer. |
-| `POST /api/prices/history/batch` | not cached | Non-idempotent method; cache per-pair history instead. |
+| Endpoint                         | `Cache-Control`                                  | Notes                                                                 |
+| -------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
+| `GET /api/prices`                | `public, max-age=5, stale-while-revalidate=30`   | Aggregated across all pairs; short TTL since it updates continuously. |
+| `GET /api/prices/:pair`          | `public, max-age=5, stale-while-revalidate=30`   | Same TTL as the all-pairs endpoint.                                   |
+| `GET /api/prices/:pair/history`  | `public, max-age=60, stale-while-revalidate=300` | Historical pages are append-only and safe to cache longer.            |
+| `POST /api/prices/history/batch` | not cached                                       | Non-idempotent method; cache per-pair history instead.                |
 
 **`stale-while-revalidate`** lets a cache serve a slightly stale response
 immediately while it revalidates in the background — clients should not
@@ -570,6 +570,22 @@ ws.onclose = () => {
   console.log('Disconnected from price feed')
 }
 ```
+
+The frontend's reconnect indicator records client-side causes without changing
+the WebSocket contract: an offline browser is classified as a **network**
+disconnect, a generic browser transport error or close code `1006` as a
+**browser** disconnect, and an exposed WebSocket close frame as a **server
+response**. Close-frame code and reason are shown when the browser provides
+them. Browsers intentionally hide some transport details, so this is a best-
+effort classification; a `1006` does not prove whether the underlying cause
+was a browser policy or a network intermediary.
+
+When a tab returns to the foreground after being hidden, the frontend
+immediately fetches a fresh all-prices REST snapshot. Live WebSocket values
+that are not newer than that response are discarded so the dashboard cannot
+remain stuck on prices received before background throttling. If the REST
+request fails or returns no data, existing values remain visible and normal
+polling continues; no synthetic price is used.
 
 ### Message Types
 

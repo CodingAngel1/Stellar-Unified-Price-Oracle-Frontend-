@@ -440,6 +440,8 @@ const es = {
     confidence: '{{value}}% confianza',
     updated: 'Actualizado {{time}}',
     historyError: 'Error al cargar el historial de precios: {{message}}',
+    historyStorageWarning:
+      'El almacenamiento del navegador está casi lleno. El navegador podría eliminar el historial de precios guardado localmente; los precios en vivo no se ven afectados.',
     emptyState: {
       title: 'No hay datos de precio disponibles',
       detail: 'No hay datos de precio disponibles para este par.',
@@ -522,6 +524,7 @@ const es = {
     fields: {
       refreshInterval: 'Intervalo de actualización',
       chartTimeRange: 'Rango de tiempo del gráfico',
+      chartHistoryPageSize: 'Puntos del historial por página',
       staleThreshold: 'Umbral de activo desactualizado',
     },
     accessibility: {

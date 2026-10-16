@@ -5,6 +5,7 @@ import { usePriceContext } from '../context/PriceContext'
 import {
   REFRESH_INTERVAL_OPTIONS,
   CHART_RANGE_OPTIONS,
+  CHART_HISTORY_PAGE_SIZE_OPTIONS,
   STALE_THRESHOLD_OPTIONS,
   CHART_TIMEZONE_OPTIONS,
   FORMAT_LOCALE_OPTIONS,
@@ -184,6 +185,28 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 >
                   {REFRESH_INTERVAL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  {t('settings.fields.chartHistoryPageSize')}
+                </label>
+                <select
+                  value={preferences.chartHistoryPageSize}
+                  onChange={(e) =>
+                    updatePreference(
+                      'chartHistoryPageSize',
+                      Number(e.target.value) as typeof preferences.chartHistoryPageSize,
+                    )
+                  }
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                >
+                  {CHART_HISTORY_PAGE_SIZE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
