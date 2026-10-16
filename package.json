@@ -4,6 +4,8 @@
   "version": "1.0.1",
   "type": "module",
   "scripts": {
+    "sdk:build": "tsup --config src/sdk/tsup.config.ts",
+    "sdk:smoke": "node scripts/sdk-smoke.mjs",
     "dev": "vite",
     "dev:https": "HTTPS=true vite",
     "setup-https": "node scripts/setup-https.js",
@@ -39,9 +41,9 @@
   },
   "size-limit": [
     {
-      "name": "Main JS (entry)",
+      "name": "Initial JS (entry chunk)",
       "path": "dist/assets/index-*.js",
-      "limit": "200 kB",
+      "limit": "12 kB",
       "brotli": true
     },
     {
@@ -51,9 +53,9 @@
       "brotli": true
     },
     {
-      "name": "CSS Bundle",
+      "name": "Initial CSS",
       "path": "dist/assets/index-*.css",
-      "limit": "50 kB",
+      "limit": "6 kB",
       "brotli": true
     }
   ],
@@ -79,6 +81,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "tsup": "^8.3.0",
     "@axe-core/playwright": "^4.12.1",
     "@commitlint/cli": "19.8.1",
     "@commitlint/config-conventional": "19.8.1",
@@ -103,6 +106,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "fake-indexeddb": "^6.2.5",
+    "fast-check": "^4.10.2",
     "globals": "^16.0.0",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",

@@ -702,6 +702,60 @@ const en = {
         'Connect a Stellar wallet to use on-chain features like deploying and publishing to the oracle contract.',
     },
   },
+
+  // ── Command palette ───────────────────────────────────────────────────────
+  commandPalette: {
+    title: 'Command palette',
+    open: 'Open command palette',
+    openShort: 'Search',
+    placeholder: 'Type a command or search…',
+    noResults: 'No commands match “{{query}}”',
+    noResultsHint: 'Try a different search term.',
+    resultCount_one: '{{count}} command',
+    resultCount_other: '{{count}} commands',
+    hintNavigate: 'Navigate',
+    hintExecute: 'Execute',
+    hintClose: 'Close',
+    categories: {
+      navigation: 'Navigation',
+      pricePairs: 'Price Pairs',
+      filters: 'Filters & Sort',
+      alerts: 'Alerts',
+      exports: 'Export',
+      theme: 'Theme',
+      savedViews: 'Saved Views',
+    },
+    nav: {
+      webhooks: 'Webhooks',
+      security: 'Security',
+    },
+    filters: {
+      clear: 'Clear all filters',
+      allSources: 'Show all oracle sources',
+      sourceOnly: 'Show only {{source}}',
+      updatedWithin: 'Updated within {{window}}',
+      sortBy: 'Sort by {{field}}',
+      toggleDirection: 'Toggle sort direction',
+    },
+    alerts: {
+      create: 'Create a price alert…',
+      togglePanel: 'Toggle alerts panel',
+    },
+    exports: {
+      csv: 'Export as CSV',
+      json: 'Export as JSON',
+      xlsx: 'Export as XLSX',
+      columns: 'Select export columns…',
+      disabledNoData: 'No data to export',
+      disabledRateLimited: 'Export rate limit reached ({{seconds}}s)',
+    },
+    theme: {
+      light: 'Switch to light theme',
+      dark: 'Switch to dark theme',
+      system: 'Use system theme',
+      toggle: 'Toggle light/dark theme',
+    },
+  },
 } as const
 
 export default en

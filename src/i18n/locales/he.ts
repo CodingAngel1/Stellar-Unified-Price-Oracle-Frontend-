@@ -123,34 +123,6 @@ const he = {
     confidenceTooltip: 'הביטחון משקף עד כמה המחיר עקבי בין מקורות ה-Oracle. 100% אומר שכל המקורות מסכימים לחלוטין.',
   },
 
-  metricHelp: {
-    docsTitle: 'הבנת מדדי המחיר',
-    helpFor: 'עזרה: {{topic}}',
-    readDocs: 'לקריאת מדריך המדדים',
-    topics: {
-      confidence: {
-        title: 'רמת ביטחון',
-        description:
-          'ציון בין 0 ל-1 שמתאר עד כמה מקורות ה-Oracle הזמינים מסכימים. 0.95 הוא 95% ביטחון; אין פירושו שההסתברות שהמחיר נכון היא 95%.',
-      },
-      divergence: {
-        title: 'סטייה',
-        description:
-          'ההפרש באחוזים בין המצרף מחוץ לשרשרת לבין הערך העדכני ביותר של Oracle בשרשרת. הפרש גדול עשוי להעיד על עיכוב בפרסום או על אי-הסכמה בין המקורות.',
-      },
-      staleness: {
-        title: 'עדכניות הנתונים',
-        description:
-          'הזמן שחלף מאז דיווח המחיר. נתונים ישנים עשויים שלא לשקף את תנאי השוק הנוכחיים; סף העדכניות שהוגדר קובע מתי הנתונים נחשבים מיושנים.',
-      },
-      weights: {
-        title: 'משקלי הצבירה',
-        description:
-          'החלק שכל מקור Oracle פעיל תורם למצרף המשוקלל. המשקלים הפעילים מסתכמים ב-100%; מקורות שהוחרגו אינם תורמים.',
-      },
-    },
-  },
-
   // ── PriceTableView ────────────────────────────────────────────────────────
   table: {
     ariaLabel: 'טבלת עדכוני מחיר',
@@ -583,6 +555,60 @@ const he = {
     dragHint: 'גרור לסידור מחדש',
     ariaLabel: 'גרור לסידור מחדש של כרטיסי מחיר',
     dropTarget: 'שחרר כאן',
+  },
+
+  // ── לוח פקודות ────────────────────────────────────────────────────────────
+  commandPalette: {
+    title: 'לוח פקודות',
+    open: 'פתח לוח פקודות',
+    openShort: 'חיפוש',
+    placeholder: 'הקלד פקודה או חפש…',
+    noResults: 'אין פקודות שתואמות “{{query}}”',
+    noResultsHint: 'נסה מונח חיפוש אחר.',
+    resultCount_one: 'פקודה {{count}}',
+    resultCount_other: '{{count}} פקודות',
+    hintNavigate: 'ניווט',
+    hintExecute: 'הפעלה',
+    hintClose: 'סגירה',
+    categories: {
+      navigation: 'ניווט',
+      pricePairs: 'זוגות מחירים',
+      filters: 'סינון ומיון',
+      alerts: 'התראות',
+      exports: 'ייצוא',
+      theme: 'ערכת נושא',
+      savedViews: 'תצוגות שמורות',
+    },
+    nav: {
+      webhooks: 'Webhooks',
+      security: 'אבטחה',
+    },
+    filters: {
+      clear: 'נקה את כל המסננים',
+      allSources: 'הצג את כל מקורות האורקל',
+      sourceOnly: 'הצג רק {{source}}',
+      updatedWithin: 'עודכן בתוך {{window}}',
+      sortBy: 'מיין לפי {{field}}',
+      toggleDirection: 'החלף כיוון מיון',
+    },
+    alerts: {
+      create: 'צור התראת מחיר…',
+      togglePanel: 'החלף לוח התראות',
+    },
+    exports: {
+      csv: 'ייצא כ‑CSV',
+      json: 'ייצא כ‑JSON',
+      xlsx: 'ייצא כ‑XLSX',
+      columns: 'בחר עמודות ייצוא…',
+      disabledNoData: 'אין נתונים לייצוא',
+      disabledRateLimited: 'הגעת למגבלת הייצוא ({{seconds}} שנ׳)',
+    },
+    theme: {
+      light: 'עבור לערכת נושא בהירה',
+      dark: 'עבור לערכת נושא כהה',
+      system: 'השתמש בערכת הנושא של המערכת',
+      toggle: 'החלף בין בהיר לכהה',
+    },
   },
 } as const
 

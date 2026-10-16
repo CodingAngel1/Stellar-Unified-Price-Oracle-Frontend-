@@ -5,6 +5,8 @@
  * health status and historical price-feed data.
  *
  * Columns: Rank | Source | Status | Uptime % | Mean Latency (ms) | Staleness | Trend
+ * (the latency header is overridable via `latencyLabel` when the supplied health
+ * records carry a derived rather than a measured latency).
  *
  * Time-window buttons (24h / 7d / 30d) control which slice of priceHistory is
  * used for metric computation. An Export button downloads the current metrics
@@ -15,6 +17,7 @@ import type { SourceHealth, PriceHistoryEntry } from '../types'
 import { SOURCE_COLORS } from '../utils/sourceColors'
 import { computeSourceMetrics, exportLeaderboardCsv, exportLeaderboardJson } from '../utils/export'
 import type { SourceReliabilityMetric } from '../utils/export'
+import { ATTRIBUTION_DEFINITION } from '../analytics/sourceAttribution'
 import { SourceHistoryDrilldown } from './SourceHistoryDrilldown'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -103,6 +106,15 @@ export interface ReliabilityLeaderboardProps {
    * contribution metrics. Optional — latency-only view is shown when absent.
    */
   priceHistory?: Record<string, PriceHistoryEntry[]>
+  /**
+   * Header for the latency column. Override when the incoming `SourceHealth`
+   * records do not carry a measured latency — e.g. the records produced by
+   * `deriveSourceHealths`, whose `latency` is synthesised from staleness.
+   * Defaults to the measured-latency label.
+   */
+  latencyLabel?: string
+  /** Optional caption shown under the header, e.g. a provenance caveat. */
+  caption?: string
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -110,6 +122,8 @@ export interface ReliabilityLeaderboardProps {
 export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
   sourceHealths,
   priceHistory = {},
+  latencyLabel = 'Mean Latency (ms)',
+  caption,
 }: ReliabilityLeaderboardProps): ReactElement {
   const [window, setWindow] = useState<TimeWindow>('24h')
   const [drilldownSource, setDrilldownSource] = useState<string | null>(null)
@@ -169,6 +183,10 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
             <p className="text-xs text-gray-400 mt-0.5">
               Ranked by reliability score & uptime over the selected window
             </p>
+            <p className="text-xs text-gray-500 mt-0.5" data-testid="metric-definition">
+              Window: {WINDOW_LABELS[window]}. {ATTRIBUTION_DEFINITION}
+            </p>
+            {caption && <p className="text-xs text-gray-500 mt-0.5">{caption}</p>}
           </div>
 
           <div className="flex items-center gap-2">
@@ -248,17 +266,15 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
             <table className="w-full text-sm" aria-label="Source reliability metrics">
               <thead>
                 <tr className="border-b border-gray-800">
-                  {['Rank', 'Source', 'Score', 'Status', 'Uptime %', 'Mean Latency (ms)', 'Staleness', 'Trend'].map(
-                    (col) => (
-                      <th
-                        key={col}
-                        scope="col"
-                        className="px-4 py-3 text-start text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap"
-                      >
-                        {col}
-                      </th>
-                    ),
-                  )}
+                  {['Rank', 'Source', 'Score', 'Status', 'Uptime %', latencyLabel, 'Staleness', 'Trend'].map((col) => (
+                    <th
+                      key={col}
+                      scope="col"
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap"
+                    >
+                      {col}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>

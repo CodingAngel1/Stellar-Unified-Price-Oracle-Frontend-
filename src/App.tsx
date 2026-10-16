@@ -8,7 +8,16 @@ import { DashboardSkeleton } from './components/Skeletons/DashboardSkeleton'
 import { PriceDetailSkeleton } from './components/PriceDetailSkeleton'
 import { ApiDocsSkeleton } from './components/Skeletons/ApiDocsSkeleton'
 import { NotFoundSkeleton } from './components/Skeletons/NotFoundSkeleton'
+import { lazy } from 'react'
+// Developer-only; the ternary is statically replaced by Vite so the chunk is
+// dropped from production bundles unless VITE_ENABLE_KPI_INSIGHTS=true.
+const KpiInsights =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_KPI_INSIGHTS === 'true'
+    ? lazy(() => import('./pages/KpiInsights'))
+    : null
 import { PriceProvider } from './context/PriceContext'
+import { CommandRegistryProvider } from './context/CommandRegistryContext'
+import { CommandPaletteProvider } from './context/CommandPaletteContext'
 import { KeyboardShortcutsProvider } from './context/KeyboardShortcutsContext'
 import { AlertsProvider, useAlerts } from './hooks/useAlerts'
 import { ToastProvider } from './context/ToastContext'
@@ -32,9 +41,13 @@ import { usePriceContext } from './context/PriceContext'
 import { usePriceAnnouncer } from './hooks/usePriceAnnouncer'
 import { useAlertAnnouncer } from './hooks/useAlertAnnouncer'
 import { Webhooks } from './pages/Webhooks'
+import { Moderation } from './pages/Moderation'
+import { Transparency } from './pages/Transparency'
+import { DeveloperInsights } from './components/DeveloperInsights'
 import {
   LazyApiDocs,
   LazyDashboard,
+  LazyGovernance,
   LazyLanding,
   LazyNotFound,
   LazyPriceDetail,
@@ -156,6 +169,9 @@ export function AppContent(): ReactElement {
               }
             />
             <Route path="/webhooks" element={<Webhooks />} />
+            <Route path="/moderation" element={<Moderation />} />
+            <Route path="/transparency" element={<Transparency />} />
+            <Route path="/developer-insights" element={<DeveloperInsights />} />
             <Route
               path="/security"
               element={
@@ -164,6 +180,24 @@ export function AppContent(): ReactElement {
                 </RouteSuspense>
               }
             />
+            <Route
+              path="/governance"
+              element={
+                <RouteSuspense fallback={<DashboardSkeleton />}>
+                  <LazyGovernance />
+                </RouteSuspense>
+              }
+            />
+            {KpiInsights && (
+              <Route
+                path="/dev/kpi"
+                element={
+                  <RouteSuspense fallback={<DashboardSkeleton />}>
+                    <KpiInsights />
+                  </RouteSuspense>
+                }
+              />
+            )}
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route
               path="*"
@@ -196,8 +230,14 @@ export default function App(): ReactElement {
                 <WalletProvider>
                   <PriceProvider>
                     <KeyboardShortcutsProvider>
-                      <AppContent />
-                      {import.meta.env.DEV && <PerformanceOverlay />}
+                      {/* Registry first: the palette provider registers app-wide
+                          commands and renders the palette that reads them. */}
+                      <CommandRegistryProvider>
+                        <CommandPaletteProvider>
+                          <AppContent />
+                          {import.meta.env.DEV && <PerformanceOverlay />}
+                        </CommandPaletteProvider>
+                      </CommandRegistryProvider>
                     </KeyboardShortcutsProvider>
                   </PriceProvider>
                 </WalletProvider>

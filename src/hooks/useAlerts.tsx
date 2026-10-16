@@ -1,3 +1,4 @@
+import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import { useState, useCallback, useEffect, useRef, createContext, useContext, ReactNode } from 'react'
 import type {
   Alert,
@@ -11,7 +12,8 @@ import { migrateLegacyAlertConditions } from '../types/alerts'
 import { usePriceContext } from '../context/PriceContext'
 import { AlertsArraySchema } from '../api/schemas'
 import { createBroadcastChannel } from '../utils/broadcastChannel'
-import { readRaw, writeJson, STORAGE_KEYS } from '../utils/storage'
+import { readRaw, STORAGE_KEYS } from '../utils/storage'
+import { persistDurable } from '../utils/durableWrites'
 import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
 import { evaluateCompoundCondition } from '../utils/alertEvaluator'
@@ -22,6 +24,9 @@ import {
   buildTriggerHistoryEntry,
   buildEscalationHistoryEntry,
   appendHistoryEntries,
+  recordAlertEvents,
+  importAlertHistoryToEngine,
+  clearAlertEventSeries,
 } from '../services/alertHistory'
 import { loadBotSecrets, sendTelegramMessage, sendDiscordMessage } from '../services/botNotifications'
 import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../services/notificationConfig'
@@ -231,8 +236,13 @@ function loadAlerts(): Alert[] {
   }
 }
 
+/**
+ * Persists alerts durably. A `localStorage` write can fail (full quota, private
+ * mode); `persistDurable` queues the value for retry instead of dropping it
+ * silently, so an alert the user can see is never quietly lost on reload.
+ */
 function saveAlerts(alerts: Alert[]): void {
-  writeJson(STORAGE_KEYS.alerts, alerts)
+  persistDurable(STORAGE_KEYS.alerts, alerts)
 }
 
 const AlertsContext = createContext<AlertsContextType | null>(null)
@@ -264,6 +274,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const historyRef = useRef(history)
   historyRef.current = history
   useEffect(() => registerMemoryProbe('alertHistory', () => historyRef.current.length), [])
+
+  // Backfill the existing localStorage log into the durable time-series the
+  // first time the provider mounts (idempotent — see importAlertHistoryToEngine).
+  useEffect(() => {
+    importAlertHistoryToEngine()
+  }, [])
 
   const { livePrices } = usePriceContext()
 
@@ -329,12 +345,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
         // #485 – compound evaluation against the alert's (possibly legacy-migrated) condition group
         const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
-        const state: PriceEvaluationState = { price: currentPrice, percentageChange: { [window]: pctChange } }
+        const state: PriceEvaluationState = { price: currentPrice, percentageChange: { [window]: pctChange }, nowMs: Date.now() }
         triggered = evaluateCompoundCondition(group, state)
       } else {
         // ── Absolute threshold evaluation, via the compound evaluator (#485) ─
         const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
-        const state: PriceEvaluationState = { price: currentPrice }
+        const state: PriceEvaluationState = { price: currentPrice, nowMs: Date.now() }
         triggered = evaluateCompoundCondition(group, state)
       }
 
@@ -464,6 +480,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     if (firedEntries.length > 0) {
       // Newest first, capped (#309)
       setHistory((prev) => appendHistoryEntries(prev, firedEntries))
+      // Mirror into the time-series engine for retention/rollups/range queries.
+      recordAlertEvents(firedEntries)
     }
   }, [livePrices, alerts])
 
@@ -567,6 +585,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         percentageBaselineTimestamp: null,
         escalationState: null,
       }
+      recordRuleVersion(newAlert, newAlert.createdAt)
       setAlerts((prev) => [...prev, newAlert])
       return newAlert
     },
@@ -574,10 +593,20 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   )
 
   const updateAlert = useCallback((id: string, updates: Partial<Omit<Alert, 'id' | 'createdAt'>>) => {
-    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)))
+    setAlerts((prev) =>
+      prev.map((a) => {
+        if (a.id !== id) return a
+        const next = { ...a, ...updates }
+        // #645 – append a rule version (idempotent: runtime-only changes and
+        // StrictMode double-invocation add nothing).
+        recordRuleVersion(next)
+        return next
+      }),
+    )
   }, [])
 
   const removeAlert = useCallback((id: string) => {
+    removeRuleHistory(id)
     setAlerts((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
@@ -632,7 +661,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /** Clears the fired-alert history log (#309) */
-  const clearAlertHistory = useCallback(() => setHistory([]), [])
+  const clearAlertHistory = useCallback(() => {
+    setHistory([])
+    clearAlertEventSeries()
+  }, [])
 
   const value: AlertsContextType = {
     alerts,

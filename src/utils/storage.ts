@@ -33,6 +33,7 @@
  */
 
 import { idbCache } from '../hooks/useIndexedDB'
+import { timeSeries } from '../storage/timeseries'
 
 /**
  * Every `localStorage` key the app owns.
@@ -64,6 +65,14 @@ export const STORAGE_KEYS = {
   soundPreferences: 'sound-preferences',
   /** Recently-used UI language codes, newest first (#373). No PII. */
   recentLanguages: 'recent-languages',
+  /** Developer-selected Stellar network (#633): mainnet / testnet / futurenet. No PII. */
+  activeNetwork: 'active-network',
+  /** Onboarding tour progress (#701): last step reached + completed/dismissed flag. No PII. */
+  onboardingTour: 'onboarding-tour',
+  /** Community moderation reports + decisions (#699). Reporter identity is never stored. */
+  moderationReports: 'moderation-reports',
+  /** Dated transparency report snapshots (#700), keyed by period. Aggregates only. */
+  transparencyArchive: 'transparency-archive',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
@@ -80,13 +89,41 @@ export function readRaw(key: StorageKey): string | null {
   }
 }
 
-/** Writes a raw string. No-ops when storage is unavailable. */
-export function writeRaw(key: StorageKey, value: string): void {
+/** Outcome of a raw storage write. */
+export interface RawWriteResult {
+  ok: boolean
+  /** Failure message when `ok` is `false` (empty when storage is unavailable anonymously). */
+  error?: string
+}
+
+/**
+ * Writes a raw string and reports whether it landed.
+ *
+ * `localStorage.setItem` throws for a whole class of conditions the app must
+ * survive — Safari private mode, blocked cookies, and a full quota — and this
+ * is the only place that catches them. Prefer this over {@link writeRaw} when
+ * the failure is meaningful: a dropped write means the in-memory state the
+ * user is looking at is no longer on disk.
+ */
+export function tryWriteRaw(key: StorageKey, value: string): RawWriteResult {
   try {
     localStorage.setItem(key, value)
-  } catch {
-    /* storage unavailable (private mode, quota, blocked cookies) */
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
+}
+
+/**
+ * Writes a raw string. Returns `false` when storage is unavailable (private
+ * mode, quota, blocked cookies) or the write failed for any other reason.
+ *
+ * A `false` return is a signal, not an error — callers that must not lose the
+ * write should route through `persistDurable` in `utils/durableWrites.ts`,
+ * which retries it until it lands.
+ */
+export function writeRaw(key: StorageKey, value: string): boolean {
+  return tryWriteRaw(key, value).ok
 }
 
 /**
@@ -108,12 +145,16 @@ export function readJson<T>(key: StorageKey, fallback: T, validate?: (value: unk
   }
 }
 
-/** Serializes and writes JSON. No-ops when storage is unavailable. */
-export function writeJson(key: StorageKey, value: unknown): void {
+/**
+ * Serializes and writes JSON. Returns `false` when the value was not
+ * serializable or the write did not land — see {@link writeRaw}.
+ */
+export function writeJson(key: StorageKey, value: unknown): boolean {
   try {
-    writeRaw(key, JSON.stringify(value))
+    return writeRaw(key, JSON.stringify(value))
   } catch {
     /* value was not serializable */
+    return false
   }
 }
 
@@ -127,6 +168,23 @@ export function remove(key: StorageKey): void {
 }
 
 /**
+ * Reset hook for the durable-write outbox, registered by
+ * `utils/durableWrites.ts` at module load.
+ *
+ * {@link clearAllData} has to drop in-flight pending writes along with the data
+ * they would restore: a failed alerts write queued earlier in the session would
+ * otherwise retry *after* the wipe and resurrect the deleted alerts. The hook
+ * keeps the dependency one-directional (`durableWrites` → `storage`), so there
+ * is no import cycle.
+ */
+let durableResetHook: (() => void) | null = null
+
+/** @internal — called by `utils/durableWrites.ts` on module load. */
+export function _registerDurableReset(fn: () => void): void {
+  durableResetHook = fn
+}
+
+/**
  * Removes every piece of user data the app has persisted — all registered
  * `localStorage` keys plus the IndexedDB caches.
  *
@@ -134,10 +192,12 @@ export function remove(key: StorageKey): void {
  * in {@link STORAGE_KEYS} are touched, so unrelated data on the origin is left alone.
  */
 export async function clearAllData(): Promise<void> {
+  durableResetHook?.()
   for (const key of Object.values(STORAGE_KEYS)) {
     remove(key)
   }
   await Promise.all(IDB_STORES.map((store) => idbCache.clear(store)))
+  await timeSeries.clearAll()
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +314,9 @@ function formatBytes(bytes: number): string {
  * | prices      | 5 min    | Aggregated price cache. LRU-evicted at 50 MB.          |
  * | history     | 5 min    | Price history cache. Same eviction policy.             |
  * | preferences | ∞        | User display settings. Cleared by clearAllData().      |
+ * | tsPoints    | per-tier | Time-series points. Retention + rollups, see           |
+ * |             |          | docs/STORAGE_BUDGET.md.                                 |
+ * | tsSeries    | ∞        | Time-series registrations (retention policy).          |
  *
  * Nothing sensitive is stored in either mechanism.
  * See `AGENTS.md` for the full data-handling policy.
@@ -316,6 +379,17 @@ export const STORAGE_INVENTORY = Object.freeze({
       store: 'preferences' as const,
       ttlMs: Infinity,
       description: 'User preferences. No expiry; cleared by clearAllData().',
+    },
+    {
+      store: 'tsPoints' as const,
+      ttlMs: Infinity,
+      description:
+        'Time-series points (raw/hourly/daily). Tier retention windows, rollups, and index-backed range queries.',
+    },
+    {
+      store: 'tsSeries' as const,
+      ttlMs: Infinity,
+      description: 'Time-series series registrations (resolved retention policy).',
     },
   ],
 })

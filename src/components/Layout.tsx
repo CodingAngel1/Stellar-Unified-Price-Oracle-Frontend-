@@ -1,13 +1,17 @@
-import { Suspense, useState, type ReactNode, type ReactElement } from 'react'
+import { Suspense, useMemo, useState, type ReactNode, type ReactElement } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAlerts } from '../hooks/useAlerts'
+import { useCommandPalette } from '../context/CommandPaletteContext'
+import { useRegisterCommands } from '../context/CommandRegistryContext'
+import type { Command } from '../types/commands'
 import {
   LazyAlertPanel,
   LazySettingsPanel,
   preloadAlertPanel,
   preloadApiDocs,
   preloadDashboard,
+  preloadGovernance,
   preloadLanding,
   preloadSettingsPanel,
 } from '../utils/chunks'
@@ -66,15 +70,35 @@ function BottomTab({
   )
 }
 
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
+const PALETTE_SHORTCUT = IS_MAC ? '⌘K' : 'Ctrl K'
+
 export function Layout({ children }: { children: ReactNode }): ReactElement {
   const { activeCount, togglePanel, isPanelOpen } = useAlerts()
   const { t } = useTranslation()
+  const { open: openPalette } = useCommandPalette()
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  // The alerts panel is available on every page, so its toggle lives here.
+  const alertPanelCommands = useMemo<Command[]>(() => {
+    return [
+      {
+        id: 'alerts:toggle-panel',
+        label: t('commandPalette.alerts.togglePanel'),
+        category: 'alerts',
+        hint: t('alertPanel.title'),
+        handler: togglePanel,
+      },
+    ]
+  }, [t, togglePanel])
+
+  useRegisterCommands(alertPanelCommands)
 
   const NAV_ITEMS = [
     { path: '/', label: t('nav.home'), preload: preloadLanding },
     { path: '/dashboard', label: t('nav.dashboard'), preload: preloadDashboard },
     { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
+    { path: '/governance', label: 'Governance', preload: preloadGovernance },
     { path: '/webhooks', label: 'Webhooks' },
   ]
 
@@ -127,6 +151,28 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
 
           {/* Right actions — in RTL these will naturally appear on the start */}
           <div className="flex items-center gap-2">
+            {/* Command palette affordance — the primary surface for power users,
+                so it gets a visible trigger as well as the Ctrl/Cmd+K shortcut. */}
+            <button
+              type="button"
+              onClick={openPalette}
+              className="hidden sm:flex items-center gap-2 min-h-[44px] px-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              aria-label={t('commandPalette.open')}
+              title={t('commandPalette.open')}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <span className="hidden md:inline text-sm">{t('commandPalette.openShort')}</span>
+              <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-gray-400">
+                {PALETTE_SHORTCUT}
+              </kbd>
+            </button>
             {/* Client-side outbound back-pressure (#330). Renders nothing unless
                 requests are queued or the server asked us to pause. */}
             <QueuedRequestsBadge />
@@ -192,6 +238,14 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
         <span aria-hidden="true"> · </span>
         <NavLink to="/security" className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400">
           {t('footer.securityLink')}
+        </NavLink>
+        <span aria-hidden="true"> · </span>
+        <NavLink to="/transparency" className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400">
+          Transparency
+        </NavLink>
+        <span aria-hidden="true"> · </span>
+        <NavLink to="/moderation" className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400">
+          Moderation
         </NavLink>
       </footer>
 
