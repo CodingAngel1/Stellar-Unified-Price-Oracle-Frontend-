@@ -11,6 +11,7 @@ import {
   Line,
   LineChart,
   ReferenceLine,
+  ReferenceArea,
 } from 'recharts'
 import type { TooltipPayload } from 'recharts'
 import type { PriceHistoryEntry } from '../types'
@@ -332,6 +333,7 @@ function ChartContent({
 
   const tzAbbr = getTimezoneAbbr(timezone)
   const filteredData = filterByRange(data, timeRange)
+  const potentialGaps = useMemo(() => findPriceHistoryGaps(filteredData), [filteredData])
 
   const chartData = filteredData
     .slice()
@@ -797,6 +799,17 @@ function ChartContent({
                   />
                 }
               />
+              {potentialGaps.map((gap) => (
+                <ReferenceArea
+                  key={`${gap.startTimestamp}-${gap.endTimestamp}`}
+                  x1={formatChartTimeWithTz(gap.startTimestamp, timezone)}
+                  x2={formatChartTimeWithTz(gap.endTimestamp, timezone)}
+                  fill="#f59e0b"
+                  fillOpacity={0.12}
+                  stroke="#f59e0b"
+                  strokeDasharray="4 2"
+                />
+              ))}
               {/* #305 – Annotations as vertical reference lines */}
               {localAnnotations.map((ann) => {
                 const annTime = formatChartTimeWithTz(ann.timestamp, timezone)
@@ -881,6 +894,17 @@ function ChartContent({
               <Tooltip
                 content={<CustomTooltip tzAbbr={tzAbbr} allData={visibleData as ChartPoint[]} palette={palette} normalised={false} />}
               />
+              {potentialGaps.map((gap) => (
+                <ReferenceArea
+                  key={`${gap.startTimestamp}-${gap.endTimestamp}`}
+                  x1={formatChartTimeWithTz(gap.startTimestamp, timezone)}
+                  x2={formatChartTimeWithTz(gap.endTimestamp, timezone)}
+                  fill="#f59e0b"
+                  fillOpacity={0.12}
+                  stroke="#f59e0b"
+                  strokeDasharray="4 2"
+                />
+              ))}
               {/* #305 – Annotations as vertical reference lines */}
               {localAnnotations.map((ann) => {
                 const annTime = formatChartTimeWithTz(ann.timestamp, timezone)

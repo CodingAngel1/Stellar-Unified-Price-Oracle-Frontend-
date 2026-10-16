@@ -10,6 +10,25 @@ export const PriceDataSchema = z.object({
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
+  pairMetadata: z
+    .object({
+      baseUnit: z.string().min(1).nullable(),
+      quoteUnit: z.string().min(1).nullable(),
+      priceScale: z.number().int().min(0).max(100).nullable(),
+      feedSymbols: z
+        .record(
+          z.string().min(1),
+          z.object({
+            status: z.enum(['matched', 'renamed', 'unknown', 'missing']),
+            canonicalSymbol: z.string().min(1).nullable(),
+            observedSymbol: z.string().min(1).nullable(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  sourcePrices: z.record(z.string().min(1), z.number().finite()).optional(),
+  sourcePriceDecimals: z.record(z.string().min(1), z.number().int().min(0).max(100)).optional(),
 })
 
 /**
