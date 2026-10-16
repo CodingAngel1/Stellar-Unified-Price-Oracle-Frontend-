@@ -346,6 +346,23 @@ const ja = {
     tabs: {
       alerts: 'アラート',
       history: '履歴',
+      archived: 'アーカイブ済み',
+    },
+    bulk: {
+      selectRules: 'ルールを選択（{{count}}件選択中）',
+      selectAll: 'すべて選択',
+      clearSelection: '選択を解除',
+      pause: '選択したルールを一時停止',
+      archive: '選択したルールをアーカイブ',
+      editDates: '日付を一括編集',
+      applyExpiry: '有効期限を変更',
+      applyReview: '確認リマインダーを変更',
+      expiryHelp: '日付を選択するか、空欄にして有効期限を解除します。現地時間の最終時刻に適用されます。',
+      reviewHelp: '日付を選択するか、空欄にしてリマインダーを解除します。',
+      saveDates: '日付の変更を適用',
+      cancel: 'キャンセル',
+      restore: 'ルールを復元',
+      archivedEmpty: 'アーカイブ済みのルールはありません',
     },
     history: {
       empty: 'まだ発火したアラートはありません',

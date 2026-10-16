@@ -9,3 +9,9 @@ schedule.
 
 Alert rules are stored in browser storage. These lifecycle fields are frontend
 state and are not sent to an upstream API.
+
+The alert panel supports selecting multiple non-archived rules to pause them,
+change expiry/review dates, or archive them. A blank date clears that field only
+when its corresponding "Change" checkbox is selected. Archived rules are retained
+locally, skipped during evaluation, and can be restored paused from the Archived
+tab. Restoring never silently re-enables a rule.

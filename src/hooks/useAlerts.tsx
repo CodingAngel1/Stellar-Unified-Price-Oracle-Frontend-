@@ -1,5 +1,5 @@
-import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import { useState, useCallback, useEffect, useRef, createContext, useContext, ReactNode } from 'react'
+import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import type {
   Alert,
   AlertHistoryEntry,
@@ -32,8 +32,8 @@ import { loadBotSecrets, sendTelegramMessage, sendDiscordMessage } from '../serv
 import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../services/notificationConfig'
 import { stepRetest, initialRetestState } from '../utils/retestDetector'
 import { registerMemoryProbe } from '../utils/memoryProfiler'
-import { useRateLimit } from './useRateLimit'
 import { isAlertExpired } from '../utils/alertLifecycle'
+import { useRateLimit } from './useRateLimit'
 
 const alertsChannel = createBroadcastChannel<Alert[]>('kiro-alerts')
 const alertsHistoryChannel = createBroadcastChannel<AlertHistoryEntry[]>('kiro-alerts-history')
@@ -293,9 +293,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       const now = Date.now()
       setAlerts((prev) => {
         const changed = prev.some(
-          (a) =>
-            (a.snoozedUntil !== null && a.snoozedUntil <= now) ||
-            (a.active && isAlertExpired(a.expiresAt, now)),
+          (a) => (a.snoozedUntil !== null && a.snoozedUntil <= now) || (a.active && isAlertExpired(a.expiresAt, now)),
         )
         if (!changed) return prev
         return prev.map((a) => ({
@@ -315,6 +313,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     const firedEntries: AlertHistoryEntry[] = []
 
     const newAlerts = alerts.map((alert) => {
+      if (alert.archived) return alert
       if (isAlertExpired(alert.expiresAt, now)) {
         if (alert.active) changed = true
         return alert.active ? { ...alert, active: false } : alert
@@ -358,7 +357,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
         // #485 – compound evaluation against the alert's (possibly legacy-migrated) condition group
         const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
-        const state: PriceEvaluationState = { price: currentPrice, percentageChange: { [window]: pctChange }, nowMs: Date.now() }
+        const state: PriceEvaluationState = {
+          price: currentPrice,
+          percentageChange: { [window]: pctChange },
+          nowMs: Date.now(),
+        }
         triggered = evaluateCompoundCondition(group, state)
       } else {
         // ── Absolute threshold evaluation, via the compound evaluator (#485) ─
@@ -596,6 +599,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         snoozedUntil: null,
         expiresAt: alert.expiresAt ?? null,
         reviewAt: alert.reviewAt ?? null,
+        archived: alert.archived ?? false,
         percentageBaselinePrice: null,
         percentageBaselineTimestamp: null,
         escalationState: null,
@@ -620,20 +624,35 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const updateAlerts = useCallback((ids: string[], updates: Partial<Omit<Alert, 'id' | 'createdAt'>>) => {
+    const selectedIds = new Set(ids)
+    if (selectedIds.size === 0) return
+    setAlerts((prev) =>
+      prev.map((alert) => {
+        if (!selectedIds.has(alert.id)) return alert
+        const next = { ...alert, ...updates }
+        recordRuleVersion(next)
+        return next
+      }),
+    )
+  }, [])
+
   const removeAlert = useCallback((id: string) => {
     removeRuleHistory(id)
     setAlerts((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
   const getAlertsForPair = useCallback(
-    (assetPair: string) => alerts.filter((a) => a.assetPair === assetPair && a.active),
+    (assetPair: string) => alerts.filter((a) => a.assetPair === assetPair && a.active && !a.archived),
     [alerts],
   )
 
-  const activeCount = alerts.filter((a) => a.active && (a.snoozedUntil === null || a.snoozedUntil <= Date.now())).length
+  const activeCount = alerts.filter(
+    (a) => a.active && !a.archived && (a.snoozedUntil === null || a.snoozedUntil <= Date.now()),
+  ).length
 
   const hasAlertsForPair = useCallback(
-    (assetPair: string) => alerts.some((a) => a.assetPair === assetPair && a.active),
+    (assetPair: string) => alerts.some((a) => a.assetPair === assetPair && a.active && !a.archived),
     [alerts],
   )
 
@@ -685,6 +704,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     alerts,
     addAlert,
     updateAlert,
+    updateAlerts,
     removeAlert,
     getAlertsForPair,
     hasAlertsForPair,

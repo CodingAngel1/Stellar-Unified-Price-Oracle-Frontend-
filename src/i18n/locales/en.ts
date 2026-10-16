@@ -367,6 +367,23 @@ const en = {
     tabs: {
       alerts: 'Alerts',
       history: 'History',
+      archived: 'Archived',
+    },
+    bulk: {
+      selectRules: 'Select rules ({{count}} selected)',
+      selectAll: 'Select all',
+      clearSelection: 'Clear selection',
+      pause: 'Pause selected',
+      archive: 'Archive selected',
+      editDates: 'Bulk edit dates',
+      applyExpiry: 'Change expiry date',
+      applyReview: 'Change review reminder',
+      expiryHelp: 'Choose a date, or leave blank to clear expiry. Expiry uses local end-of-day.',
+      reviewHelp: 'Choose a date, or leave blank to clear the reminder.',
+      saveDates: 'Apply date changes',
+      cancel: 'Cancel',
+      restore: 'Restore rule',
+      archivedEmpty: 'No archived rules',
     },
     history: {
       empty: 'No alerts have fired yet',

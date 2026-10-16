@@ -42,11 +42,11 @@ import { formatPrice } from '../utils/format'
 import type { Alert, AlertSnoozeDuration } from '../types'
 import { computeAlertStats, alertStatsToExportRow } from '../utils/alertAnalytics'
 import { toCsv, downloadFile } from '../utils/export'
+import { isAlertExpired, localDateToTimestamp } from '../utils/alertLifecycle'
 import { useAlertHealth } from '../hooks/useAlertHealth'
 import type { AlertHealthFlag } from '../utils/alertHealthCheck'
 import { AlertHistoryLog } from './AlertHistoryLog'
 import { AlertAnalyticsStrip } from './AlertAnalyticsStrip'
-import { isAlertExpired } from '../utils/alertLifecycle'
 
 /** #492 – Renders an alert's per-alert routing override, or nothing when unset. */
 function RoutingBadge({ alert }: { alert: Alert }): ReactElement | null {
@@ -227,6 +227,7 @@ export function AlertPanel(): ReactElement | null {
     alertHistory,
     removeAlert,
     updateAlert,
+    updateAlerts,
     markAsRead,
     isPanelOpen,
     togglePanel,
@@ -236,8 +237,15 @@ export function AlertPanel(): ReactElement | null {
   } = useAlerts()
   const { t } = useTranslation()
   const [snoozeOpenId, setSnoozeOpenId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'alerts' | 'history'>('alerts')
+  const [activeTab, setActiveTab] = useState<'alerts' | 'history' | 'archived'>('alerts')
   const [now, setNow] = useState(() => Date.now())
+  const [selectedAlertIds, setSelectedAlertIds] = useState<Set<string>>(() => new Set())
+  const [bulkEditorOpen, setBulkEditorOpen] = useState(false)
+  const [applyExpiryDate, setApplyExpiryDate] = useState(false)
+  const [applyReviewDate, setApplyReviewDate] = useState(false)
+  const [bulkExpiryDate, setBulkExpiryDate] = useState('')
+  const [bulkReviewDate, setBulkReviewDate] = useState('')
+  const [bulkDateError, setBulkDateError] = useState('')
   // #493 – never-firing misconfiguration flags for active alerts.
   const { flags: healthFlags, dismiss: dismissHealthFlag } = useAlertHealth(alerts)
 
@@ -256,15 +264,17 @@ export function AlertPanel(): ReactElement | null {
 
   if (!isPanelOpen) return null
 
-  const snoozedAlerts = alerts.filter((a) => a.snoozedUntil !== null && a.snoozedUntil > now)
-  const triggeredAlerts = alerts.filter(
+  const visibleAlerts = alerts.filter((alert) => !alert.archived)
+  const archivedAlerts = alerts.filter((alert) => alert.archived)
+  const snoozedAlerts = visibleAlerts.filter((a) => a.snoozedUntil !== null && a.snoozedUntil > now)
+  const triggeredAlerts = visibleAlerts.filter(
     (a) => a.lastTriggeredAt !== null && (a.snoozedUntil === null || a.snoozedUntil <= now),
   )
-  const activeAlerts = alerts.filter(
+  const activeAlerts = visibleAlerts.filter(
     (a) => a.active && a.lastTriggeredAt === null && (a.snoozedUntil === null || a.snoozedUntil <= now),
   )
-  const firedOnceAlerts = alerts.filter((a) => !a.active && a.triggerOnce && a.lastTriggeredAt !== null)
-  const inactiveAlerts = alerts.filter(
+  const firedOnceAlerts = visibleAlerts.filter((a) => !a.active && a.triggerOnce && a.lastTriggeredAt !== null)
+  const inactiveAlerts = visibleAlerts.filter(
     (a) => !a.active && a.lastTriggeredAt === null && (a.snoozedUntil === null || a.snoozedUntil <= now),
   )
 
@@ -308,6 +318,37 @@ export function AlertPanel(): ReactElement | null {
     setSnoozeOpenId(null)
   }
 
+  const handleBulkDateSave = (event: React.FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    const updates: Partial<Alert> = {}
+    if (applyExpiryDate) {
+      const expiresAt = localDateToTimestamp(bulkExpiryDate, true)
+      if (bulkExpiryDate && expiresAt === null) {
+        setBulkDateError(t('alertModal.validation.invalidDate'))
+        return
+      }
+      updates.expiresAt = expiresAt
+      if (expiresAt !== null && isAlertExpired(expiresAt, now)) updates.active = false
+    }
+    if (applyReviewDate) {
+      const reviewAt = localDateToTimestamp(bulkReviewDate)
+      if (bulkReviewDate && reviewAt === null) {
+        setBulkDateError(t('alertModal.validation.invalidDate'))
+        return
+      }
+      updates.reviewAt = reviewAt
+    }
+    updateAlerts([...selectedAlertIds], updates)
+    setBulkDateError('')
+    setBulkEditorOpen(false)
+  }
+
+  const archiveSelected = (): void => {
+    updateAlerts([...selectedAlertIds], { archived: true, active: false })
+    setSelectedAlertIds(new Set())
+    setBulkEditorOpen(false)
+  }
+
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={togglePanel} aria-hidden="true" />
@@ -332,7 +373,7 @@ export function AlertPanel(): ReactElement | null {
           </button>
         </div>
 
-        {/* Alerts / History tabs (#309) */}
+        {/* Alerts / History / Archived tabs */}
         <div className="flex gap-1 p-2 border-b border-gray-800" role="tablist">
           <button
             type="button"
@@ -359,6 +400,19 @@ export function AlertPanel(): ReactElement | null {
             }`}
           >
             {t('alertPanel.tabs.history')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'archived'}
+            onClick={() => setActiveTab('archived')}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === 'archived'
+                ? 'bg-cyan-500/20 text-cyan-400'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+            }`}
+          >
+            {t('alertPanel.tabs.archived')}
           </button>
         </div>
 
@@ -392,7 +446,28 @@ export function AlertPanel(): ReactElement | null {
               )}
               <AlertHistoryLog />
             </>
-          ) : alerts.length === 0 ? (
+          ) : activeTab === 'archived' ? (
+            archivedAlerts.length === 0 ? (
+              <p className="text-center py-12 text-gray-500">{t('alertPanel.bulk.archivedEmpty')}</p>
+            ) : (
+              <section aria-label={t('alertPanel.tabs.archived')} className="space-y-3">
+                {archivedAlerts.map((alert) => (
+                  <div key={alert.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+                    <p className="font-semibold text-white text-sm">{alert.assetPair}</p>
+                    <p className="text-xs text-gray-400 font-mono mt-1">{getConditionText(alert)}</p>
+                    <LifecycleBadges alert={alert} now={now} />
+                    <button
+                      type="button"
+                      onClick={() => updateAlert(alert.id, { archived: false, active: false })}
+                      className="mt-3 text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      {t('alertPanel.bulk.restore')}
+                    </button>
+                  </div>
+                ))}
+              </section>
+            )
+          ) : visibleAlerts.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <svg
                 className="w-12 h-12 mx-auto mb-3 text-gray-700"
@@ -411,6 +486,139 @@ export function AlertPanel(): ReactElement | null {
             </div>
           ) : (
             <>
+              <section className="p-3 bg-gray-800/50 border border-gray-700 rounded-xl space-y-3">
+                <details>
+                  <summary className="cursor-pointer text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded">
+                    {t('alertPanel.bulk.selectRules', { count: selectedAlertIds.size })}
+                  </summary>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAlertIds(new Set(visibleAlerts.map((alert) => alert.id)))}
+                      className="text-xs text-cyan-400 hover:text-cyan-300 underline"
+                    >
+                      {t('alertPanel.bulk.selectAll')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAlertIds(new Set())}
+                      className="text-xs text-gray-400 hover:text-gray-200 underline"
+                    >
+                      {t('alertPanel.bulk.clearSelection')}
+                    </button>
+                  </div>
+                  <fieldset className="mt-3 max-h-40 overflow-y-auto space-y-2">
+                    <legend className="sr-only">
+                      {t('alertPanel.bulk.selectRules', { count: visibleAlerts.length })}
+                    </legend>
+                    {visibleAlerts.map((alert) => (
+                      <label key={alert.id} className="flex items-center gap-2 text-xs text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={selectedAlertIds.has(alert.id)}
+                          onChange={(event) =>
+                            setSelectedAlertIds((selected) => {
+                              const next = new Set(selected)
+                              if (event.target.checked) next.add(alert.id)
+                              else next.delete(alert.id)
+                              return next
+                            })
+                          }
+                          className="rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500"
+                        />
+                        <span>{alert.assetPair}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                </details>
+                {selectedAlertIds.size > 0 && (
+                  <div className="flex flex-wrap gap-2 border-t border-gray-700 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => updateAlerts([...selectedAlertIds], { active: false })}
+                      className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      {t('alertPanel.bulk.pause')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBulkEditorOpen((open) => !open)}
+                      aria-expanded={bulkEditorOpen}
+                      className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      {t('alertPanel.bulk.editDates')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={archiveSelected}
+                      className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 px-3 py-1.5 rounded-lg"
+                    >
+                      {t('alertPanel.bulk.archive')}
+                    </button>
+                  </div>
+                )}
+                {bulkEditorOpen && selectedAlertIds.size > 0 && (
+                  <form onSubmit={handleBulkDateSave} className="border-t border-gray-700 pt-3 space-y-3">
+                    <label className="flex items-center gap-2 text-xs text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={applyExpiryDate}
+                        onChange={(event) => setApplyExpiryDate(event.target.checked)}
+                        className="rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500"
+                      />
+                      {t('alertPanel.bulk.applyExpiry')}
+                    </label>
+                    <input
+                      type="date"
+                      aria-label={t('alertModal.lifecycle.expiryLabel')}
+                      value={bulkExpiryDate}
+                      disabled={!applyExpiryDate}
+                      onChange={(event) => setBulkExpiryDate(event.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-50"
+                    />
+                    <p className="text-[11px] text-gray-500">{t('alertPanel.bulk.expiryHelp')}</p>
+                    <label className="flex items-center gap-2 text-xs text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={applyReviewDate}
+                        onChange={(event) => setApplyReviewDate(event.target.checked)}
+                        className="rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500"
+                      />
+                      {t('alertPanel.bulk.applyReview')}
+                    </label>
+                    <input
+                      type="date"
+                      aria-label={t('alertModal.lifecycle.reviewLabel')}
+                      value={bulkReviewDate}
+                      disabled={!applyReviewDate}
+                      onChange={(event) => setBulkReviewDate(event.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-50"
+                    />
+                    <p className="text-[11px] text-gray-500">{t('alertPanel.bulk.reviewHelp')}</p>
+                    {bulkDateError && (
+                      <p role="alert" className="text-xs text-red-400">
+                        {bulkDateError}
+                      </p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBulkEditorOpen(false)}
+                        className="text-xs text-gray-400 hover:text-gray-200 px-3 py-1.5"
+                      >
+                        {t('alertPanel.bulk.cancel')}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={!applyExpiryDate && !applyReviewDate}
+                        className="text-xs bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+                      >
+                        {t('alertPanel.bulk.saveDates')}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </section>
               {/* ── Triggered alerts ─────────────────────────────────────── */}
               {triggeredAlerts.length > 0 && (
                 <div>

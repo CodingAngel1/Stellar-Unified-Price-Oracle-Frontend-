@@ -350,6 +350,23 @@ const fr = {
     tabs: {
       alerts: 'Alertes',
       history: 'Historique',
+      archived: 'Archivées',
+    },
+    bulk: {
+      selectRules: 'Sélectionner des règles ({{count}} sélectionnée(s))',
+      selectAll: 'Tout sélectionner',
+      clearSelection: 'Effacer la sélection',
+      pause: 'Mettre en pause la sélection',
+      archive: 'Archiver la sélection',
+      editDates: 'Modifier les dates en lot',
+      applyExpiry: "Modifier la date d'expiration",
+      applyReview: 'Modifier le rappel de révision',
+      expiryHelp: "Choisissez une date ou laissez vide pour effacer l'expiration. Fin de journée locale.",
+      reviewHelp: 'Choisissez une date ou laissez vide pour effacer le rappel.',
+      saveDates: 'Appliquer les dates',
+      cancel: 'Annuler',
+      restore: 'Restaurer la règle',
+      archivedEmpty: 'Aucune règle archivée',
     },
     history: {
       empty: "Aucune alerte ne s'est encore déclenchée",

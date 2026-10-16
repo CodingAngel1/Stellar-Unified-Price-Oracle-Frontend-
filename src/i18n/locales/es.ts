@@ -242,7 +242,8 @@ const es = {
       title: 'Ciclo de vida de la regla',
       expiryLabel: 'Fecha de vencimiento (opcional)',
       reviewLabel: 'Recordatorio de revisión (opcional)',
-      description: 'El vencimiento desactiva la regla al final de esa fecha local. La revisión solo es un recordatorio.',
+      description:
+        'El vencimiento desactiva la regla al final de esa fecha local. La revisión solo es un recordatorio.',
     },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
@@ -348,6 +349,23 @@ const es = {
     tabs: {
       alerts: 'Alertas',
       history: 'Historial',
+      archived: 'Archivadas',
+    },
+    bulk: {
+      selectRules: 'Seleccionar reglas ({{count}} seleccionadas)',
+      selectAll: 'Seleccionar todas',
+      clearSelection: 'Borrar selección',
+      pause: 'Pausar seleccionadas',
+      archive: 'Archivar seleccionadas',
+      editDates: 'Editar fechas en bloque',
+      applyExpiry: 'Cambiar fecha de vencimiento',
+      applyReview: 'Cambiar recordatorio de revisión',
+      expiryHelp: 'Elige una fecha o déjala vacía para borrar el vencimiento. Usa el final del día local.',
+      reviewHelp: 'Elige una fecha o déjala vacía para borrar el recordatorio.',
+      saveDates: 'Aplicar cambios de fecha',
+      cancel: 'Cancelar',
+      restore: 'Restaurar regla',
+      archivedEmpty: 'No hay reglas archivadas',
     },
     history: {
       empty: 'Aún no se ha disparado ninguna alerta',

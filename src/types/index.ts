@@ -184,6 +184,8 @@ export interface Alert {
   expiresAt?: number | null
   /** Local review reminder date; does not affect alert evaluation. */
   reviewAt?: number | null
+  /** Archived rules are retained locally but excluded from evaluation. */
+  archived?: boolean
 }
 
 export interface AlertFormData {
@@ -270,6 +272,7 @@ export interface AlertsContextType {
     > & { channels?: Alert['channels'] },
   ) => Alert | null
   updateAlert: (id: string, updates: Partial<Omit<Alert, 'id' | 'createdAt'>>) => void
+  updateAlerts: (ids: string[], updates: Partial<Omit<Alert, 'id' | 'createdAt'>>) => void
   removeAlert: (id: string) => void
   getAlertsForPair: (assetPair: string) => Alert[]
   hasAlertsForPair: (assetPair: string) => boolean
