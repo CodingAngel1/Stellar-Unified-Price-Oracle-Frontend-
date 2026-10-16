@@ -51,7 +51,9 @@ import type { PriceData, PriceSyncState } from '../types'
 import { formatPrice } from '../utils/format'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { useActiveSource } from '../hooks/useActiveSource'
+import type { ConnectionStatus } from '../api/websocket'
 import { FreshnessBadge } from './FreshnessBadge'
+import { SubscriptionHealthBadge } from './SubscriptionHealthBadge'
 import { Tooltip } from './Tooltip'
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -96,6 +98,10 @@ interface PriceCardProps {
   selectMode?: boolean
   /** Whether this card is currently selected in multi-select mode. */
   isSelected?: boolean
+  /** Current realtime connection state, used to report this pair's subscription health. */
+  subscriptionStatus?: ConnectionStatus
+  /** Whether the displayed prices come from the offline snapshot. */
+  isOfflineSnapshot?: boolean
 }
 
 export const PriceCard = memo(function PriceCard({
@@ -106,6 +112,8 @@ export const PriceCard = memo(function PriceCard({
   onAlertClick,
   selectMode,
   isSelected,
+  subscriptionStatus,
+  isOfflineSnapshot = false,
 }: PriceCardProps) {
   const { t } = useTranslation()
   const { preferences } = usePreferences()
@@ -181,6 +189,15 @@ export const PriceCard = memo(function PriceCard({
             <span className="text-cyan-400">{t('priceCard.confidence', { value: confidencePct })}</span>
           </Tooltip>
         </div>
+        {subscriptionStatus && (
+          <div className="mb-3">
+            <SubscriptionHealthBadge
+              pair={assetPair}
+              status={subscriptionStatus}
+              isOfflineSnapshot={isOfflineSnapshot}
+            />
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-1.5">
           {price.sources.map((src) => (

@@ -18,6 +18,7 @@ import {
   type TickCoalescerStats,
 } from '../utils/tickCoalescer'
 import type { LivePriceEntry, PriceData, MoveAttribution, WsPriceUpdate } from '../types'
+import { recordSubscriptionUpdate } from '../realtime/subscriptionHealth'
 import { useToast } from './ToastContext'
 
 /**
@@ -463,6 +464,8 @@ export function PriceProvider({ children }: { children: ReactNode }) {
    */
   const handlePriceUpdate = useCallback(
     (msg: WsPriceUpdate) => {
+      recordSubscriptionUpdate(msg.assetPair, Date.now())
+
       // ── Attribution computation (per raw tick) ────────────────────────────
       const sourcePriceState = sourcePriceStateRef.current
       if (!sourcePriceState.has(msg.assetPair)) {

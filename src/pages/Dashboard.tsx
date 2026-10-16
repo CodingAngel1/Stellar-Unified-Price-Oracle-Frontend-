@@ -681,6 +681,8 @@ export function Dashboard() {
               selectMode={selectMode}
               selected={selected}
               onToggleSelect={onToggleSelect}
+              subscriptionStatus={wsStatus}
+              isOfflineSnapshot={isOfflineSnapshot}
             />
           </Suspense>
         </ErrorBoundary>
@@ -696,6 +698,8 @@ export function Dashboard() {
             selectMode={selectMode}
             selected={selected}
             onReorder={(orderedPairs) => updatePreference('cardOrder', orderedPairs)}
+            subscriptionStatus={wsStatus}
+            isOfflineSnapshot={isOfflineSnapshot}
           />
         </ErrorBoundary>
       )}
