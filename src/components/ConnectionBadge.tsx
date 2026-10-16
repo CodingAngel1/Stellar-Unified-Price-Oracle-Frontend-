@@ -118,10 +118,10 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   useEffect(() => {
     const isRateLimited = rateLimitStatus === 'limited'
     const currentKey = isRateLimited ? 'rate-limited' : status
-    
+
     if (prevStatusRef.current !== currentKey) {
       let announcement = ''
-      
+
       if (isRateLimited) {
         announcement = retryAfterMs && retryAfterMs > 0
           ? `API rate limited, requests will resume in ${Math.ceil(retryAfterMs / 1000)} seconds`
@@ -133,7 +133,7 @@ export const ConnectionBadge = memo(function ConnectionBadge({
           announcement += ` (attempt ${diagnostics.retryCount} of 20)`
         }
       }
-      
+
       announce(announcement, isRateLimited || status === 'dead' ? 'assertive' : 'polite')
       prevStatusRef.current = currentKey
     }
@@ -156,7 +156,15 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   // #471 – visible indicator when the client has fallen back from WebSocket to SSE.
   const isSseFallback = diagnostics?.transport === 'sse'
 
-  const ariaLabel = isRateLimited ? 'API rate limited' : `WebSocket ${s.label}`
+  const activeTransport = diagnostics?.transport
+  const transportPath = diagnostics?.transportPath ?? (activeTransport ? [activeTransport] : undefined)
+  const readablePath = transportPath?.map((kind) => (kind === 'sse' ? 'SSE' : 'WebSocket')).join(' → ')
+  const failoverLabel = transportPath && transportPath.length > 1 ? `, failover path ${readablePath}` : ''
+  const ariaLabel = isRateLimited
+    ? 'API rate limited'
+    : isSseFallback
+      ? `SSE fallback ${s.label}${failoverLabel}`
+      : `WebSocket ${s.label}`
 
   let tooltipText = isRateLimited
     ? 'The API is temporarily rate limited. Requests will resume after the retry window expires.'
@@ -166,9 +174,14 @@ export const ConnectionBadge = memo(function ConnectionBadge({
     tooltipText += ` (attempt ${diagnostics.retryCount} of 20)`
   }
 
-  if (isSseFallback) {
-    tooltipText +=
-      ' Falling back to Server-Sent Events — the WebSocket upgrade failed or was blocked by the network.'
+  if (activeTransport) {
+    tooltipText += ` Active transport: ${activeTransport === 'sse' ? 'Server-Sent Events' : 'WebSocket'}.`
+  }
+  if (readablePath) {
+    tooltipText += ` Failover path: ${readablePath}.`
+  }
+  if (diagnostics?.fallbackReason === 'websocket-retries-exhausted') {
+    tooltipText += ' WebSocket retries were exhausted before a successful connection; using Server-Sent Events.'
   }
 
   return (
@@ -189,6 +202,14 @@ export const ConnectionBadge = memo(function ConnectionBadge({
             title="Streaming over Server-Sent Events (WebSocket fallback)"
           >
             SSE
+          </span>
+        )}
+        {readablePath && (
+          <span
+            className="border-l border-gray-600 pl-1.5 text-[10px] text-gray-400"
+            title={`Active transport: ${activeTransport === 'sse' ? 'Server-Sent Events' : 'WebSocket'}; path: ${readablePath}`}
+          >
+            {readablePath}
           </span>
         )}
       </span>

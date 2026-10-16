@@ -49,6 +49,10 @@ export interface ConnectionDiagnostics {
   isPaused?: boolean
   /** Which realtime transport is currently active (#471). Only set by {@link RealtimeClient}. */
   transport?: 'ws' | 'sse'
+  /** Transports attempted in order for the current connection path (#471). */
+  transportPath?: Array<'ws' | 'sse'>
+  /** Why the client left WebSocket when it fell back to another transport. */
+  fallbackReason?: 'websocket-retries-exhausted'
 }
 
 const supportsDecompression = typeof DecompressionStream !== 'undefined'

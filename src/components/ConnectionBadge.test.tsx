@@ -31,6 +31,25 @@ describe('ConnectionBadge', () => {
     expect(screen.getByText('Offline')).toBeInTheDocument()
   })
 
+  it('announces the active SSE transport and displays the failover path', () => {
+    render(
+      <ConnectionBadge
+        status="connected"
+        diagnostics={{
+          retryCount: 0,
+          lastConnectedAt: Date.now(),
+          totalDisconnections: 1,
+          transport: 'sse',
+          transportPath: ['ws', 'sse'],
+          fallbackReason: 'websocket-retries-exhausted',
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', 'SSE fallback Live, failover path WebSocket → SSE')
+    expect(screen.getByText('WebSocket → SSE')).toBeInTheDocument()
+  })
+
   it('renders rate limited status with countdown', () => {
     render(<ConnectionBadge status="connected" rateLimitStatus="limited" retryAfterMs={15000} />)
     expect(screen.getByText('Rate limited (15s)')).toBeInTheDocument()

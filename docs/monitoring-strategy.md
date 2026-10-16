@@ -271,6 +271,9 @@ Recommended monitoring dashboard should show:
    - API availability
    - Storage status
    - Network latency
+   - Frontend connection diagnostics show the active WebSocket or SSE transport,
+     the attempted failover path, and whether WebSocket retries were exhausted.
+     This is client-observed state and requires no additional server payload.
 
 3. **Error Tracking**
    - Error rate
