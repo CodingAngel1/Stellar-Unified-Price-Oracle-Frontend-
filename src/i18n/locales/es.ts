@@ -290,6 +290,17 @@ const es = {
     newBadge: '{{count}} Nueva',
     empty: 'No hay alertas configuradas',
     close: 'Cerrar panel de alertas',
+    delivery: {
+      title: 'Intentos de entrega',
+      empty: 'No hay intentos registrados en esta sesión; el historial anterior no está disponible.',
+      status_queued: 'Reintentando',
+      status_delivered: 'Aceptado',
+      status_failed: 'Fallido',
+      attemptCount: '{{count}} intentos',
+      attemptDelivered: 'Intento {{attempt}} aceptado',
+      attemptFailed: 'Intento {{attempt}} fallido: {{error}}',
+      unknownError: 'Error desconocido',
+    },
     lifecycle: {
       title: 'Programación de la regla',
       expired: 'Vencida',

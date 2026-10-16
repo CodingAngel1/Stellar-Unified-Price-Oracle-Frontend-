@@ -21,3 +21,12 @@ secrets, and browser notification support/permission. Email and webhook readines
 is configuration-only: the frontend does not probe remote endpoints, so an
 upstream readiness/health contract is required before remote delivery can be
 reported as verified.
+
+Alert delivery records are connected to the frontend's dispatch path. Each
+configured channel is attempted up to four times with exponential backoff, and
+the alert panel shows the latest attempt sequence and its accepted/failed
+outcomes. These receipts are in-memory and session-only; reloading or closing
+the page discards them. HTTP success and browser notification acceptance are
+reported as accepted by that endpoint/browser, not proof of final user receipt.
+Durable delivery history and authoritative provider delivery/retry outcomes
+require an upstream receipt API; no server-side history is fabricated.

@@ -284,6 +284,17 @@ const he = {
     newBadge: '{{count}} חדש',
     empty: 'טרם הוגדרו התראות',
     close: 'סגור פאנל התראות',
+    delivery: {
+      title: 'ניסיונות מסירה',
+      empty: 'לא נרשמו ניסיונות בהפעלה זו; ההיסטוריה הקודמת אינה זמינה.',
+      status_queued: 'מנסה שוב',
+      status_delivered: 'התקבל',
+      status_failed: 'נכשל',
+      attemptCount: '{{count}} ניסיונות',
+      attemptDelivered: 'ניסיון {{attempt}} התקבל',
+      attemptFailed: 'ניסיון {{attempt}} נכשל: {{error}}',
+      unknownError: 'שגיאה לא ידועה',
+    },
     lifecycle: {
       title: 'לוח זמנים לכלל',
       expired: 'פג תוקף',

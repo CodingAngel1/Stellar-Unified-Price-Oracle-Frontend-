@@ -45,6 +45,7 @@ import { toCsv, downloadFile } from '../utils/export'
 import { isAlertExpired, localDateToTimestamp } from '../utils/alertLifecycle'
 import { useAlertHealth } from '../hooks/useAlertHealth'
 import type { AlertHealthFlag } from '../utils/alertHealthCheck'
+import { deliveryTracker, type DeliveryReceipt } from '../services/deliveryReceipts'
 import { AlertHistoryLog } from './AlertHistoryLog'
 import { AlertAnalyticsStrip } from './AlertAnalyticsStrip'
 
@@ -64,6 +65,66 @@ function RoutingBadge({ alert }: { alert: Alert }): ReactElement | null {
         </span>
       ))}
     </div>
+  )
+}
+
+export function DeliveryAttempts({ alertId }: { alertId: string }): ReactElement {
+  const { t } = useTranslation()
+  const [receipts, setReceipts] = useState<DeliveryReceipt[]>(() => deliveryTracker.getReceipts({ alertId }))
+
+  useEffect(() => {
+    const refresh = () => setReceipts(deliveryTracker.getReceipts({ alertId }))
+    refresh()
+    return deliveryTracker.subscribe(refresh)
+  }, [alertId])
+
+  return (
+    <section className="mt-2" aria-label={t('alertPanel.delivery.title')}>
+      <h3 className="text-[10px] font-semibold text-gray-500">{t('alertPanel.delivery.title')}</h3>
+      {receipts.length === 0 ? (
+        <p className="text-[10px] text-gray-500 mt-0.5">{t('alertPanel.delivery.empty')}</p>
+      ) : (
+        <ul className="space-y-1 mt-0.5">
+          {receipts.map((receipt) => (
+            <li key={receipt.channel} className="text-[10px] text-gray-400">
+              <div className="flex flex-wrap gap-x-2">
+                <span>{t(`alertModal.escalation.channel_${receipt.channel}`)}</span>
+                <span
+                  className={
+                    receipt.status === 'delivered'
+                      ? 'text-emerald-400'
+                      : receipt.status === 'failed'
+                        ? 'text-red-400'
+                        : 'text-amber-400'
+                  }
+                >
+                  {t(`alertPanel.delivery.status_${receipt.status}`)}
+                </span>
+                <span>{t('alertPanel.delivery.attemptCount', { count: receipt.attempts })}</span>
+              </div>
+              {receipt.attemptHistory.length > 0 && (
+                <ol className="ml-2 mt-0.5 space-y-0.5">
+                  {receipt.attemptHistory.map((attempt) => (
+                    <li key={`${receipt.channel}-${attempt.attempt}`}>
+                      <time dateTime={new Date(attempt.updatedAt).toISOString()}>
+                        {new Date(attempt.updatedAt).toLocaleTimeString()}
+                      </time>
+                      {' · '}
+                      {attempt.status === 'delivered'
+                        ? t('alertPanel.delivery.attemptDelivered', { attempt: attempt.attempt })
+                        : t('alertPanel.delivery.attemptFailed', {
+                            attempt: attempt.attempt,
+                            error: attempt.error ?? t('alertPanel.delivery.unknownError'),
+                          })}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -456,6 +517,7 @@ export function AlertPanel(): ReactElement | null {
                     <p className="font-semibold text-white text-sm">{alert.assetPair}</p>
                     <p className="text-xs text-gray-400 font-mono mt-1">{getConditionText(alert)}</p>
                     <LifecycleBadges alert={alert} now={now} />
+                    <DeliveryAttempts alertId={alert.id} />
                     <button
                       type="button"
                       onClick={() => updateAlert(alert.id, { archived: false, active: false })}
@@ -653,6 +715,7 @@ export function AlertPanel(): ReactElement | null {
                           <span className="font-mono">{getConditionText(alert)}</span>
                         </p>
                         <LifecycleBadges alert={alert} now={now} />
+                        <DeliveryAttempts alertId={alert.id} />
                         <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                         <RoutingBadge alert={alert} />
                         <div className="flex gap-2 flex-wrap mt-3">
@@ -750,6 +813,7 @@ export function AlertPanel(): ReactElement | null {
                           </div>
                           <div className="text-xs text-gray-500 font-mono">{getConditionText(alert)}</div>
                           <LifecycleBadges alert={alert} now={now} />
+                          <DeliveryAttempts alertId={alert.id} />
                           {alert.snoozedUntil && (
                             <div className="text-xs text-purple-400 mt-0.5">
                               {formatSnoozeExpiry(alert.snoozedUntil)}
@@ -812,6 +876,7 @@ export function AlertPanel(): ReactElement | null {
                           </div>
                           <div className="text-xs text-gray-400 font-mono">{getConditionText(alert)}</div>
                           <LifecycleBadges alert={alert} now={now} />
+                          <DeliveryAttempts alertId={alert.id} />
                           <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                           <EscalationProgress alert={alert} />
                           <RoutingBadge alert={alert} />
@@ -879,6 +944,7 @@ export function AlertPanel(): ReactElement | null {
                           </div>
                           <div className="text-xs text-gray-500 font-mono">{getConditionText(alert)}</div>
                           <LifecycleBadges alert={alert} now={now} />
+                          <DeliveryAttempts alertId={alert.id} />
                           {alert.lastTriggeredAt && (
                             <div className="text-xs text-amber-400/70 mt-0.5">
                               {t('alertPanel.fired.at', { time: new Date(alert.lastTriggeredAt).toLocaleString() })}
@@ -946,6 +1012,7 @@ export function AlertPanel(): ReactElement | null {
                           </div>
                           <div className="text-xs text-gray-500 font-mono">{getConditionText(alert)}</div>
                           <LifecycleBadges alert={alert} now={now} />
+                          <DeliveryAttempts alertId={alert.id} />
                           <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                         </div>
                         <div className="flex items-center gap-1">

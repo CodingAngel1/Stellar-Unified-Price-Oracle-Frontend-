@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { makeAlert } from '../test/fixtures'
 import { localDateToTimestamp } from '../utils/alertLifecycle'
-import { AlertPanel } from './AlertPanel'
+import { deliveryTracker } from '../services/deliveryReceipts'
+import { AlertPanel, DeliveryAttempts } from './AlertPanel'
 
 const mocks = vi.hoisted(() => ({
   useAlerts: vi.fn(),
@@ -24,6 +25,28 @@ vi.mock('./AlertAnalyticsStrip', () => ({ AlertAnalyticsStrip: () => null }))
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+})
+
+describe('Alert delivery attempts', () => {
+  it('shows the empty state and updates with each retry outcome', async () => {
+    const alertId = 'delivery-attempts-component-test'
+    render(<DeliveryAttempts alertId={alertId} />)
+    expect(screen.getByText('alertPanel.delivery.empty')).toBeInTheDocument()
+
+    let calls = 0
+    await act(async () => {
+      await deliveryTracker.deliver(alertId, 'email', async () => {
+        calls += 1
+        return calls === 1 ? { ok: false, status: 503 } : { ok: true, status: 202 }
+      })
+    })
+
+    expect(calls).toBe(2)
+    expect(screen.getByRole('region', { name: 'alertPanel.delivery.title' })).toBeInTheDocument()
+    expect(screen.getByText('alertPanel.delivery.status_delivered')).toBeInTheDocument()
+    expect(screen.getByText(/alertPanel\.delivery\.attemptFailed/)).toBeInTheDocument()
+    expect(screen.getByText(/alertPanel\.delivery\.attemptDelivered/)).toBeInTheDocument()
+  })
 })
 
 function renderPanel(

@@ -286,6 +286,17 @@ const ja = {
     newBadge: '{{count}}件 新着',
     empty: 'アラートはまだ設定されていません',
     close: 'アラートパネルを閉じる',
+    delivery: {
+      title: '通知の試行履歴',
+      empty: 'このセッションでは試行が記録されていません。以前の履歴は利用できません。',
+      status_queued: '再試行中',
+      status_delivered: '受付済み',
+      status_failed: '失敗',
+      attemptCount: '{{count}}回試行',
+      attemptDelivered: '{{attempt}}回目の試行を受付',
+      attemptFailed: '{{attempt}}回目の試行に失敗: {{error}}',
+      unknownError: '不明なエラー',
+    },
     lifecycle: {
       title: 'ルールのスケジュール',
       expired: '期限切れ',

@@ -291,6 +291,17 @@ const fr = {
     newBadge: '{{count}} Nouvelle(s)',
     empty: 'Aucune alerte configurée',
     close: "Fermer le panneau d'alertes",
+    delivery: {
+      title: 'Tentatives de livraison',
+      empty: "Aucune tentative enregistrée pendant cette session ; l'historique précédent n'est pas disponible.",
+      status_queued: 'Nouvelle tentative',
+      status_delivered: 'Acceptée',
+      status_failed: 'Échec',
+      attemptCount: '{{count}} tentatives',
+      attemptDelivered: 'Tentative {{attempt}} acceptée',
+      attemptFailed: 'Échec de la tentative {{attempt}} : {{error}}',
+      unknownError: 'Erreur inconnue',
+    },
     lifecycle: {
       title: 'Calendrier de la règle',
       expired: 'Expirée',

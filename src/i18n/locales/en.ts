@@ -302,6 +302,17 @@ const en = {
     newBadge: '{{count}} New',
     empty: 'No alerts set yet',
     close: 'Close alert panel',
+    delivery: {
+      title: 'Delivery attempts',
+      empty: 'No attempts recorded this session; earlier history is unavailable.',
+      status_queued: 'Retrying',
+      status_delivered: 'Accepted',
+      status_failed: 'Failed',
+      attemptCount: '{{count}} attempts',
+      attemptDelivered: 'Attempt {{attempt}} accepted',
+      attemptFailed: 'Attempt {{attempt}} failed: {{error}}',
+      unknownError: 'Unknown error',
+    },
     lifecycle: {
       title: 'Rule schedule',
       expired: 'Expired',

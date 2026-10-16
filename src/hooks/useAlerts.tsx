@@ -6,6 +6,7 @@ import type {
   AlertsContextType,
   AlertSnoozeDuration,
   EscalationStep,
+  NotificationChannelId,
   PriceEvaluationState,
 } from '../types'
 import { migrateLegacyAlertConditions } from '../types/alerts'
@@ -33,6 +34,7 @@ import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../serv
 import { stepRetest, initialRetestState } from '../utils/retestDetector'
 import { registerMemoryProbe } from '../utils/memoryProfiler'
 import { isAlertExpired } from '../utils/alertLifecycle'
+import { deliveryTracker, type DeliverySendResult, type SendFn } from '../services/deliveryReceipts'
 import { useRateLimit } from './useRateLimit'
 
 const alertsChannel = createBroadcastChannel<Alert[]>('kiro-alerts')
@@ -46,29 +48,34 @@ function alertMessage(alert: Alert, currentPrice: number): string {
 
 // ── Per-channel dispatchers (#315, extended with Telegram/Discord for #488) ────
 
-function dispatchWebPushChannel(cfg: NotifConfig, body: string): void {
-  if (cfg.webPush.enabled && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    new Notification('Price Alert Triggered', { body })
-  }
+async function dispatchWebPushChannel(cfg: NotifConfig, body: string): Promise<DeliverySendResult> {
+  if (!cfg.webPush.enabled) return { ok: false, error: 'Browser notifications are disabled' }
+  if (typeof Notification === 'undefined') return { ok: false, error: 'Browser notifications are unavailable' }
+  if (Notification.permission !== 'granted')
+    return { ok: false, error: 'Browser notification permission is not granted' }
+  new Notification('Price Alert Triggered', { body })
+  return { ok: true }
 }
 
-async function dispatchEmailChannel(cfg: NotifConfig, alert: Alert, currentPrice: number, body: string): Promise<void> {
-  if (!cfg.email.enabled || !cfg.email.address) return
-  try {
-    await fetch('/api/notifications/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: cfg.email.address,
-        subject: 'Price Alert Triggered',
-        message: body,
-        assetPair: alert.assetPair,
-        price: currentPrice,
-      }),
-    })
-  } catch {
-    // Best-effort; don't let a network error break the alert system
-  }
+async function dispatchEmailChannel(
+  cfg: NotifConfig,
+  alert: Alert,
+  currentPrice: number,
+  body: string,
+): Promise<DeliverySendResult> {
+  if (!cfg.email.enabled || !cfg.email.address) return { ok: false, error: 'Email channel is not configured' }
+  const response = await fetch('/api/notifications/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: cfg.email.address,
+      subject: 'Price Alert Triggered',
+      message: body,
+      assetPair: alert.assetPair,
+      price: currentPrice,
+    }),
+  })
+  return { ok: response.ok, status: response.status }
 }
 
 async function dispatchWebhookChannel(
@@ -76,24 +83,21 @@ async function dispatchWebhookChannel(
   alert: Alert,
   currentPrice: number,
   body: string,
-): Promise<void> {
-  if (!cfg.webhook.enabled || !cfg.webhook.url) return
-  try {
-    await fetch(cfg.webhook.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'alert_triggered',
-        assetPair: alert.assetPair,
-        price: currentPrice,
-        message: body,
-        alertId: alert.id,
-        timestamp: Date.now(),
-      }),
-    })
-  } catch {
-    // Best-effort
-  }
+): Promise<DeliverySendResult> {
+  if (!cfg.webhook.enabled || !cfg.webhook.url) return { ok: false, error: 'Webhook channel is not configured' }
+  const response = await fetch(cfg.webhook.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'alert_triggered',
+      assetPair: alert.assetPair,
+      price: currentPrice,
+      message: body,
+      alertId: alert.id,
+      timestamp: Date.now(),
+    }),
+  })
+  return { ok: response.ok, status: response.status }
 }
 
 async function dispatchTelegramChannel(
@@ -102,10 +106,10 @@ async function dispatchTelegramChannel(
   currentPrice: number,
   body: string,
   escalation?: { stepId: string; delayMinutes: number },
-): Promise<void> {
-  if (!cfg.telegram.enabled || !cfg.telegram.chatId) return
+): Promise<DeliverySendResult> {
+  if (!cfg.telegram.enabled || !cfg.telegram.chatId) return { ok: false, error: 'Telegram channel is not configured' }
   const { telegramBotToken } = loadBotSecrets()
-  await sendTelegramMessage({ chatId: cfg.telegram.chatId, enabled: cfg.telegram.enabled }, telegramBotToken, {
+  return sendTelegramMessage({ chatId: cfg.telegram.chatId, enabled: cfg.telegram.enabled }, telegramBotToken, {
     assetPair: alert.assetPair,
     price: currentPrice,
     message: body,
@@ -120,10 +124,10 @@ async function dispatchDiscordChannel(
   currentPrice: number,
   body: string,
   escalation?: { stepId: string; delayMinutes: number },
-): Promise<void> {
-  if (!cfg.discord.enabled) return
+): Promise<DeliverySendResult> {
+  if (!cfg.discord.enabled) return { ok: false, error: 'Discord channel is not enabled' }
   const { discordWebhookUrl } = loadBotSecrets()
-  await sendDiscordMessage({ channelId: cfg.discord.channelId, enabled: cfg.discord.enabled }, discordWebhookUrl, {
+  return sendDiscordMessage({ channelId: cfg.discord.channelId, enabled: cfg.discord.enabled }, discordWebhookUrl, {
     assetPair: alert.assetPair,
     price: currentPrice,
     message: body,
@@ -143,15 +147,18 @@ async function dispatchNotifications(alert: Alert, currentPrice: number): Promis
   const cfg = loadNotifConfig()
   const body = alertMessage(alert, currentPrice)
   const targets = resolveAlertChannels(cfg, alert.channels)
-  await Promise.all([
-    targets.has('email') ? dispatchEmailChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
-    targets.has('webhook') ? dispatchWebhookChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
-    targets.has('telegram') ? dispatchTelegramChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
-    targets.has('discord') ? dispatchDiscordChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
-  ])
-  if (targets.has('webPush')) {
-    dispatchWebPushChannel(cfg, body)
+  const sends: Record<Exclude<NotificationChannelId, 'inApp'>, SendFn> = {
+    email: () => dispatchEmailChannel(cfg, alert, currentPrice, body),
+    webhook: () => dispatchWebhookChannel(cfg, alert, currentPrice, body),
+    telegram: () => dispatchTelegramChannel(cfg, alert, currentPrice, body),
+    discord: () => dispatchDiscordChannel(cfg, alert, currentPrice, body),
+    webPush: () => dispatchWebPushChannel(cfg, body),
   }
+  await Promise.all(
+    [...targets].flatMap((channel) =>
+      channel === 'inApp' ? [] : [deliveryTracker.deliver(alert.id, channel, sends[channel])],
+    ),
+  )
 }
 
 /**
@@ -165,18 +172,15 @@ async function dispatchEscalationStep(alert: Alert, step: EscalationStep, curren
   const cfg = loadNotifConfig()
   const body = alertMessage(alert, currentPrice)
   const escalation = { stepId: step.id, delayMinutes: step.delayMinutes }
-  switch (step.channel) {
-    case 'email':
-      return dispatchEmailChannel(cfg, alert, currentPrice, body)
-    case 'webhook':
-      return dispatchWebhookChannel(cfg, alert, currentPrice, body)
-    case 'webPush':
-      return dispatchWebPushChannel(cfg, body)
-    case 'telegram':
-      return dispatchTelegramChannel(cfg, alert, currentPrice, body, escalation)
-    case 'discord':
-      return dispatchDiscordChannel(cfg, alert, currentPrice, body, escalation)
+  const sends: Record<Exclude<NotificationChannelId, 'inApp'>, SendFn> = {
+    email: () => dispatchEmailChannel(cfg, alert, currentPrice, body),
+    webhook: () => dispatchWebhookChannel(cfg, alert, currentPrice, body),
+    telegram: () => dispatchTelegramChannel(cfg, alert, currentPrice, body, escalation),
+    discord: () => dispatchDiscordChannel(cfg, alert, currentPrice, body, escalation),
+    webPush: () => dispatchWebPushChannel(cfg, body),
   }
+  const send = sends[step.channel]
+  await deliveryTracker.deliver(alert.id, step.channel, send)
 }
 
 /** Compute snooze expiry timestamp from a duration string */

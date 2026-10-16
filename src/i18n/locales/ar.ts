@@ -284,6 +284,17 @@ const ar = {
     newBadge: '{{count}} جديد',
     empty: 'لم يتم ضبط أي تنبيهات بعد',
     close: 'إغلاق لوحة التنبيهات',
+    delivery: {
+      title: 'محاولات التسليم',
+      empty: 'لا توجد محاولات مسجلة في هذه الجلسة؛ السجل السابق غير متاح.',
+      status_queued: 'إعادة المحاولة',
+      status_delivered: 'تم القبول',
+      status_failed: 'فشل',
+      attemptCount: '{{count}} محاولات',
+      attemptDelivered: 'تم قبول المحاولة {{attempt}}',
+      attemptFailed: 'فشلت المحاولة {{attempt}}: {{error}}',
+      unknownError: 'خطأ غير معروف',
+    },
     lifecycle: {
       title: 'جدول القاعدة',
       expired: 'منتهي',
