@@ -1,11 +1,5 @@
 import { config } from '../config'
-import type {
-  WsMessage,
-  WsSubscribeMessage,
-  WsUnsubscribeMessage,
-  WsPauseMessage,
-  WsResumeMessage,
-} from '../types'
+import type { WsMessage, WsSubscribeMessage, WsUnsubscribeMessage, WsPauseMessage, WsResumeMessage } from '../types'
 import { wsAnalytics } from '../utils/wsAnalytics'
 import { recordWsMessageTiming } from '../utils/performanceMonitor'
 import { WS_PROTOCOL_VERSION } from './version'
@@ -25,13 +19,7 @@ type StatusHandler = (status: ConnectionStatus) => void
  * - `paused`       — connected, but inbound updates are paused under backpressure (#469)
  */
 export type ConnectionStatus =
-  | 'connecting'
-  | 'connected'
-  | 'disconnected'
-  | 'reconnecting'
-  | 'waiting'
-  | 'dead'
-  | 'paused'
+  'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'waiting' | 'dead' | 'paused'
 
 /** Diagnostics exposed via the client for use in UI components. */
 export interface ConnectionDiagnostics {
@@ -273,9 +261,7 @@ export class WebSocketClient {
     this._isPaused = false
     this.sendRaw(JSON.stringify({ action: 'resume' } satisfies WsResumeMessage))
     if (this.subscribedPairs.size > 0) {
-      this.sendRaw(
-        JSON.stringify({ action: 'subscribe', assetPairs: Array.from(this.subscribedPairs) }),
-      )
+      this.sendRaw(JSON.stringify({ action: 'subscribe', assetPairs: Array.from(this.subscribedPairs) }))
     }
     this.setStatus('connected')
   }
@@ -296,9 +282,12 @@ export class WebSocketClient {
     if (this._protocolUpgradeRequired) {
       console.warn(
         `[WebSocket] Server speaks WS protocol v${serverVersion}, but this client supports v${WS_PROTOCOL_VERSION}. ` +
-          'Downgrading to the supported feature set — please update the client for full compatibility.',
+          'Realtime compatibility may be limited. Update the frontend to a compatible release; REST polling remains available.',
       )
     }
+    // The transport is still connected, but consumers need the new negotiated
+    // diagnostic immediately so they can surface compatibility guidance.
+    this.statusHandlersRef.forEach((handler) => handler(this._status))
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
