@@ -15,6 +15,9 @@ import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
 import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
+import { PairMetadataPanel } from '../components/PairMetadataPanel'
+import { FeedSymbolDiagnostics } from '../components/FeedSymbolDiagnostics'
+import { ProviderPrecisionComparison } from '../components/ProviderPrecisionComparison'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
@@ -22,10 +25,7 @@ import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
-import { getObservedSourceRange } from '../utils/uncertaintyBand'
-import { ObservedSourceRange } from '../components/ObservedSourceRange'
-import { ConfidenceChangeExplanation } from '../components/ConfidenceChangeExplanation'
-import { SourceTickProvenanceLink } from '../components/SourceTickProvenanceLink'
+import { CircuitBreakerStatus } from '../components/CircuitBreakerStatus'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -133,12 +133,17 @@ export function PriceDetail() {
     loadingMore,
     hasMore,
     error: historyError,
+    storageNearQuota,
     loadMore,
-  } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, { pageSize: 100 })
+  } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, {
+    pageSize: preferences.chartHistoryPageSize,
+    refreshInterval: preferences.refreshInterval,
+  })
 
   // Benchmark pair history — fetched only when a benchmark pair is selected
   const { history: benchmarkHistory, loading: benchmarkHistoryLoading } = usePriceHistory(benchmarkPair, {
-    pageSize: 100,
+    pageSize: preferences.chartHistoryPageSize,
+    refreshInterval: preferences.refreshInterval,
   })
 
   const loading = priceLoading || (historyLoading && history.length === 0)
@@ -165,6 +170,8 @@ export function PriceDetail() {
         {t('priceDetail.back')}
       </button>
 
+      {!isInvalidPair && decodedPair && <CircuitBreakerStatus pair={decodedPair} />}
+
       {isInvalidPair ? (
         <div className="p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
           Unknown asset pair: <span className="font-mono text-red-300">{decodedPair}</span>
@@ -184,6 +191,9 @@ export function PriceDetail() {
               {t('priceDetail.live')}
             </span>
           </div>
+
+          <PairMetadataPanel pair={price.assetPair} metadata={price.pairMetadata} />
+          <FeedSymbolDiagnostics pair={price.assetPair} feedSymbols={price.pairMetadata?.feedSymbols} />
 
           {/* Tabs — Overview (off-chain aggregated feed) vs Proof (on-chain verification) */}
           <div className="flex border-b border-gray-800 mb-6" role="tablist" aria-label="Price detail sections">
@@ -258,6 +268,19 @@ export function PriceDetail() {
                     </span>
                   ))}
                 </div>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                <h2 className="text-xs text-gray-400 uppercase tracking-wider mb-3">
+                  Normalized provider price precision
+                </h2>
+                <ProviderPrecisionComparison
+                  pair={price.assetPair}
+                  pairMetadata={price.pairMetadata}
+                  sourcePrices={price.sourcePrices}
+                  sourcePriceDecimals={price.sourcePriceDecimals}
+                  timestamp={price.timestamp}
+                />
               </div>
 
               {/* Move attribution — rendered whenever WS attribution data is available */}
@@ -387,6 +410,15 @@ export function PriceDetail() {
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">
                   {t('priceDetail.sections.priceHistory')}
                 </p>
+                {storageNearQuota && (
+                  <p
+                    className="mb-4 rounded-lg border border-amber-700/60 bg-amber-900/20 px-4 py-3 text-sm text-amber-200"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {t('priceDetail.historyStorageWarning')}
+                  </p>
+                )}
                 {historyError ? (
                   <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400" role="alert">
                     {t('priceDetail.historyError', { message: historyError.message })}

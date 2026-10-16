@@ -442,6 +442,8 @@ const fr = {
     confidence: '{{value}}% de confiance',
     updated: 'Mis à jour {{time}}',
     historyError: "Échec du chargement de l'historique des prix : {{message}}",
+    historyStorageWarning:
+      "L'espace de stockage du navigateur est presque plein. Le navigateur peut supprimer l'historique des prix enregistré localement ; les prix en direct ne sont pas affectés.",
     emptyState: {
       title: 'Aucune donnée de prix disponible',
       detail: 'Aucune donnée de prix disponible pour cette paire.',
@@ -524,6 +526,7 @@ const fr = {
     fields: {
       refreshInterval: 'Intervalle de rafraîchissement',
       chartTimeRange: 'Plage de temps du graphique',
+      chartHistoryPageSize: "Points d'historique par page",
       staleThreshold: "Seuil d'actif obsolète",
     },
     accessibility: {

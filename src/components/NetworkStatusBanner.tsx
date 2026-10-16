@@ -1,14 +1,29 @@
 import { memo, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { addInboxItem } from '../services/inbox'
 
 export const NetworkStatusBanner = memo(function NetworkStatusBanner() {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const { t } = useTranslation()
 
   useEffect(() => {
-    const goOnline = () => setIsOnline(true)
-    const goOffline = () => setIsOnline(false)
+    const recordStatus = (online: boolean) => {
+      setIsOnline(online)
+      addInboxItem({
+        id: `network:${online ? 'online' : 'offline'}:${Date.now()}`,
+        category: 'system',
+        title: online ? 'Connection restored' : 'You are offline',
+        message: online
+          ? 'The browser is connected to the network again.'
+          : 'Live prices may be unavailable until the network connection returns.',
+        href: '/dashboard',
+        source: 'Network status',
+      })
+    }
+    const goOnline = () => recordStatus(true)
+    const goOffline = () => recordStatus(false)
 
+    if (!navigator.onLine) goOffline()
     window.addEventListener('online', goOnline)
     window.addEventListener('offline', goOffline)
 

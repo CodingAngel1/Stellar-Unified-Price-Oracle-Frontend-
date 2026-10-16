@@ -18,11 +18,33 @@ export interface PriceData {
   confidence: number
   /** List of oracle sources that contributed to this price. */
   sources: string[]
-  /**
-   * API-provided HTTPS URL to the source-tick provenance record. Omitted when
-   * the upstream API does not provide a tick-level provenance link.
-   */
-  sourceTickProvenanceUrl?: string
+  /** Canonical units and output scale, when supplied by the API. */
+  pairMetadata?: PairMetadata
+  /** Individual provider values, when included in the aggregate response. */
+  sourcePrices?: Record<string, number>
+  /** Decimal places used by each provider for the corresponding source price. */
+  sourcePriceDecimals?: Record<string, number>
+}
+
+/** Canonical units and decimal scale used to interpret an asset pair's price. */
+export interface PairMetadata {
+  /** Unit of one base asset, e.g. an API-defined token amount. */
+  baseUnit: string | null
+  /** Unit in which the base asset price is quoted. */
+  quoteUnit: string | null
+  /** Number of decimal places in the canonical price scale. */
+  priceScale: number | null
+  /** API-reported canonical and observed provider symbols, when available. */
+  feedSymbols?: Record<string, FeedSymbolMetadata>
+}
+
+export type FeedSymbolStatus = 'matched' | 'renamed' | 'unknown' | 'missing'
+
+/** Provider symbol resolution against the canonical pair directory. */
+export interface FeedSymbolMetadata {
+  status: FeedSymbolStatus
+  canonicalSymbol: string | null
+  observedSymbol: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -167,11 +189,23 @@ export interface PriceHistoryEntry {
   /** Oracle sources active at this point in time. */
   sources: string[]
   /**
+   * Optional upstream contribution timestamps, keyed by oracle source.
+   * The API must provide these; the frontend never substitutes the aggregate timestamp.
+   */
+  sourceTimestamps?: SourceTimestamp[]
+  /**
    * #461 – Oracle sources that were excluded by the aggregator at this tick
    * (e.g. outlier rejection, confidence floor breach).
    * Present only when the API includes exclusion metadata.
    */
   excludedSources?: ExcludedSourceTick[]
+}
+
+/** Timestamp at which an oracle source contributed to the aggregate. */
+export interface SourceTimestamp {
+  source: string
+  /** Unix timestamp in milliseconds. */
+  timestamp: number
 }
 
 /** #461 – A single excluded source tick with its raw value and reason. */
@@ -291,6 +325,7 @@ export type WsMessage = WsPriceUpdate | WsWelcomeMessage | WsPausedMessage | WsR
 export function isPriceData(value: unknown): value is PriceData {
   if (value == null || typeof value !== 'object') return false
   const obj = value as Record<string, unknown>
+  const pairMetadata = obj.pairMetadata
   return (
     typeof obj.assetPair === 'string' &&
     typeof obj.price === 'number' &&
@@ -300,6 +335,57 @@ export function isPriceData(value: unknown): value is PriceData {
     typeof obj.confidence === 'number' &&
     !Number.isNaN(obj.confidence) &&
     Array.isArray(obj.sources) &&
-    obj.sources.every((s: unknown) => typeof s === 'string')
+    obj.sources.every((s: unknown) => typeof s === 'string') &&
+    (pairMetadata === undefined || isPairMetadata(pairMetadata)) &&
+    (obj.sourcePrices === undefined || isFiniteNumberRecord(obj.sourcePrices)) &&
+    (obj.sourcePriceDecimals === undefined || isDecimalPlacesRecord(obj.sourcePriceDecimals))
+  )
+}
+
+function isFiniteNumberRecord(value: unknown): value is Record<string, number> {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) return false
+  return Object.entries(value).every(
+    ([key, number]) => key.length > 0 && typeof number === 'number' && Number.isFinite(number),
+  )
+}
+
+function isDecimalPlacesRecord(value: unknown): value is Record<string, number> {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) return false
+  return Object.entries(value).every(
+    ([key, number]) =>
+      key.length > 0 && typeof number === 'number' && Number.isInteger(number) && number >= 0 && number <= 100,
+  )
+}
+
+function isPairMetadata(value: unknown): value is PairMetadata {
+  if (value == null || typeof value !== 'object') return false
+  const metadata = value as Record<string, unknown>
+  return (
+    (metadata.baseUnit === null || (typeof metadata.baseUnit === 'string' && metadata.baseUnit.length > 0)) &&
+    (metadata.quoteUnit === null || (typeof metadata.quoteUnit === 'string' && metadata.quoteUnit.length > 0)) &&
+    (metadata.priceScale === null ||
+      (typeof metadata.priceScale === 'number' &&
+        Number.isInteger(metadata.priceScale) &&
+        metadata.priceScale >= 0 &&
+        metadata.priceScale <= 100)) &&
+    (metadata.feedSymbols === undefined ||
+      (metadata.feedSymbols != null &&
+        typeof metadata.feedSymbols === 'object' &&
+        !Array.isArray(metadata.feedSymbols) &&
+        Object.values(metadata.feedSymbols).every(isFeedSymbolMetadata)))
+  )
+}
+
+function isFeedSymbolMetadata(value: unknown): value is FeedSymbolMetadata {
+  if (value == null || typeof value !== 'object') return false
+  const symbol = value as Record<string, unknown>
+  return (
+    (symbol.status === 'matched' ||
+      symbol.status === 'renamed' ||
+      symbol.status === 'unknown' ||
+      symbol.status === 'missing') &&
+    (symbol.canonicalSymbol === null ||
+      (typeof symbol.canonicalSymbol === 'string' && symbol.canonicalSymbol.length > 0)) &&
+    (symbol.observedSymbol === null || (typeof symbol.observedSymbol === 'string' && symbol.observedSymbol.length > 0))
   )
 }

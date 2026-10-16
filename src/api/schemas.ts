@@ -11,11 +11,25 @@ export const PriceDataSchema = z.object({
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
-  sourceTickProvenanceUrl: z
-    .string()
-    .url()
-    .refine(isSecureProvenanceUrl, 'Source-tick provenance URL must use HTTPS without credentials')
+  pairMetadata: z
+    .object({
+      baseUnit: z.string().min(1).nullable(),
+      quoteUnit: z.string().min(1).nullable(),
+      priceScale: z.number().int().min(0).max(100).nullable(),
+      feedSymbols: z
+        .record(
+          z.string().min(1),
+          z.object({
+            status: z.enum(['matched', 'renamed', 'unknown', 'missing']),
+            canonicalSymbol: z.string().min(1).nullable(),
+            observedSymbol: z.string().min(1).nullable(),
+          }),
+        )
+        .optional(),
+    })
     .optional(),
+  sourcePrices: z.record(z.string().min(1), z.number().finite()).optional(),
+  sourcePriceDecimals: z.record(z.string().min(1), z.number().int().min(0).max(100)).optional(),
 })
 
 /**
@@ -29,12 +43,18 @@ export const ExcludedSourceTickSchema = z.object({
   reason: z.string(),
 })
 
+export const SourceTimestampSchema = z.object({
+  source: z.string().min(1),
+  timestamp: z.number().int().nonnegative(),
+})
+
 export const PriceHistoryEntrySchema = z.object({
   price: z.number().finite(),
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
   excludedSources: z.array(ExcludedSourceTickSchema).optional(),
+  sourceTimestamps: z.array(SourceTimestampSchema).optional(),
 })
 
 export const PriceHistoryResponseSchema = z.object({
