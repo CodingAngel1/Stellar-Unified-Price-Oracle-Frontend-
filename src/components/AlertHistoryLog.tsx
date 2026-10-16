@@ -25,10 +25,15 @@ function conditionText(entry: AlertHistoryEntry, t: TFunction): string {
     })
   }
   if (entry.upperThreshold !== null && entry.lowerThreshold !== null) {
-    return t('alertPanel.conditions.between', { lower: formatPrice(entry.lowerThreshold), upper: formatPrice(entry.upperThreshold) })
+    return t('alertPanel.conditions.between', {
+      lower: formatPrice(entry.lowerThreshold),
+      upper: formatPrice(entry.upperThreshold),
+    })
   }
-  if (entry.upperThreshold !== null) return t('alertPanel.conditions.above', { upper: formatPrice(entry.upperThreshold) })
-  if (entry.lowerThreshold !== null) return t('alertPanel.conditions.below', { lower: formatPrice(entry.lowerThreshold) })
+  if (entry.upperThreshold !== null)
+    return t('alertPanel.conditions.above', { upper: formatPrice(entry.upperThreshold) })
+  if (entry.lowerThreshold !== null)
+    return t('alertPanel.conditions.below', { lower: formatPrice(entry.lowerThreshold) })
   return t('alertPanel.conditions.none')
 }
 
@@ -58,12 +63,10 @@ export function AlertHistoryLog(): ReactElement {
   const virtualRows = isVirtual ? rowVirtualizer.getVirtualItems() : null
   const totalSize = isVirtual ? rowVirtualizer.getTotalSize() : filtered.length * ROW_HEIGHT_PX
   const paddingTop = virtualRows && virtualRows.length > 0 ? virtualRows[0].start : 0
-  const paddingBottom =
-    virtualRows && virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0
+  const paddingBottom = virtualRows && virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0
 
   const handleExportCsv = async (): Promise<void> => {
-    const { alertHistoryToCsvRows, downloadFile, exportFilename, toCsv } =
-      await loadExportUtils()
+    const { alertHistoryToCsvRows, downloadFile, exportFilename, toCsv } = await loadExportUtils()
     const { rows, headers } = alertHistoryToCsvRows(filtered)
     downloadFile(toCsv(rows, headers), exportFilename('alert-history', 'csv'), 'text/csv')
   }
@@ -84,7 +87,9 @@ export function AlertHistoryLog(): ReactElement {
       {alertHistory.length > 0 && (
         <div className="mb-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-gray-500">{t('alertPanel.history.count', { count: alertHistory.length })}</span>
+            <span className="text-xs text-gray-500">
+              {t('alertPanel.history.count', { count: alertHistory.length })}
+            </span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -124,8 +129,19 @@ export function AlertHistoryLog(): ReactElement {
 
       {alertHistory.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-12 h-12 mx-auto mb-3 text-gray-700"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <p>{t('alertPanel.history.empty')}</p>
         </div>
@@ -151,7 +167,9 @@ export function AlertHistoryLog(): ReactElement {
                       {/* #487 — distinguish escalation-step firings from the initial trigger */}
                       {entry.escalation && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
-                          {t('alertPanel.escalation.historyBadge', { channel: t(`alertModal.escalation.channel_${entry.escalation.channel}`) })}
+                          {t('alertPanel.escalation.historyBadge', {
+                            channel: t(`alertModal.escalation.channel_${entry.escalation.channel}`),
+                          })}
                         </span>
                       )}
                       {/* #491 — flag retest-enabled alert fire sequence entries */}
@@ -165,8 +183,45 @@ export function AlertHistoryLog(): ReactElement {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-400 font-mono">{conditionText(entry, t)}</span>
-                    <span className="text-gray-300 font-mono">{t('alertPanel.history.priceAt', { price: formatPrice(entry.price) })}</span>
+                    <span className="text-gray-300 font-mono">
+                      {t('alertPanel.history.priceAt', { price: formatPrice(entry.price) })}
+                    </span>
                   </div>
+                  {entry.evidence && (
+                    <details className="mt-2 text-xs text-gray-400">
+                      <summary className="w-fit cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+                        {t('alertPanel.history.tickEvidence')}
+                      </summary>
+                      <dl className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                        <div>
+                          <dt className="inline">{t('alertPanel.history.tickTime')}: </dt>
+                          <dd className="inline">{formatTimestamp(entry.evidence.timestamp)}</dd>
+                        </div>
+                        <div>
+                          <dt className="inline">{t('alertPanel.history.tickConfidence')}: </dt>
+                          <dd className="inline">{(entry.evidence.confidence * 100).toFixed(1)}%</dd>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <dt className="inline">{t('alertPanel.history.tickSources')}: </dt>
+                          <dd className="inline">
+                            {entry.evidence.sources.length > 0
+                              ? entry.evidence.sources.join(', ')
+                              : t('alertPanel.history.tickUnavailable')}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <dt className="inline">{t('alertPanel.history.sourcePrices')}: </dt>
+                          <dd className="inline">
+                            {entry.evidence.sourcePrices && Object.keys(entry.evidence.sourcePrices).length > 0
+                              ? Object.entries(entry.evidence.sourcePrices)
+                                  .map(([source, price]) => `${source}: ${formatPrice(price)}`)
+                                  .join(', ')
+                              : t('alertPanel.history.tickUnavailable')}
+                          </dd>
+                        </div>
+                      </dl>
+                    </details>
+                  )}
                 </li>
               )
             })}

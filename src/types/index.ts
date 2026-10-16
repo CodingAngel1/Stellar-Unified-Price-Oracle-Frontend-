@@ -231,6 +231,13 @@ export interface AlertHistoryEntry {
   percentageThreshold: number | null
   percentageWindow: AlertTimeWindow | null
   percentageDirection: AlertPercentageDirection | null
+  /** Exact price snapshot observed when this alert fired. */
+  evidence?: {
+    timestamp: number
+    confidence: number
+    sources: string[]
+    sourcePrices?: Record<string, number>
+  } | null
   /**
    * Present when this entry records an escalation step firing (#487) rather than
    * the alert's initial trigger — lets `AlertHistoryLog` distinguish and label them.

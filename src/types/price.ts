@@ -18,6 +18,8 @@ export interface PriceData {
   confidence: number
   /** List of oracle sources that contributed to this price. */
   sources: string[]
+  /** Per-source raw prices when the upstream tick includes them. */
+  sourcePrices?: Record<string, number>
 }
 
 // ---------------------------------------------------------------------------

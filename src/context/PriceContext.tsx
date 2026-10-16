@@ -409,6 +409,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
               timestamp: msg.timestamp,
               confidence: msg.confidence,
               sources: msg.sources,
+              ...(msg.sourcePrices ? { sourcePrices: msg.sourcePrices } : {}),
             },
             syncState: 'optimistic',
             flashVersion: (current?.flashVersion ?? 0) + 1,

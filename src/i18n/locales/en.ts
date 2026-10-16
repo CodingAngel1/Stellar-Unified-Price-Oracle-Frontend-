@@ -365,6 +365,12 @@ const en = {
       count_one: '{{count}} fired alert',
       count_other: '{{count}} fired alerts',
       priceAt: 'Price: ${{price}}',
+      tickEvidence: 'Show exact tick evidence',
+      tickTime: 'Tick time',
+      tickConfidence: 'Confidence',
+      tickSources: 'Contributing sources',
+      sourcePrices: 'Per-source tick prices',
+      tickUnavailable: 'Not provided by the price feed',
     },
     // ── Escalation progress (#487) ────────────────────────────────────────
     escalation: {

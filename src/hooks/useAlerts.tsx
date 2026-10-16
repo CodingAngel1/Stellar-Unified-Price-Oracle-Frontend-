@@ -1,5 +1,5 @@
-import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import { useState, useCallback, useEffect, useRef, createContext, useContext, ReactNode } from 'react'
+import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
 import type {
   Alert,
   AlertHistoryEntry,
@@ -345,7 +345,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
         // #485 – compound evaluation against the alert's (possibly legacy-migrated) condition group
         const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
-        const state: PriceEvaluationState = { price: currentPrice, percentageChange: { [window]: pctChange }, nowMs: Date.now() }
+        const state: PriceEvaluationState = {
+          price: currentPrice,
+          percentageChange: { [window]: pctChange },
+          nowMs: Date.now(),
+        }
         triggered = evaluateCompoundCondition(group, state)
       } else {
         // ── Absolute threshold evaluation, via the compound evaluator (#485) ─
@@ -383,7 +387,18 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
             active: !updatedAlert.triggerOnce,
           }
           firedEntries.push(
-            buildTriggerHistoryEntry(updatedAlert, currentPrice, now, { kind: 'retest', cycle: retestEvent.cycle }),
+            buildTriggerHistoryEntry(
+              updatedAlert,
+              currentPrice,
+              now,
+              { kind: 'retest', cycle: retestEvent.cycle },
+              {
+                timestamp: livePriceData.data.timestamp,
+                confidence: livePriceData.data.confidence,
+                sources: [...livePriceData.data.sources],
+                ...(livePriceData.data.sourcePrices ? { sourcePrices: { ...livePriceData.data.sourcePrices } } : {}),
+              },
+            ),
           )
         } else if (updatedAlert.retestMode) {
           // Retest-mode alerts record the sequence (breach / exit / non-firing
@@ -392,10 +407,21 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           // the only history record — recording the first `breach` here too
           // would duplicate it.
           firedEntries.push(
-            buildTriggerHistoryEntry(updatedAlert, currentPrice, now, {
-              kind: retestEvent.kind,
-              cycle: retestEvent.cycle,
-            }),
+            buildTriggerHistoryEntry(
+              updatedAlert,
+              currentPrice,
+              now,
+              {
+                kind: retestEvent.kind,
+                cycle: retestEvent.cycle,
+              },
+              {
+                timestamp: livePriceData.data.timestamp,
+                confidence: livePriceData.data.confidence,
+                sources: [...livePriceData.data.sources],
+                ...(livePriceData.data.sourcePrices ? { sourcePrices: { ...livePriceData.data.sourcePrices } } : {}),
+              },
+            ),
           )
         }
       }
@@ -418,7 +444,14 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           if (elapsedMinutes >= step.delayMinutes && !firedStepIds.includes(step.id)) {
             changed = true
             firedStepIds = [...firedStepIds, step.id]
-            firedEntries.push(buildEscalationHistoryEntry(updatedAlert, step, currentPrice, now))
+            firedEntries.push(
+              buildEscalationHistoryEntry(updatedAlert, step, currentPrice, now, {
+                timestamp: livePriceData.data.timestamp,
+                confidence: livePriceData.data.confidence,
+                sources: [...livePriceData.data.sources],
+                ...(livePriceData.data.sourcePrices ? { sourcePrices: { ...livePriceData.data.sourcePrices } } : {}),
+              }),
+            )
             void dispatchEscalationStep(updatedAlert, step, currentPrice)
           }
         }
@@ -452,7 +485,14 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
             playAlertSound(soundPrefs.volume)
           }
 
-          firedEntries.push(buildTriggerHistoryEntry(updatedAlert, currentPrice, now))
+          firedEntries.push(
+            buildTriggerHistoryEntry(updatedAlert, currentPrice, now, undefined, {
+              timestamp: livePriceData.data.timestamp,
+              confidence: livePriceData.data.confidence,
+              sources: [...livePriceData.data.sources],
+              ...(livePriceData.data.sourcePrices ? { sourcePrices: { ...livePriceData.data.sourcePrices } } : {}),
+            }),
+          )
 
           return {
             ...updatedAlert,

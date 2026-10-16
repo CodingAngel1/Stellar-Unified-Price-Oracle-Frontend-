@@ -10,6 +10,7 @@ export const PriceDataSchema = z.object({
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
+  sourcePrices: z.record(z.string(), z.number().finite()).optional(),
 })
 
 /**
@@ -173,6 +174,15 @@ export const AlertHistoryEntrySchema = z.object({
   percentageThreshold: z.number().nullable().default(null),
   percentageWindow: z.enum(['5min', '15min', '1hr', '24hr']).nullable().default(null),
   percentageDirection: z.enum(['up', 'down', 'either']).nullable().default(null),
+  evidence: z
+    .object({
+      timestamp: z.number().int().min(0),
+      confidence: z.number().min(0).max(1),
+      sources: z.array(z.string().min(1)),
+      sourcePrices: z.record(z.string(), z.number().finite()).optional(),
+    })
+    .nullable()
+    .optional(),
   // Escalation step metadata (#487) — present only on escalation-fired entries.
   escalation: z
     .object({ stepId: z.string(), channel: NotificationChannelIdSchema, delayMinutes: z.number() })
