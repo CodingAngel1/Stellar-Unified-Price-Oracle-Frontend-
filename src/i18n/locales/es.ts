@@ -224,6 +224,7 @@ const es = {
       mustBePositive: 'Debe ser un número positivo',
       upperGreaterThanLower: 'Debe ser mayor que el umbral inferior',
       lowerLessThanUpper: 'Debe ser menor que el umbral superior',
+      invalidDate: 'Introduce una fecha válida',
     },
     conditions: {
       title: 'Condiciones adicionales',
@@ -265,6 +266,13 @@ const es = {
       title: 'Notificar en retest',
       description: 'También se dispara si el precio vuelve a entrar en este nivel superado después de salir de él.',
     },
+    lifecycle: {
+      title: 'Ciclo de vida de la regla',
+      expiryLabel: 'Fecha de vencimiento (opcional)',
+      reviewLabel: 'Recordatorio de revisión (opcional)',
+      description:
+        'El vencimiento desactiva la regla al final de esa fecha local. La revisión solo es un recordatorio.',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: 'Probar alerta',
@@ -280,6 +288,19 @@ const es = {
         'Elige dónde se entrega esta alerta. Déjalo vacío para usar los canales configurados en tus ajustes de notificación.',
       useGlobal: 'Usar valores globales por defecto',
       noneConfigured: 'No hay canales configurados: configura los canales en Ajustes de notificación primero.',
+      readiness: {
+        title: 'Disponibilidad de canales',
+        remoteNote:
+          'Solo se comprueba la configuración local y el permiso del navegador; no se verifica la entrega remota.',
+        blocked: 'Resuelve los problemas de disponibilidad antes de guardar.',
+        ready: 'Disponible localmente',
+        disabled: 'El canal está desactivado en los ajustes de notificación',
+        missingConfiguration: 'Falta la configuración necesaria del canal',
+        missingSecret: 'Falta el secreto de sesión; vuelve a introducirlo en los ajustes de notificación',
+        permissionRequired: 'No se ha concedido el permiso de notificaciones del navegador',
+        permissionDenied: 'Se denegaron las notificaciones; cambia el permiso en los ajustes del navegador',
+        unsupported: 'Las notificaciones del navegador no están disponibles en este entorno',
+      },
     },
     presets: {
       title: 'Empezar desde una plantilla',
@@ -297,6 +318,24 @@ const es = {
     newBadge: '{{count}} Nueva',
     empty: 'No hay alertas configuradas',
     close: 'Cerrar panel de alertas',
+    delivery: {
+      title: 'Intentos de entrega',
+      empty: 'No hay intentos registrados en esta sesión; el historial anterior no está disponible.',
+      status_queued: 'Reintentando',
+      status_delivered: 'Aceptado',
+      status_failed: 'Fallido',
+      attemptCount: '{{count}} intentos',
+      attemptDelivered: 'Intento {{attempt}} aceptado',
+      attemptFailed: 'Intento {{attempt}} fallido: {{error}}',
+      unknownError: 'Error desconocido',
+    },
+    lifecycle: {
+      title: 'Programación de la regla',
+      expired: 'Vencida',
+      expiresOn: 'Vence {{date}}',
+      reviewDue: 'Revisión pendiente',
+      reviewOn: 'Revisar {{date}}',
+    },
     sections: {
       triggered: 'Activadas',
       active: 'Alertas activas',
@@ -362,6 +401,23 @@ const es = {
     tabs: {
       alerts: 'Alertas',
       history: 'Historial',
+      archived: 'Archivadas',
+    },
+    bulk: {
+      selectRules: 'Seleccionar reglas ({{count}} seleccionadas)',
+      selectAll: 'Seleccionar todas',
+      clearSelection: 'Borrar selección',
+      pause: 'Pausar seleccionadas',
+      archive: 'Archivar seleccionadas',
+      editDates: 'Editar fechas en bloque',
+      applyExpiry: 'Cambiar fecha de vencimiento',
+      applyReview: 'Cambiar recordatorio de revisión',
+      expiryHelp: 'Elige una fecha o déjala vacía para borrar el vencimiento. Usa el final del día local.',
+      reviewHelp: 'Elige una fecha o déjala vacía para borrar el recordatorio.',
+      saveDates: 'Aplicar cambios de fecha',
+      cancel: 'Cancelar',
+      restore: 'Restaurar regla',
+      archivedEmpty: 'No hay reglas archivadas',
     },
     history: {
       empty: 'Aún no se ha disparado ninguna alerta',

@@ -258,6 +258,8 @@ describe('buildConditionGroupFromFormData', () => {
     channels: [],
     notifyOnRecovery: false,
     retestMode: false,
+    expiryDate: '',
+    reviewDate: '',
   }
 
   it('builds an OR group from both thresholds when no extra conditions are added', () => {

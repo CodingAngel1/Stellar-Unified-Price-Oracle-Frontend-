@@ -234,6 +234,7 @@ const en = {
       mustBePositive: 'Must be a positive number',
       upperGreaterThanLower: 'Must be greater than lower threshold',
       lowerLessThanUpper: 'Must be less than upper threshold',
+      invalidDate: 'Enter a valid date',
     },
     // ── Compound AND/OR condition builder (#485) ──────────────────────────
     conditions: {
@@ -296,6 +297,18 @@ const en = {
         'Choose where this alert is delivered. Leave empty to use the channels configured in your notification settings.',
       useGlobal: 'Use global defaults',
       noneConfigured: 'No channels configured — set up channels in Notification Settings first.',
+      readiness: {
+        title: 'Channel readiness',
+        remoteNote: 'Checks verify local settings and browser permission only; remote delivery is not probed.',
+        blocked: 'Resolve the channel readiness issues before saving.',
+        ready: 'Ready locally',
+        disabled: 'Channel is disabled in notification settings',
+        missingConfiguration: 'Required channel settings are missing',
+        missingSecret: 'Session-only secret is missing; re-enter it in notification settings',
+        permissionRequired: 'Browser notification permission is not granted',
+        permissionDenied: 'Browser notification permission was denied; change it in browser settings',
+        unsupported: 'Browser notifications are unavailable in this environment',
+      },
     },
     // ── Preset library (#486) ──────────────────────────────────────────────
     presets: {
@@ -315,6 +328,24 @@ const en = {
     newBadge: '{{count}} New',
     empty: 'No alerts set yet',
     close: 'Close alert panel',
+    delivery: {
+      title: 'Delivery attempts',
+      empty: 'No attempts recorded this session; earlier history is unavailable.',
+      status_queued: 'Retrying',
+      status_delivered: 'Accepted',
+      status_failed: 'Failed',
+      attemptCount: '{{count}} attempts',
+      attemptDelivered: 'Attempt {{attempt}} accepted',
+      attemptFailed: 'Attempt {{attempt}} failed: {{error}}',
+      unknownError: 'Unknown error',
+    },
+    lifecycle: {
+      title: 'Rule schedule',
+      expired: 'Expired',
+      expiresOn: 'Expires {{date}}',
+      reviewDue: 'Review due',
+      reviewOn: 'Review {{date}}',
+    },
     sections: {
       triggered: 'Triggered',
       active: 'Active Alerts',
@@ -385,6 +416,23 @@ const en = {
     tabs: {
       alerts: 'Alerts',
       history: 'History',
+      archived: 'Archived',
+    },
+    bulk: {
+      selectRules: 'Select rules ({{count}} selected)',
+      selectAll: 'Select all',
+      clearSelection: 'Clear selection',
+      pause: 'Pause selected',
+      archive: 'Archive selected',
+      editDates: 'Bulk edit dates',
+      applyExpiry: 'Change expiry date',
+      applyReview: 'Change review reminder',
+      expiryHelp: 'Choose a date, or leave blank to clear expiry. Expiry uses local end-of-day.',
+      reviewHelp: 'Choose a date, or leave blank to clear the reminder.',
+      saveDates: 'Apply date changes',
+      cancel: 'Cancel',
+      restore: 'Restore rule',
+      archivedEmpty: 'No archived rules',
     },
     history: {
       empty: 'No alerts have fired yet',

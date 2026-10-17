@@ -225,6 +225,7 @@ const fr = {
       mustBePositive: 'Doit être un nombre positif',
       upperGreaterThanLower: 'Doit être supérieur au seuil inférieur',
       lowerLessThanUpper: 'Doit être inférieur au seuil supérieur',
+      invalidDate: 'Saisissez une date valide',
     },
     conditions: {
       title: 'Conditions supplémentaires',
@@ -266,6 +267,13 @@ const fr = {
       title: 'Notifier en cas de re-test',
       description: 'Se déclenche aussi si le prix revient dans ce niveau franchi après en être sorti.',
     },
+    lifecycle: {
+      title: 'Cycle de vie de la règle',
+      expiryLabel: "Date d'expiration (facultative)",
+      reviewLabel: 'Rappel de révision (facultatif)',
+      description:
+        'La date d’expiration désactive la règle à la fin de cette journée locale. La révision est un simple rappel.',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: "Tester l'alerte",
@@ -281,6 +289,19 @@ const fr = {
         'Choisissez où cette alerte est livrée. Laissez vide pour utiliser les canaux configurés dans vos paramètres de notification.',
       useGlobal: 'Utiliser les valeurs par défaut globales',
       noneConfigured: "Aucun canal configuré — configurez d'abord les canaux dans les paramètres de notification.",
+      readiness: {
+        title: 'État des canaux',
+        remoteNote:
+          "Seuls la configuration locale et l'autorisation du navigateur sont vérifiées ; la livraison distante ne l'est pas.",
+        blocked: "Résolvez les problèmes d'état des canaux avant l'enregistrement.",
+        ready: 'Prêt localement',
+        disabled: 'Canal désactivé dans les paramètres de notification',
+        missingConfiguration: 'Configuration du canal manquante',
+        missingSecret: 'Secret de session manquant ; saisissez-le à nouveau dans les paramètres de notification',
+        permissionRequired: "L'autorisation de notification du navigateur n'est pas accordée",
+        permissionDenied: 'Notifications refusées ; modifiez cette autorisation dans les paramètres du navigateur',
+        unsupported: 'Les notifications du navigateur ne sont pas disponibles dans cet environnement',
+      },
     },
     presets: {
       title: "Partir d'un modèle",
@@ -298,6 +319,24 @@ const fr = {
     newBadge: '{{count}} Nouvelle(s)',
     empty: 'Aucune alerte configurée',
     close: "Fermer le panneau d'alertes",
+    delivery: {
+      title: 'Tentatives de livraison',
+      empty: "Aucune tentative enregistrée pendant cette session ; l'historique précédent n'est pas disponible.",
+      status_queued: 'Nouvelle tentative',
+      status_delivered: 'Acceptée',
+      status_failed: 'Échec',
+      attemptCount: '{{count}} tentatives',
+      attemptDelivered: 'Tentative {{attempt}} acceptée',
+      attemptFailed: 'Échec de la tentative {{attempt}} : {{error}}',
+      unknownError: 'Erreur inconnue',
+    },
+    lifecycle: {
+      title: 'Calendrier de la règle',
+      expired: 'Expirée',
+      expiresOn: 'Expire le {{date}}',
+      reviewDue: 'Révision due',
+      reviewOn: 'Révision le {{date}}',
+    },
     sections: {
       triggered: 'Déclenchées',
       active: 'Alertes actives',
@@ -363,6 +402,23 @@ const fr = {
     tabs: {
       alerts: 'Alertes',
       history: 'Historique',
+      archived: 'Archivées',
+    },
+    bulk: {
+      selectRules: 'Sélectionner des règles ({{count}} sélectionnée(s))',
+      selectAll: 'Tout sélectionner',
+      clearSelection: 'Effacer la sélection',
+      pause: 'Mettre en pause la sélection',
+      archive: 'Archiver la sélection',
+      editDates: 'Modifier les dates en lot',
+      applyExpiry: "Modifier la date d'expiration",
+      applyReview: 'Modifier le rappel de révision',
+      expiryHelp: "Choisissez une date ou laissez vide pour effacer l'expiration. Fin de journée locale.",
+      reviewHelp: 'Choisissez une date ou laissez vide pour effacer le rappel.',
+      saveDates: 'Appliquer les dates',
+      cancel: 'Annuler',
+      restore: 'Restaurer la règle',
+      archivedEmpty: 'Aucune règle archivée',
     },
     history: {
       empty: "Aucune alerte ne s'est encore déclenchée",

@@ -224,6 +224,7 @@ const ja = {
       mustBePositive: '正の数である必要があります',
       upperGreaterThanLower: '下限しきい値より大きい値を入力してください',
       lowerLessThanUpper: '上限しきい値より小さい値を入力してください',
+      invalidDate: '有効な日付を入力してください',
     },
     conditions: {
       title: '追加条件',
@@ -265,6 +266,12 @@ const ja = {
       title: '再テスト時に通知',
       description: '価格がこの突破済みレベルを離れた後、再び入った場合にも発火します。',
     },
+    lifecycle: {
+      title: 'ルールのスケジュール',
+      expiryLabel: '有効期限（任意）',
+      reviewLabel: '確認リマインダー（任意）',
+      description: '有効期限日の現地時間終了時にルールを無効化します。確認日はリマインダーのみです。',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: 'アラートをテスト',
@@ -278,6 +285,18 @@ const ja = {
       description: 'このアラートの配信先を選択します。空のままにすると、通知設定で構成したチャンネルが使用されます。',
       useGlobal: 'グローバルデフォルトを使用',
       noneConfigured: 'チャンネルが設定されていません — 先に通知設定でチャンネルを設定してください。',
+      readiness: {
+        title: '通知先の準備状況',
+        remoteNote: 'ローカル設定とブラウザー権限のみ確認します。リモート配信の状態は確認しません。',
+        blocked: '保存する前に通知先の問題を解決してください。',
+        ready: 'ローカル設定済み',
+        disabled: '通知設定でこのチャンネルは無効です',
+        missingConfiguration: 'チャンネルに必要な設定がありません',
+        missingSecret: 'セッション中のみのシークレットがありません。通知設定で再入力してください',
+        permissionRequired: 'ブラウザー通知の許可が必要です',
+        permissionDenied: 'ブラウザー通知が拒否されています。ブラウザー設定で変更してください',
+        unsupported: 'この環境ではブラウザー通知を利用できません',
+      },
     },
     presets: {
       title: 'プリセットから開始',
@@ -295,6 +314,24 @@ const ja = {
     newBadge: '{{count}}件 新着',
     empty: 'アラートはまだ設定されていません',
     close: 'アラートパネルを閉じる',
+    delivery: {
+      title: '通知の試行履歴',
+      empty: 'このセッションでは試行が記録されていません。以前の履歴は利用できません。',
+      status_queued: '再試行中',
+      status_delivered: '受付済み',
+      status_failed: '失敗',
+      attemptCount: '{{count}}回試行',
+      attemptDelivered: '{{attempt}}回目の試行を受付',
+      attemptFailed: '{{attempt}}回目の試行に失敗: {{error}}',
+      unknownError: '不明なエラー',
+    },
+    lifecycle: {
+      title: 'ルールのスケジュール',
+      expired: '期限切れ',
+      expiresOn: '{{date}}に期限切れ',
+      reviewDue: '確認が必要です',
+      reviewOn: '{{date}}に確認',
+    },
     sections: {
       triggered: '発動済み',
       active: 'アクティブなアラート',
@@ -360,6 +397,23 @@ const ja = {
     tabs: {
       alerts: 'アラート',
       history: '履歴',
+      archived: 'アーカイブ済み',
+    },
+    bulk: {
+      selectRules: 'ルールを選択（{{count}}件選択中）',
+      selectAll: 'すべて選択',
+      clearSelection: '選択を解除',
+      pause: '選択したルールを一時停止',
+      archive: '選択したルールをアーカイブ',
+      editDates: '日付を一括編集',
+      applyExpiry: '有効期限を変更',
+      applyReview: '確認リマインダーを変更',
+      expiryHelp: '日付を選択するか、空欄にして有効期限を解除します。現地時間の最終時刻に適用されます。',
+      reviewHelp: '日付を選択するか、空欄にしてリマインダーを解除します。',
+      saveDates: '日付の変更を適用',
+      cancel: 'キャンセル',
+      restore: 'ルールを復元',
+      archivedEmpty: 'アーカイブ済みのルールはありません',
     },
     history: {
       empty: 'まだ発火したアラートはありません',

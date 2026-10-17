@@ -21,6 +21,8 @@ function form(overrides?: Partial<AlertFormData>): AlertFormData {
     channels: [],
     notifyOnRecovery: false,
     retestMode: false,
+    expiryDate: '',
+    reviewDate: '',
     ...overrides,
   }
 }

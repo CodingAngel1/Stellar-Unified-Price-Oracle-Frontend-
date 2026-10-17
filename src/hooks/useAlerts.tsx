@@ -7,6 +7,7 @@ import type {
   AlertsContextType,
   AlertSnoozeDuration,
   EscalationStep,
+  NotificationChannelId,
   PriceEvaluationState,
 } from '../types'
 import { migrateLegacyAlertConditions } from '../types/alerts'
@@ -37,6 +38,8 @@ import { addInboxItem } from '../services/inbox'
 import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../services/notificationConfig'
 import { stepRetest, initialRetestState } from '../utils/retestDetector'
 import { registerMemoryProbe } from '../utils/memoryProfiler'
+import { isAlertExpired } from '../utils/alertLifecycle'
+import { deliveryTracker, type DeliverySendResult, type SendFn } from '../services/deliveryReceipts'
 import { useRateLimit } from './useRateLimit'
 
 const alertsChannel = createBroadcastChannel<Alert[]>('kiro-alerts')
@@ -115,10 +118,10 @@ async function dispatchTelegramChannel(
   currentPrice: number,
   body: string,
   escalation?: { stepId: string; delayMinutes: number },
-): Promise<void> {
-  if (!cfg.telegram.enabled || !cfg.telegram.chatId) return
+): Promise<DeliverySendResult> {
+  if (!cfg.telegram.enabled || !cfg.telegram.chatId) return { ok: false, error: 'Telegram channel is not configured' }
   const { telegramBotToken } = loadBotSecrets()
-  await sendTelegramMessage({ chatId: cfg.telegram.chatId, enabled: cfg.telegram.enabled }, telegramBotToken, {
+  return sendTelegramMessage({ chatId: cfg.telegram.chatId, enabled: cfg.telegram.enabled }, telegramBotToken, {
     assetPair: alert.assetPair,
     price: currentPrice,
     message: body,
@@ -133,10 +136,10 @@ async function dispatchDiscordChannel(
   currentPrice: number,
   body: string,
   escalation?: { stepId: string; delayMinutes: number },
-): Promise<void> {
-  if (!cfg.discord.enabled) return
+): Promise<DeliverySendResult> {
+  if (!cfg.discord.enabled) return { ok: false, error: 'Discord channel is not enabled' }
   const { discordWebhookUrl } = loadBotSecrets()
-  await sendDiscordMessage({ channelId: cfg.discord.channelId, enabled: cfg.discord.enabled }, discordWebhookUrl, {
+  return sendDiscordMessage({ channelId: cfg.discord.channelId, enabled: cfg.discord.enabled }, discordWebhookUrl, {
     assetPair: alert.assetPair,
     price: currentPrice,
     message: body,
@@ -172,6 +175,11 @@ async function dispatchNotifications(
   if (targets.has('webPush')) {
     dispatchWebPushChannel(cfg, body, kind)
   }
+  await Promise.all(
+    [...targets].flatMap((channel) =>
+      channel === 'inApp' ? [] : [deliveryTracker.deliver(alert.id, channel, sends[channel])],
+    ),
+  )
 }
 
 /**
@@ -185,18 +193,15 @@ async function dispatchEscalationStep(alert: Alert, step: EscalationStep, curren
   const cfg = loadNotifConfig()
   const body = alertMessage(alert, currentPrice)
   const escalation = { stepId: step.id, delayMinutes: step.delayMinutes }
-  switch (step.channel) {
-    case 'email':
-      return dispatchEmailChannel(cfg, alert, currentPrice, body)
-    case 'webhook':
-      return dispatchWebhookChannel(cfg, alert, currentPrice, body)
-    case 'webPush':
-      return dispatchWebPushChannel(cfg, body)
-    case 'telegram':
-      return dispatchTelegramChannel(cfg, alert, currentPrice, body, escalation)
-    case 'discord':
-      return dispatchDiscordChannel(cfg, alert, currentPrice, body, escalation)
+  const sends: Record<Exclude<NotificationChannelId, 'inApp'>, SendFn> = {
+    email: () => dispatchEmailChannel(cfg, alert, currentPrice, body),
+    webhook: () => dispatchWebhookChannel(cfg, alert, currentPrice, body),
+    telegram: () => dispatchTelegramChannel(cfg, alert, currentPrice, body, escalation),
+    discord: () => dispatchDiscordChannel(cfg, alert, currentPrice, body, escalation),
+    webPush: () => dispatchWebPushChannel(cfg, body),
   }
+  const send = sends[step.channel]
+  await deliveryTracker.deliver(alert.id, step.channel, send)
 }
 
 /** Compute snooze expiry timestamp from a duration string */
@@ -347,9 +352,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => {
       const now = Date.now()
       setAlerts((prev) => {
-        const changed = prev.some((a) => a.snoozedUntil !== null && a.snoozedUntil <= now)
+        const changed = prev.some(
+          (a) => (a.snoozedUntil !== null && a.snoozedUntil <= now) || (a.active && isAlertExpired(a.expiresAt, now)),
+        )
         if (!changed) return prev
-        return prev.map((a) => (a.snoozedUntil !== null && a.snoozedUntil <= now ? { ...a, snoozedUntil: null } : a))
+        return prev.map((a) => ({
+          ...a,
+          snoozedUntil: a.snoozedUntil !== null && a.snoozedUntil <= now ? null : a.snoozedUntil,
+          active: isAlertExpired(a.expiresAt, now) ? false : a.active,
+        }))
       })
     }, 30_000)
     return () => clearInterval(interval)
@@ -782,6 +793,9 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         lastTriggeredAt: null,
         fireCount: 0,
         snoozedUntil: null,
+        expiresAt: alert.expiresAt ?? null,
+        reviewAt: alert.reviewAt ?? null,
+        archived: alert.archived ?? false,
         percentageBaselinePrice: null,
         percentageBaselineTimestamp: null,
         escalationState: null,
@@ -810,20 +824,35 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const updateAlerts = useCallback((ids: string[], updates: Partial<Omit<Alert, 'id' | 'createdAt'>>) => {
+    const selectedIds = new Set(ids)
+    if (selectedIds.size === 0) return
+    setAlerts((prev) =>
+      prev.map((alert) => {
+        if (!selectedIds.has(alert.id)) return alert
+        const next = { ...alert, ...updates }
+        recordRuleVersion(next)
+        return next
+      }),
+    )
+  }, [])
+
   const removeAlert = useCallback((id: string) => {
     removeRuleHistory(id)
     setAlerts((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
   const getAlertsForPair = useCallback(
-    (assetPair: string) => alerts.filter((a) => a.assetPair === assetPair && a.active),
+    (assetPair: string) => alerts.filter((a) => a.assetPair === assetPair && a.active && !a.archived),
     [alerts],
   )
 
-  const activeCount = alerts.filter((a) => a.active && (a.snoozedUntil === null || a.snoozedUntil <= Date.now())).length
+  const activeCount = alerts.filter(
+    (a) => a.active && !a.archived && (a.snoozedUntil === null || a.snoozedUntil <= Date.now()),
+  ).length
 
   const hasAlertsForPair = useCallback(
-    (assetPair: string) => alerts.some((a) => a.assetPair === assetPair && a.active),
+    (assetPair: string) => alerts.some((a) => a.assetPair === assetPair && a.active && !a.archived),
     [alerts],
   )
 
@@ -877,6 +906,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     alerts,
     addAlert,
     updateAlert,
+    updateAlerts,
     removeAlert,
     getAlertsForPair,
     hasAlertsForPair,
