@@ -22,6 +22,7 @@ import {
   calculateVolatilityRegimes,
   groupVolatilityRegimes,
 } from '../utils/comparisonAnalytics'
+import { ComparisonSummary } from './ComparisonSummary'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -542,6 +543,14 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
           )}
         </section>
       )}
+
+      {/* Summary of the same window the chart draws, so the lines can be read against it (#814) */}
+      <ComparisonSummary
+        pairs={pairs}
+        history={history}
+        start={hasBenchmark && validPeriod ? (startTimestamp ?? undefined) : undefined}
+        end={hasBenchmark && validPeriod ? (endTimestamp ?? undefined) : undefined}
+      />
 
       {/* Chart area */}
       <div
