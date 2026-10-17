@@ -1,10 +1,14 @@
 // Price-related types — see src/types/price.ts for full documentation
 export type {
   PriceData,
+  PairMetadata,
+  FeedSymbolStatus,
+  FeedSymbolMetadata,
   PriceSyncState,
   LivePriceEntry,
   PriceHistoryEntry,
   ExcludedSourceTick,
+  SourceTimestamp,
   PriceHistoryResponse,
   SourceName,
   SourceHealth,

@@ -1,12 +1,22 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, screen, fireEvent } from '@testing-library/react'
+import { cleanup, screen, fireEvent, render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import type { ReactElement, ReactNode } from 'react'
 import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { checkAccessibility } from '../test/accessibility'
-import { renderWithProviders } from '../test/render'
 import { PriceChart } from './PriceChart'
 
 afterEach(cleanup)
+
+function renderWithProviders(ui: ReactElement) {
+  return render(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <MemoryRouter>
+        <PreferencesProvider>{children}</PreferencesProvider>
+      </MemoryRouter>
+    ),
+  })
+}
 
 const sampleData = [
   { price: 50000, timestamp: Date.now() - 3600000, confidence: 0.99, sources: ['chainlink'] },
@@ -47,6 +57,31 @@ describe('PriceChart', () => {
   it('renders chart with data', () => {
     renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" loading={false} />)
     expect(screen.getByText('BTC/USD Price History')).toBeInTheDocument()
+  })
+
+  it('shows source coverage from reported contributors when enabled', () => {
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
+    const coverageToggle = screen.getByRole('button', { name: 'Toggle per-source coverage overlay' })
+    expect(coverageToggle).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(coverageToggle)
+
+    expect(coverageToggle).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('chainlink: 100.0%')).toBeInTheDocument()
+    expect(screen.getByText(/share of returned price points/)).toBeInTheDocument()
+  })
+
+  it('reports coverage unavailable when history has no contributor metadata', () => {
+    renderWithProviders(
+      <PriceChart
+        data={[{ price: 50_000, timestamp: Date.now(), confidence: 0.9, sources: [] }]}
+        pair="BTC/USD"
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle per-source coverage overlay' }))
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Per-source coverage is unavailable because the returned history contains no contributing-source data.',
+    )
   })
 
   it('renders all time range buttons', () => {

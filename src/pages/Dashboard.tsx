@@ -33,6 +33,8 @@ import { deriveSourceHealths } from '../utils/sourceHealth'
 import { WORKSPACE_PARAM, type Workspace } from '../utils/workspaceShare'
 import { OnboardingTour, resetTour } from '../components/OnboardingTour'
 import { WorkspaceShareDialog } from '../components/WorkspaceShareDialog'
+import { ConfidenceRegimePanel } from '../components/ConfidenceRegimePanel'
+import { getObservedSourceRange } from '../utils/uncertaintyBand'
 
 const SKELETON_COUNT = 8
 
@@ -53,6 +55,7 @@ export function Dashboard() {
     pricesError,
     pricesValidating,
     livePrices,
+    attributionHistory,
     wsStatus,
     diagnostics,
     rateLimitStatus,
@@ -231,6 +234,16 @@ export function Dashboard() {
   // Shared with the Governance page via `deriveSourceHealths` — the two views
   // must never report different source metrics.
   const sourceHealths = useMemo<SourceHealth[]>(() => deriveSourceHealths(merged), [merged])
+  const observedSourceRanges = useMemo(
+    () =>
+      new Map(
+        merged.map((price) => [
+          price.assetPair,
+          getObservedSourceRange((attributionHistory.get(price.assetPair) ?? []).slice(-1)[0], price.timestamp),
+        ]),
+      ),
+    [merged, attributionHistory],
+  )
 
   const handleCardClick = useCallback(
     (pair: string) => {
@@ -456,7 +469,7 @@ export function Dashboard() {
             </svg>
             {t('dashboard.filter.toggle')}
             {activeFilterCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-cyan-500 text-gray-900 rounded-full px-1">
+              <span className="absolute -top-1.5 -end-1.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-cyan-500 text-gray-900 rounded-full px-1">
                 {activeFilterCount}
               </span>
             )}
@@ -727,6 +740,7 @@ export function Dashboard() {
         <ErrorBoundary boundaryId="price-card-grid" featureLabel="Price Cards">
           <DraggablePriceGrid
             items={filtered}
+            observedSourceRanges={observedSourceRanges}
             livePairs={new Set(livePrices.keys())}
             isStale={pricesValidating}
             hasAlertFn={hasAlertsForPair}
@@ -782,6 +796,8 @@ export function Dashboard() {
       )}
 
       {/* Source Reliability Leaderboard (#465) */}
+      <ConfidenceRegimePanel histories={attributionHistory} />
+
       <div className="mt-8">
         <ErrorBoundary boundaryId="reliability-leaderboard" featureLabel="Reliability Leaderboard">
           <ReliabilityLeaderboard sourceHealths={sourceHealths} />

@@ -118,6 +118,34 @@ const en = {
       'Confidence reflects how consistent the price is across oracle sources. 100% means all sources agree exactly.',
   },
 
+  metricHelp: {
+    docsTitle: 'Understanding price metrics',
+    helpFor: 'Help: {{topic}}',
+    readDocs: 'Read the metric guide',
+    topics: {
+      confidence: {
+        title: 'Confidence',
+        description:
+          'A score from 0 to 1 describing how strongly the available oracle sources agree. 0.95 is 95% confidence; it is not a probability that the price is correct.',
+      },
+      divergence: {
+        title: 'Divergence',
+        description:
+          'The percentage difference between the off-chain aggregate and the latest on-chain oracle value. Larger differences can indicate delayed publication or a source disagreement.',
+      },
+      staleness: {
+        title: 'Data freshness',
+        description:
+          'How long ago this price was reported. Older data may no longer reflect current market conditions; the configured freshness threshold marks when it is stale.',
+      },
+      weights: {
+        title: 'Aggregation weights',
+        description:
+          'The share each active oracle source contributes to a weighted aggregate. Active weights add up to 100%; excluded sources contribute nothing.',
+      },
+    },
+  },
+
   // ── PriceTableView ────────────────────────────────────────────────────────
   table: {
     ariaLabel: 'Price feeds table',
@@ -436,13 +464,21 @@ const en = {
   // ── PWA install / update prompts (#361) ───────────────────────────────────
   pwa: {
     installTitle: 'Install Stellar Oracle',
-    installDetail: 'Add this app to your device for quick access and offline support.',
+    installDetail: 'Keep live oracle prices one tap away, with the app shell available offline.',
     installAction: 'Install',
+    installing: 'Opening…',
     installDismiss: 'Not now',
+    installError: 'The install prompt could not be opened. You can install this app from your browser menu.',
     updateTitle: 'Update available',
-    updateDetail: 'A new version of the app is ready.',
-    updateAction: 'Reload',
+    updateVersion: 'Version {{version}}',
+    updateNotes: 'Includes the latest fixes and improvements.',
+    updateAction: 'Reload to update',
+    updating: 'Applying…',
     updateDismiss: 'Later',
+    offlineReady: 'The app shell is cached for offline access. Live prices still need a connection.',
+    errorTitle: 'Offline support or update is unavailable',
+    errorDetail: 'The current app remains available online; the requested service worker change was not applied.',
+    dismissError: 'Dismiss',
   },
 
   // ── NotFound page ─────────────────────────────────────────────────────────
@@ -466,6 +502,8 @@ const en = {
     confidence: '{{value}}% confidence',
     updated: 'Updated {{time}}',
     historyError: 'Failed to load price history: {{message}}',
+    historyStorageWarning:
+      'Browser storage is nearing its limit. The browser may remove locally saved price history; live prices are unaffected.',
     emptyState: {
       title: 'No price data available',
       detail: 'No price data available for this pair.',
@@ -551,6 +589,7 @@ const en = {
     fields: {
       refreshInterval: 'Refresh Interval',
       chartTimeRange: 'Chart Time Range',
+      chartHistoryPageSize: 'Chart History Points per Page',
       staleThreshold: 'Stale Asset Threshold',
     },
     accessibility: {
