@@ -6,6 +6,7 @@ import { useApiVersion } from '../hooks/useApiVersion'
 import { METRIC_HELP_TOPICS, type MetricHelpTopic } from '../data/metricHelp'
 import { isOracleNetwork, type OracleNetwork } from '../lib/contractRegistry'
 import { getSelectedNetwork, onNetworkChange } from '../lib/networkRegistry'
+import { SdkIntegrationChecklist } from '../components/SdkIntegrationChecklist'
 import { OracleClient } from '../sdk/client'
 import { createClientTraceId, reportNetworkError } from '../utils/errorReporting'
 
@@ -558,6 +559,8 @@ export function ApiDocs() {
   const [network, setNetwork] = useState<OracleNetwork>(resolveNetwork)
   useEffect(() => onNetworkChange(setNetwork), [])
   const context = buildSnippetContext(network, apiInfo?.serverVersion || null)
+  // Mock mode uses same-origin requests (empty apiUrl), so the checklist falls back to the page origin.
+  const checklistBaseUrl = config.apiUrl.replace(/\/api$/, '') || window.location.origin
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
@@ -623,6 +626,8 @@ export function ApiDocs() {
           <code className="font-mono text-gray-800 dark:text-gray-300">{context.apiVersion ?? 'detecting…'}</code>
         </span>
       </div>
+
+      <SdkIntegrationChecklist baseUrl={checklistBaseUrl} />
 
       <div className="space-y-4">
         {ENDPOINTS.map((ep) => (
