@@ -1,13 +1,24 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
+import { openCacheConnection } from '../hooks/useIndexedDB'
 import type { PriceContextValue } from '../context/PriceContext'
-import { STORAGE_KEYS } from '../utils/storage'
+import { usePriceContext } from '../context/PriceContext'
+import { checkAccessibility } from '../test/accessibility'
 import { Portfolio } from './Portfolio'
 
+vi.mock('../context/PriceContext', () => ({ usePriceContext: vi.fn() }))
+
+afterEach(cleanup)
+
+const priceTimestamp = Date.now()
 const priceContext: PriceContextValue = {
-  prices: [{ assetPair: 'XLM/USD', price: 0.12, timestamp: 1_000, confidence: 0.99, sources: ['band'] }],
+  prices: [
+    { assetPair: 'BTC/USD', price: 60_000, timestamp: priceTimestamp, confidence: 1, sources: ['chainlink'] },
+    { assetPair: 'XLM/USD', price: 0.2, timestamp: priceTimestamp, confidence: 1, sources: ['reflector'] },
+  ],
   pricesLoading: false,
   pricesError: null,
   pricesValidating: false,
@@ -26,67 +37,97 @@ const priceContext: PriceContextValue = {
   isWsLeader: null,
 }
 
-vi.mock('../context/PriceContext', () => ({
-  usePriceContext: () => priceContext,
-}))
-
-vi.mock('../api/rest', () => ({
-  fetchAllPrices: vi
-    .fn()
-    .mockResolvedValue([{ assetPair: 'XLM/USD', price: 0.12, timestamp: 1_000, confidence: 0.99, sources: ['band'] }]),
-}))
-
-vi.mock('../hooks/usePriceHistory', () => ({
-  usePriceHistory: () => ({ history: [], loading: false, error: null }),
-}))
-
 function renderPortfolio() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <QueryClientProvider client={queryClient}>
-      <Portfolio />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <PreferencesProvider>
+        <Portfolio />
+      </PreferencesProvider>
+    </MemoryRouter>,
   )
 }
 
+async function waitForPortfolioReady() {
+  await waitFor(() => expect(screen.queryByText('Loading local portfolio…')).not.toBeInTheDocument())
+}
+
+beforeEach(async () => {
+  vi.mocked(usePriceContext).mockReturnValue(priceContext)
+  const db = await openCacheConnection()
+  await new Promise<void>((resolve, reject) => {
+    const request = db
+      .transaction('preferences', 'readwrite')
+      .objectStore('preferences')
+      .delete('local-portfolio-snapshots')
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+})
+
 describe('Portfolio', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    vi.setSystemTime(1_000)
-  })
+  it('adds a holding and saves an auditable local valuation snapshot', async () => {
+    const view = renderPortfolio()
 
-  it('lets a keyboard user add and remove a local holding and groups exposures', async () => {
-    const user = userEvent.setup()
-    renderPortfolio()
-
-    await user.tab()
-    expect(screen.getByLabelText('Asset pair')).toHaveFocus()
-    await user.type(screen.getByLabelText('Asset pair'), 'xlm/usd')
-    await user.tab()
-    await user.type(screen.getByLabelText('Amount held (base asset)'), '100')
-    await user.tab()
-    await user.keyboard('{Enter}')
-
-    const holdingRow = await screen.findByRole('row', { name: /XLM\/USD/ })
-    expect(within(holdingRow).getByText('12 USD')).toBeInTheDocument()
-    expect(within(holdingRow).getByText('100 XLM')).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.portfolioHoldings) ?? '[]')).toHaveLength(1)
-
-    await user.click(screen.getByRole('button', { name: 'Remove XLM/USD holding' }))
-    expect(screen.getByText('No holdings yet. Add an asset pair and amount to begin.')).toBeInTheDocument()
-  })
-
-  it('rejects malformed input and reports missing prices without estimating a value', async () => {
-    renderPortfolio()
-    fireEvent.change(screen.getByLabelText('Asset pair'), { target: { value: 'not a pair' } })
-    fireEvent.change(screen.getByLabelText('Amount held (base asset)'), { target: { value: '10' } })
+    await screen.findByText(/No holdings yet/)
+    await waitForPortfolioReady()
+    fireEvent.change(screen.getByLabelText('Asset pair'), { target: { value: 'BTC/USD' } })
+    fireEvent.change(screen.getByLabelText('Holding quantity'), { target: { value: '0.5' } })
+    expect(screen.getByRole('button', { name: 'Add holding' })).not.toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Add holding' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('BASE/QUOTE')
+    expect(await screen.findAllByText('$30,000 USD')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Save valuation snapshot' }))
 
-    fireEvent.change(screen.getByLabelText('Asset pair'), { target: { value: 'DOGE/USD' } })
+    await waitFor(() => expect(screen.getAllByText('$30,000 USD')).toHaveLength(3))
+    expect(screen.getByText('Show snapshot inputs')).toBeInTheDocument()
+    expect(screen.getByText(/from BTC\/USD/)).toBeInTheDocument()
+
+    view.unmount()
+    renderPortfolio()
+    expect(await screen.findByText('Show snapshot inputs')).toBeInTheDocument()
+  })
+
+  it('keeps total and snapshot unavailable when a required quote is missing', async () => {
+    vi.mocked(usePriceContext).mockReturnValue({ ...priceContext, prices: [priceContext.prices[0]] })
+    renderPortfolio()
+
+    await waitForPortfolioReady()
+    fireEvent.change(screen.getByLabelText('Asset pair'), { target: { value: 'ETH/USD' } })
+    fireEvent.change(screen.getByLabelText('Holding quantity'), { target: { value: '2' } })
+    expect(screen.getByRole('button', { name: 'Add holding' })).not.toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Add holding' }))
-    await waitFor(() => expect(screen.getByText('Price unavailable')).toBeInTheDocument())
-    expect(screen.getAllByText('—')).toHaveLength(2)
+
+    await screen.findByText(/No valid ETH\/USD oracle price/)
+    expect(screen.getByText(/Complete portfolio value/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save valuation snapshot' })).toBeDisabled()
+  })
+
+  it('labels stale API inputs and reports no-price loading state', async () => {
+    vi.mocked(usePriceContext).mockReturnValue({
+      ...priceContext,
+      prices: [{ ...priceContext.prices[0], qualityFlags: { stale: true } }],
+      pricesLoading: true,
+    })
+    renderPortfolio()
+
+    await waitForPortfolioReady()
+    fireEvent.change(screen.getByLabelText('Asset pair'), { target: { value: 'BTC/USD' } })
+    fireEvent.change(screen.getByLabelText('Holding quantity'), { target: { value: '1' } })
+    expect(screen.getByRole('button', { name: 'Add holding' })).not.toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Add holding' }))
+
+    await screen.findByText('Stale oracle input; value shown for review only.')
+    expect(screen.getByText('This valuation includes one or more stale oracle inputs.')).toBeInTheDocument()
+  })
+
+  it('announces loading and has no accessibility violations with no market data', async () => {
+    vi.mocked(usePriceContext).mockReturnValue({ ...priceContext, prices: [], pricesLoading: true })
+    const wrapper = (children: ReactNode) => (
+      <MemoryRouter>
+        <PreferencesProvider>{children}</PreferencesProvider>
+      </MemoryRouter>
+    )
+    await checkAccessibility(<Portfolio />, { wrapper })
+    expect(screen.getByText('Loading oracle prices…')).toBeInTheDocument()
   })
 })

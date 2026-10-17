@@ -1,275 +1,384 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { fetchAllPrices } from '../api/rest'
-import { PortfolioMovement } from '../components/PortfolioMovement'
-import { PortfolioScenario } from '../components/PortfolioScenario'
-import { HistoricalThresholdPreview } from '../components/HistoricalThresholdPreview'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { VALID_PAIRS } from '../types'
 import { usePriceContext } from '../context/PriceContext'
-import { STORAGE_KEYS, readJson, writeJson } from '../utils/storage'
-import { isPortfolioHolding, valuePortfolio, type PortfolioHolding } from '../utils/portfolio'
+import { usePreferences } from '../preferences/PreferencesContext'
+import { idbCache, openCacheConnection } from '../hooks/useIndexedDB'
+import {
+  calculatePortfolioValuation,
+  createPortfolioSnapshot,
+  EMPTY_PORTFOLIO,
+  NUMERAIRE_OPTIONS,
+  PortfolioStoreSchema,
+  type PortfolioNumeraire,
+  type PortfolioStore,
+} from '../portfolio/portfolio'
 
-function readHoldings(): PortfolioHolding[] {
-  const stored = readJson<unknown>(STORAGE_KEYS.portfolioHoldings, [])
-  return Array.isArray(stored) ? stored.filter(isPortfolioHolding) : []
+const PORTFOLIO_STORE_KEY = 'local-portfolio-snapshots'
+const MAX_PORTFOLIO_SNAPSHOTS = 50
+
+interface StoredCacheEntry {
+  value?: unknown
 }
 
-function formatAmount(value: number): string {
-  return new Intl.NumberFormat(undefined, { maximumSignificantDigits: 8 }).format(value)
+async function readPortfolioStore(): Promise<unknown | null> {
+  const db = await openCacheConnection()
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('preferences', 'readonly').objectStore('preferences').get(PORTFOLIO_STORE_KEY)
+    request.onsuccess = () => resolve((request.result as StoredCacheEntry | undefined)?.value ?? null)
+    request.onerror = () => reject(request.error ?? new Error('Unable to read local portfolio data.'))
+  })
+}
+
+async function persistPortfolioStore(store: PortfolioStore): Promise<void> {
+  await idbCache.set('preferences', PORTFOLIO_STORE_KEY, store)
+  const persisted = await readPortfolioStore()
+  if (JSON.stringify(persisted) !== JSON.stringify(store)) {
+    throw new Error('The browser could not verify the local portfolio save.')
+  }
+}
+
+function formatAmount(value: number, numeraire: PortfolioNumeraire): string {
+  const amount = new Intl.NumberFormat(undefined, { maximumFractionDigits: 8 }).format(value)
+  return numeraire === 'USD' ? `$${amount} USD` : `${amount} ${numeraire}`
 }
 
 export function Portfolio() {
-  const { prices, livePrices, pricesLoading, pricesError } = usePriceContext()
-  const [holdings, setHoldings] = useState(readHoldings)
-  const [assetPair, setAssetPair] = useState('')
-  const [amount, setAmount] = useState('')
-  const [formError, setFormError] = useState('')
-  const [storageWarning, setStorageWarning] = useState(false)
+  const { prices, pricesLoading, pricesError, isOfflineSnapshot, offlineSnapshotSavedAt } = usePriceContext()
+  const { preferences } = usePreferences()
+  const [store, setStore] = useState<PortfolioStore>(EMPTY_PORTFOLIO)
+  const [storeLoading, setStoreLoading] = useState(true)
+  const [storageError, setStorageError] = useState<string | null>(null)
+  const [pairDraft, setPairDraft] = useState<string>(VALID_PAIRS[0])
+  const [quantityDraft, setQuantityDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   useEffect(() => {
-    setStorageWarning(!writeJson(STORAGE_KEYS.portfolioHoldings, holdings))
-  }, [holdings])
+    let active = true
+    void readPortfolioStore()
+      .then((saved) => {
+        if (!active) return
+        if (saved === null) {
+          setStore(EMPTY_PORTFOLIO)
+          return
+        }
+        const parsed = PortfolioStoreSchema.safeParse(saved)
+        if (!parsed.success) {
+          setStorageError('Saved portfolio data is invalid and was not loaded.')
+          return
+        }
+        setStore(parsed.data)
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setStorageError(error instanceof Error ? error.message : 'Unable to load local portfolio data.')
+        }
+      })
+      .finally(() => {
+        if (active) setStoreLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
-  const pairs = useMemo(() => [...new Set(holdings.map(({ assetPair: pair }) => pair))].sort(), [holdings])
-  const portfolioPriceQuery = useQuery({
-    queryKey: ['portfolio-prices', pairs],
-    queryFn: ({ signal }) => fetchAllPrices(pairs, signal),
-    enabled: pairs.length > 0,
-    staleTime: 5_000,
-    refetchInterval: 30_000,
-  })
-  const mergedPrices = useMemo(
+  const valuation = useMemo(
     () =>
-      (portfolioPriceQuery.data ?? prices.filter((price) => pairs.includes(price.assetPair))).map((price) => {
-        const live = livePrices.get(price.assetPair)
-        return live && live.data.timestamp >= price.timestamp ? live.data : price
-      }),
-    [livePrices, pairs, portfolioPriceQuery.data, prices],
+      calculatePortfolioValuation(store.holdings, prices, store.numeraire, preferences.staleThresholdMinutes * 60_000),
+    [store.holdings, store.numeraire, prices, preferences.staleThresholdMinutes],
   )
-  const valuation = useMemo(() => valuePortfolio(holdings, mergedPrices), [holdings, mergedPrices])
 
-  function addHolding(event: FormEvent<HTMLFormElement>) {
+  const saveStore = async (next: PortfolioStore): Promise<boolean> => {
+    if (savingRef.current) return false
+    savingRef.current = true
+    setSaving(true)
+    setStorageError(null)
+    try {
+      await persistPortfolioStore(next)
+      setStore(next)
+      return true
+    } catch (error) {
+      setStorageError(error instanceof Error ? error.message : 'Unable to save the local portfolio.')
+      return false
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
+  }
+
+  const addHolding = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const normalizedPair = assetPair.trim().toUpperCase()
-    const parsedAmount = Number(amount)
-    if (!/^[A-Z0-9]{1,12}\/[A-Z0-9]{1,12}$/.test(normalizedPair)) {
-      setFormError('Enter a pair in BASE/QUOTE format, such as XLM/USD.')
-      return
-    }
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setFormError('Amount must be a finite number greater than zero.')
-      return
-    }
-    setFormError('')
-    setHoldings((current) => [
-      ...current,
-      {
-        id:
-          typeof crypto !== 'undefined' && 'randomUUID' in crypto
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random()}`,
-        assetPair: normalizedPair,
-        amount: parsedAmount,
-      },
-    ])
-    setAssetPair('')
-    setAmount('')
+    const quantity = Number(quantityDraft)
+    if (!Number.isFinite(quantity) || quantity <= 0 || !VALID_PAIRS.includes(pairDraft)) return
+    void saveStore({
+      ...store,
+      holdings: [...store.holdings, { id: crypto.randomUUID(), pair: pairDraft, quantity }],
+    }).then((saved) => {
+      if (saved) setQuantityDraft('')
+    })
   }
 
-  function removeHolding(id: string) {
-    setHoldings((current) => current.filter((holding) => holding.id !== id))
+  const createSnapshot = () => {
+    const snapshot = createPortfolioSnapshot(crypto.randomUUID(), Date.now(), store.numeraire, valuation)
+    if (!snapshot) {
+      setStorageError('A complete valuation is not available; no snapshot was saved.')
+      return
+    }
+    void saveStore({
+      ...store,
+      snapshots: [snapshot, ...store.snapshots].slice(0, MAX_PORTFOLIO_SNAPSHOTS),
+    })
   }
+
+  const hasPrices = prices.length > 0
 
   return (
-    <section className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Portfolio analytics</h1>
-        <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
-          Track manually entered holdings using the oracle feed. Holdings stay in this browser; no wallet or account
-          sync is used.
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Local portfolio</h1>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          Track quantities and save point-in-time valuations on this device. Portfolio data is not sent to the oracle.
         </p>
       </header>
 
-      <form
-        onSubmit={addHolding}
-        className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
-        aria-label="Add portfolio holding"
-      >
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Asset pair
-          <input
-            value={assetPair}
-            onChange={(event) => setAssetPair(event.target.value)}
-            placeholder="XLM/USD"
-            autoComplete="off"
-            className="mt-1 block min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-gray-900 focus-visible:outline-2 focus-visible:outline-cyan-600 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-            aria-describedby={formError ? 'holding-error' : undefined}
-          />
-        </label>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Amount held (base asset)
-          <input
-            type="number"
-            min="0"
-            step="any"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            placeholder="100"
-            className="mt-1 block min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-gray-900 focus-visible:outline-2 focus-visible:outline-cyan-600 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-          />
-        </label>
-        <button
-          type="submit"
-          className="min-h-11 rounded-lg bg-cyan-700 px-5 font-semibold text-white hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600"
-        >
-          Add holding
-        </button>
-        {formError && (
-          <p id="holding-error" role="alert" className="text-sm text-red-700 dark:text-red-300 sm:col-span-3">
-            {formError}
-          </p>
-        )}
-      </form>
-
-      {storageWarning && (
+      {storeLoading && (
+        <p role="status" className="text-sm text-gray-500">
+          Loading local portfolio…
+        </p>
+      )}
+      {storageError && (
+        <p role="alert" className="rounded-lg border border-red-800 bg-red-900/20 p-3 text-sm text-red-300">
+          {storageError}
+        </p>
+      )}
+      {pricesError && (
+        <p role="alert" className="rounded-lg border border-red-800 bg-red-900/20 p-3 text-sm text-red-300">
+          Oracle prices could not be refreshed: {pricesError.message}
+        </p>
+      )}
+      {pricesLoading && !hasPrices && (
+        <p role="status" className="text-sm text-gray-500">
+          Loading oracle prices…
+        </p>
+      )}
+      {!pricesLoading && !hasPrices && (
         <p
           role="status"
-          className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+          className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400"
         >
-          Browser storage is unavailable; changes will not persist after leaving this page.
+          No oracle prices are available. Portfolio values and snapshots remain unavailable until prices load.
         </p>
       )}
-      {(pricesLoading || portfolioPriceQuery.isLoading) && holdings.length > 0 && (
-        <p role="status" className="text-sm text-gray-600 dark:text-gray-400">
-          Loading current oracle prices…
-        </p>
-      )}
-      {(pricesError || portfolioPriceQuery.error) && (
-        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
-          Current prices could not be refreshed. Existing price values are shown only if they are still fresh.
+      {isOfflineSnapshot && (
+        <p role="status" className="rounded-lg border border-amber-700/60 bg-amber-900/20 p-3 text-sm text-amber-200">
+          Using an offline price snapshot
+          {offlineSnapshotSavedAt ? ` saved ${new Date(offlineSnapshotSavedAt).toLocaleString()}` : ''}. Check each
+          holding for stale inputs before saving a valuation.
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <ExposureGroup title="Base asset exposure" exposures={valuation.baseExposure} unit="units" />
-        <ExposureGroup title="Quote asset exposure" exposures={valuation.quoteExposure} unit="notional" />
-      </div>
-
-      <section
-        aria-labelledby="holdings-title"
-        className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 p-4 dark:bg-gray-900">
-          <h2 id="holdings-title" className="font-semibold text-gray-900 dark:text-white">
-            Holdings
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {valuation.unavailableCount} unavailable · {valuation.staleCount} stale
-          </p>
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Holdings</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Conversion uses observed asset/USD and numeraire/USD oracle pairs. No missing prices or pegs are assumed.
+            </p>
+          </div>
+          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+            Valuation numeraire
+            <select
+              aria-label="Valuation numeraire"
+              value={store.numeraire}
+              disabled={storeLoading || saving}
+              onChange={(event) => void saveStore({ ...store, numeraire: event.target.value as PortfolioNumeraire })}
+              className="min-h-10 rounded-lg border border-gray-300 bg-white px-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            >
+              {NUMERAIRE_OPTIONS.map((numeraire) => (
+                <option key={numeraire} value={numeraire}>
+                  {numeraire}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-        {holdings.length === 0 ? (
-          <p className="p-5 text-sm text-gray-600 dark:text-gray-400">
-            No holdings yet. Add an asset pair and amount to begin.
+
+        <form onSubmit={addHolding} className="mb-5 flex flex-wrap items-end gap-3">
+          <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+            Asset
+            <select
+              aria-label="Asset pair"
+              disabled={storeLoading || saving}
+              value={pairDraft}
+              onChange={(event) => setPairDraft(event.target.value)}
+              className="min-h-10 rounded-lg border border-gray-300 bg-white px-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            >
+              {VALID_PAIRS.map((pair) => (
+                <option key={pair} value={pair}>
+                  {pair}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-w-32 flex-1 flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+            Quantity
+            <input
+              aria-label="Holding quantity"
+              disabled={storeLoading || saving}
+              type="number"
+              min="0"
+              step="any"
+              required
+              value={quantityDraft}
+              onChange={(event) => setQuantityDraft(event.target.value)}
+              className="min-h-10 rounded-lg border border-gray-300 bg-white px-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={storeLoading || saving || !Number.isFinite(Number(quantityDraft)) || Number(quantityDraft) <= 0}
+            className="min-h-10 rounded-lg bg-cyan-700 px-4 text-sm font-medium text-white hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Add holding
+          </button>
+        </form>
+
+        {store.holdings.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-700">
+            No holdings yet. Add an asset quantity to start a local portfolio.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] text-left text-sm">
-              <thead className="text-xs uppercase text-gray-500 dark:text-gray-400">
-                <tr>
-                  <th scope="col" className="p-3">
-                    Pair
-                  </th>
-                  <th scope="col" className="p-3">
-                    Amount
-                  </th>
-                  <th scope="col" className="p-3">
-                    Price
-                  </th>
-                  <th scope="col" className="p-3">
-                    Value
-                  </th>
-                  <th scope="col" className="p-3">
-                    Price status
-                  </th>
-                  <th scope="col" className="p-3">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {valuation.holdings.map((holding) => (
-                  <tr key={holding.id}>
-                    <th scope="row" className="p-3 font-medium text-gray-900 dark:text-white">
-                      {holding.assetPair}
-                    </th>
-                    <td className="p-3">
-                      {formatAmount(holding.amount)} {holding.baseAsset}
-                    </td>
-                    <td className="p-3">
-                      {holding.price === null ? '—' : `${formatAmount(holding.price)} ${holding.quoteAsset}`}
-                    </td>
-                    <td className="p-3">
-                      {holding.value === null ? '—' : `${formatAmount(holding.value)} ${holding.quoteAsset}`}
-                    </td>
-                    <td className="p-3">
-                      {holding.status === 'available'
-                        ? `Available (${holding.sources.join(', ') || 'source unspecified'})`
-                        : holding.status === 'stale'
-                          ? 'Stale price'
-                          : 'Price unavailable'}
-                    </td>
-                    <td className="p-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => removeHolding(holding.id)}
-                        aria-label={`Remove ${holding.assetPair} holding`}
-                        className="min-h-10 rounded px-2 text-cyan-800 underline underline-offset-2 hover:text-cyan-950 focus-visible:outline-2 focus-visible:outline-cyan-600 dark:text-cyan-300"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {valuation.rows.map((row) => (
+              <div
+                key={row.holding.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+              >
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">{row.holding.pair}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Quantity: {row.holding.quantity.toLocaleString()}
+                    {row.rate !== null ? ` · Rate: ${row.rate.toLocaleString()} ${store.numeraire}` : ''}
+                    {row.quoteTimestamp !== null
+                      ? ` · Price time: ${new Date(row.quoteTimestamp).toLocaleString()}`
+                      : ''}
+                  </p>
+                  {row.unavailableReason && <p className="mt-1 text-xs text-red-300">{row.unavailableReason}</p>}
+                  {row.stale && (
+                    <p className="mt-1 text-xs font-medium text-amber-300" role="status">
+                      Stale oracle input; value shown for review only.
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">
+                    {row.value === null ? 'Unavailable' : formatAmount(row.value, store.numeraire)}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() =>
+                      void saveStore({
+                        ...store,
+                        holdings: store.holdings.filter((holding) => holding.id !== row.holding.id),
+                      })
+                    }
+                    aria-label={`Remove ${row.holding.pair} holding`}
+                    className="min-h-10 min-w-10 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-800"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-      </section>
-      <PortfolioMovement holdings={valuation.holdings} />
-      <PortfolioScenario holdings={valuation.holdings} />
-      <HistoricalThresholdPreview holdings={valuation.holdings} />
-    </section>
-  )
-}
 
-function ExposureGroup({
-  title,
-  exposures,
-  unit,
-}: {
-  title: string
-  exposures: Array<{ asset: string; amount: number }>
-  unit: string
-}) {
-  return (
-    <section
-      className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
-      aria-label={title}
-    >
-      <h2 className="font-semibold text-gray-900 dark:text-white">{title}</h2>
-      {exposures.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">No exposure to display.</p>
-      ) : (
-        <ul className="mt-3 space-y-2">
-          {exposures.map(({ asset, amount }) => (
-            <li key={asset} className="flex justify-between gap-3 text-sm">
-              <span className="font-medium">{asset}</span>
-              <span>
-                {formatAmount(amount)} {unit}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Complete portfolio value</p>
+            <p className="font-mono text-xl font-semibold text-gray-900 dark:text-white">
+              {valuation.total === null
+                ? 'Unavailable — waiting for all required oracle prices'
+                : formatAmount(valuation.total, store.numeraire)}
+            </p>
+            {valuation.stale && (
+              <p role="status" className="mt-1 text-xs text-amber-300">
+                This valuation includes one or more stale oracle inputs.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={createSnapshot}
+            disabled={storeLoading || saving || store.holdings.length === 0 || valuation.total === null}
+            className="min-h-11 rounded-lg bg-cyan-700 px-4 text-sm font-semibold text-white hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Save valuation snapshot
+          </button>
+        </div>
+      </section>
+
+      <section aria-labelledby="portfolio-snapshots-heading" className="space-y-3">
+        <div>
+          <h2 id="portfolio-snapshots-heading" className="text-lg font-semibold text-gray-900 dark:text-white">
+            Saved snapshots
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Stored only in this browser. The latest {MAX_PORTFOLIO_SNAPSHOTS} snapshots are kept.
+          </p>
+        </div>
+        {store.snapshots.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-700">
+            No valuation snapshots have been saved.
+          </p>
+        ) : (
+          <ol className="space-y-3">
+            {store.snapshots.map((snapshot) => (
+              <li
+                key={snapshot.id}
+                className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {formatAmount(snapshot.total, snapshot.numeraire)}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(snapshot.capturedAt).toLocaleString()} · {snapshot.holdings.length} holding
+                      {snapshot.holdings.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  {snapshot.stale && (
+                    <span role="status" className="rounded bg-amber-900/40 px-2 py-1 text-xs text-amber-200">
+                      Saved with stale inputs
+                    </span>
+                  )}
+                </div>
+                <details className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                  <summary className="min-h-8 cursor-pointer pt-1">Show snapshot inputs</summary>
+                  <ul className="mt-2 space-y-1">
+                    {snapshot.holdings.map((holding, index) => (
+                      <li key={`${snapshot.id}-${holding.pair}-${index}`}>
+                        {holding.pair}: {holding.quantity.toLocaleString()} →{' '}
+                        {formatAmount(holding.value, snapshot.numeraire)}
+                        {' · '}rate {holding.rate.toLocaleString()}
+                        {holding.sourcePairs.length > 0
+                          ? ` from ${holding.sourcePairs.join(' + ')}`
+                          : ' (same-numeraire quantity)'}
+                        {holding.quoteTimestamp !== null
+                          ? ` at ${new Date(holding.quoteTimestamp).toLocaleString()}`
+                          : ''}
+                        {holding.stale ? ' · stale' : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
   )
 }
