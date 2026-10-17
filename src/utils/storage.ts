@@ -60,6 +60,10 @@ export const STORAGE_KEYS = {
   featureFlagBucket: 'feature-flag-bucket',
   /** Ids of alert health flags (#493) the user has dismissed. No PII. */
   alertHealthDismissed: 'alert-health-dismissed',
+  /** Timestamp until which the PWA install prompt is snoozed. No PII. */
+  pwaInstallDismissed: 'pwa-install-dismissed-until',
+  /** Timestamp until which the PWA update banner is snoozed. No PII. */
+  pwaUpdateDismissed: 'pwa-update-dismissed-until',
   /** Alert sound preferences (#308): enabled flag + 0–1 volume. No PII. */
   soundPreferences: 'sound-preferences',
   /** Recently-used UI language codes, newest first (#373). No PII. */
@@ -303,6 +307,8 @@ function formatBytes(bytes: number): string {
  * | stellar-oracle-theme   | 'dark' or 'light'. No PII.                                        |
  * | feature-flag-bucket    | Random per-browser bucket id for sticky flag rollout. No PII.     |
  * | alert-health-dismissed | Ids of dismissed alert health flags (#493). No PII.                |
+ * | pwa-install-dismissed-until | PWA install prompt snooze timestamp. No PII.                  |
+ * | pwa-update-dismissed-until | PWA update banner snooze timestamp. No PII.                     |
  * | sound-preferences      | Alert sound enabled flag + 0–1 volume (#308). No PII.             |
  *
  * ## IndexedDB stores (stellar-oracle DB)
@@ -351,6 +357,14 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       key: STORAGE_KEYS.alertHealthDismissed,
       description: 'Ids of alert health flags the user has dismissed. No PII.',
+    },
+    {
+      key: STORAGE_KEYS.pwaInstallDismissed,
+      description: 'Timestamp until which the PWA install prompt is snoozed. No PII.',
+    },
+    {
+      key: STORAGE_KEYS.pwaUpdateDismissed,
+      description: 'Timestamp until which the PWA update banner is snoozed. No PII.',
     },
     {
       key: STORAGE_KEYS.soundPreferences,

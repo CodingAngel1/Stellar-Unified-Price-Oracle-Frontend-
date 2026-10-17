@@ -71,7 +71,7 @@ export const DraggablePriceGrid = memo(function DraggablePriceGrid({
           >
             {/* Drag handle indicator */}
             <div
-              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 pointer-events-none z-10 text-gray-600"
+              className="absolute top-2 end-2 opacity-0 group-hover:opacity-100 pointer-events-none z-10 text-gray-600"
               aria-hidden="true"
             >
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 16 16">

@@ -283,6 +283,7 @@ function ChartContent({
   overlayPairs?: OverlayPair[]
   annotations?: ChartAnnotation[]
 }) {
+  const isRtl = useIsRtl()
   // Zoom/pan state
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null)
   const [isPanning, setIsPanning] = useState(false)
@@ -668,14 +669,14 @@ function ChartContent({
             </button>
             {exportMenuOpen && (
               <div
-                className="absolute right-0 mt-1 w-32 bg-gray-800 border border-gray-700 rounded-xl shadow-lg z-10 overflow-hidden"
+                className="absolute end-0 mt-1 w-32 bg-gray-800 border border-gray-700 rounded-xl shadow-lg z-10 overflow-hidden"
                 role="menu"
               >
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => handleExport('png')}
-                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="w-full text-start px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
                 >
                   Export as PNG
                 </button>
@@ -683,7 +684,7 @@ function ChartContent({
                   type="button"
                   role="menuitem"
                   onClick={() => handleExport('svg')}
-                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="w-full text-start px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
                 >
                   Export as SVG
                 </button>
@@ -691,7 +692,7 @@ function ChartContent({
                   type="button"
                   role="menuitem"
                   onClick={() => handleExport('pdf')}
-                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="w-full text-start px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
                 >
                   Export as PDF
                 </button>
@@ -790,7 +791,7 @@ function ChartContent({
                 interval="preserveStartEnd"
                 label={{
                   value: tzAbbr,
-                  position: 'insideBottomRight',
+                  position: isRtl ? 'insideBottomLeft' : 'insideBottomRight',
                   offset: -5,
                   fill: palette.muted,
                   fontSize: 10,
@@ -891,13 +892,14 @@ function ChartContent({
                 interval="preserveStartEnd"
                 label={{
                   value: tzAbbr,
-                  position: 'insideBottomRight',
+                  position: isRtl ? 'insideBottomLeft' : 'insideBottomRight',
                   offset: -5,
                   fill: palette.muted,
                   fontSize: 10,
                 }}
               />
               <YAxis
+                orientation={isRtl ? 'right' : 'left'}
                 domain={[minP - pad, maxP + pad]}
                 tick={{ fill: palette.muted, fontSize: 11 }}
                 axisLine={false}
@@ -1220,13 +1222,13 @@ function ChartContent({
           <table className="w-full text-xs text-gray-300" aria-label={`${pair} price history data table (${tzAbbr})`}>
             <thead className="bg-gray-800 sticky top-0">
               <tr>
-                <th scope="col" className="px-3 py-2 text-left font-medium text-gray-400">
+                <th scope="col" className="px-3 py-2 text-start font-medium text-gray-400">
                   Time ({tzAbbr})
                 </th>
-                <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
+                <th scope="col" className="px-3 py-2 text-end font-medium text-gray-400">
                   Price (USD)
                 </th>
-                <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
+                <th scope="col" className="px-3 py-2 text-end font-medium text-gray-400">
                   Confidence
                 </th>
                 <th scope="col" className="px-3 py-2 text-left font-medium text-gray-400">
