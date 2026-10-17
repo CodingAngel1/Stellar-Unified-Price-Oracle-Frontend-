@@ -745,7 +745,13 @@ export function Dashboard() {
           ))}
         </section>
       ) : dashboardView === 'table' ? (
-        <ErrorBoundary boundaryId="price-table-view" featureLabel="Price Table">
+        <ErrorBoundary
+          boundaryId="price-table-view"
+          featureLabel="Price Table"
+          recoveryActions={[
+            { label: 'Switch to card view', onAction: () => updatePreference('dashboardView', 'card') },
+          ]}
+        >
           <Suspense
             fallback={
               <div
@@ -771,7 +777,14 @@ export function Dashboard() {
           </Suspense>
         </ErrorBoundary>
       ) : (
-        <ErrorBoundary boundaryId="price-card-grid" featureLabel="Price Cards">
+        <ErrorBoundary
+          boundaryId="price-card-grid"
+          featureLabel="Price Cards"
+          recoveryActions={[
+            { label: 'Reset card order', onAction: () => updatePreference('cardOrder', []) },
+            { label: 'Switch to table view', onAction: () => updatePreference('dashboardView', 'table') },
+          ]}
+        >
           <DraggablePriceGrid
             items={filtered}
             observedSourceRanges={observedSourceRanges}
@@ -837,7 +850,11 @@ export function Dashboard() {
       <ConfidenceRegimePanel histories={attributionHistory} />
 
       <div className="mt-8">
-        <ErrorBoundary boundaryId="reliability-leaderboard" featureLabel="Reliability Leaderboard">
+        <ErrorBoundary
+          boundaryId="reliability-leaderboard"
+          featureLabel="Reliability Leaderboard"
+          recoveryActions={[{ label: 'Reload prices', onAction: () => refetchPrices() }]}
+        >
           <ReliabilityLeaderboard sourceHealths={sourceHealths} />
         </ErrorBoundary>
       </div>
