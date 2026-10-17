@@ -82,6 +82,8 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from 'react-i18next'
 import type { PriceData } from '../types'
 import { formatPrice, timeAgo } from '../utils/format'
+import type { ConnectionStatus } from '../api/websocket'
+import { SubscriptionHealthBadge } from './SubscriptionHealthBadge'
 
 const ROW_HEIGHT_PX = 49
 const VIRTUALIZE_THRESHOLD = 50
@@ -101,6 +103,8 @@ interface PriceTableViewProps {
   selectMode?: boolean
   selected?: Set<string>
   onToggleSelect?: (pair: string) => void
+  subscriptionStatus?: ConnectionStatus
+  isOfflineSnapshot?: boolean
 }
 
 export const PriceTableView = memo(function PriceTableView({
@@ -113,6 +117,8 @@ export const PriceTableView = memo(function PriceTableView({
   selectMode,
   selected,
   onToggleSelect,
+  subscriptionStatus = 'disconnected',
+  isOfflineSnapshot,
 }: PriceTableViewProps) {
   const { t } = useTranslation()
   const [sortKey, setSortKey] = useState<SortKey>('assetPair')
@@ -239,6 +245,11 @@ export const PriceTableView = memo(function PriceTableView({
         <td className="sticky-col bg-gray-900 px-4 py-3 font-semibold text-gray-100 whitespace-nowrap">
           <span className="flex items-center gap-2">
             {p.assetPair}
+            <SubscriptionHealthBadge
+              pair={p.assetPair}
+              status={subscriptionStatus}
+              isOfflineSnapshot={isOfflineSnapshot}
+            />
             {isLive && (
               <span
                 className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"

@@ -155,6 +155,28 @@ describe('evaluateCompoundCondition — truth tables', () => {
   })
 })
 
+describe('findFirstMatchingPrice', () => {
+  it('preserves a threshold-crossing sample even when the latest rendered price is below it', () => {
+    const group: ConditionGroup = {
+      id: 'g',
+      logic: 'AND',
+      conditions: [{ id: 'cross', field: 'price', operator: 'gte', value: 10 }],
+    }
+
+    expect(findFirstMatchingPrice(group, [9, 11, 8], (price) => ({ price }))).toBe(11)
+  })
+
+  it('returns undefined when no sampled value satisfies the condition', () => {
+    const group: ConditionGroup = {
+      id: 'g',
+      logic: 'OR',
+      conditions: [{ id: 'cross', field: 'price', operator: 'gte', value: 10 }],
+    }
+
+    expect(findFirstMatchingPrice(group, [0, 8, 9], (price) => ({ price }))).toBeUndefined()
+  })
+})
+
 describe('combineConditions', () => {
   it('wraps a lone primary condition in a single-element group', () => {
     const primary = cond()

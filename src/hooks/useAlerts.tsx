@@ -272,6 +272,7 @@ function saveAlerts(alerts: Alert[]): void {
 }
 
 const AlertsContext = createContext<AlertsContextType | null>(null)
+const EMPTY_ATTRIBUTION_HISTORY = new Map<string, MoveAttribution[]>()
 
 /**
  * Provides the {@link AlertsContextType} to its subtree.
@@ -441,7 +442,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         return alert
       }
 
-      const currentPrice = livePriceData.data.price
+      let currentPrice = livePriceData.data.price
+      const sampledPrices = (unprocessedTicks.get(alert.assetPair) ?? []).map((record) => record.price)
       let updatedAlert = { ...alert }
       let triggered = false
       let conditionTrace: AlertEvaluationEntry['conditions'] = []
@@ -469,8 +471,6 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         }
 
         const baseline = alert.percentageBaselinePrice
-        const pctChange = baseline !== 0 ? ((currentPrice - baseline) / baseline) * 100 : 0
-
         // #485 – compound evaluation against the alert's (possibly legacy-migrated) condition group
         const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
         const state: PriceEvaluationState = {

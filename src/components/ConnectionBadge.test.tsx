@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { fireEvent, render, screen, cleanup } from '@testing-library/react'
 import { checkAccessibility } from '../test/accessibility'
+import { WS_PROTOCOL_VERSION } from '../api/version'
 import { ConnectionBadge } from './ConnectionBadge'
 
 afterEach(cleanup)
@@ -60,6 +61,32 @@ describe('ConnectionBadge', () => {
   it('renders rate limited status without retry info', () => {
     render(<ConnectionBadge status="connected" rateLimitStatus="limited" />)
     expect(screen.getByText('Rate limited')).toBeInTheDocument()
+  })
+
+  it('surfaces a protocol compatibility error with recovery guidance', async () => {
+    const badge = (
+      <ConnectionBadge
+        status="connected"
+        diagnostics={{
+          retryCount: 0,
+          lastConnectedAt: Date.now(),
+          totalDisconnections: 0,
+          protocolVersion: WS_PROTOCOL_VERSION + 1,
+          protocolUpgradeRequired: true,
+        }}
+      />
+    )
+    render(badge)
+
+    const status = screen.getByRole('status')
+    expect(screen.getByText('Update client')).toBeInTheDocument()
+    expect(status.getAttribute('aria-label')).toContain(
+      `Server v${WS_PROTOCOL_VERSION + 1}, client v${WS_PROTOCOL_VERSION}`,
+    )
+    fireEvent.focus(status.parentElement!)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Update the frontend to a compatible release and reload')
+    expect(screen.getByRole('tooltip')).toHaveTextContent('REST remains available')
+    await checkAccessibility(badge)
   })
 })
 

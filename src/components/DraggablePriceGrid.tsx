@@ -94,6 +94,8 @@ export const DraggablePriceGrid = memo(function DraggablePriceGrid({
               onAlertClick={onAlertClick}
               selectMode={selectMode}
               isSelected={selected?.has(p.assetPair)}
+              subscriptionStatus={subscriptionStatus}
+              isOfflineSnapshot={isOfflineSnapshot}
             />
           </div>
         )

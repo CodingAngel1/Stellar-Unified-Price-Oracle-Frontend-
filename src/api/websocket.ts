@@ -307,9 +307,12 @@ export class WebSocketClient {
     if (this._protocolUpgradeRequired) {
       console.warn(
         `[WebSocket] Server speaks WS protocol v${serverVersion}, but this client supports v${WS_PROTOCOL_VERSION}. ` +
-          'Downgrading to the supported feature set — please update the client for full compatibility.',
+          'Realtime compatibility may be limited. Update the frontend to a compatible release; REST polling remains available.',
       )
     }
+    // The transport is still connected, but consumers need the new negotiated
+    // diagnostic immediately so they can surface compatibility guidance.
+    this.statusHandlersRef.forEach((handler) => handler(this._status))
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────

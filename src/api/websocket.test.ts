@@ -622,6 +622,20 @@ describe('WebSocketClient', () => {
     expect(client.diagnostics.protocolUpgradeRequired).toBe(true)
   })
 
+  it('notifies diagnostic consumers when the welcome handshake reveals a newer protocol', () => {
+    const client = new WebSocketClient()
+    const onStatus = vi.fn()
+    client.onStatusChange(onStatus)
+    client.connect()
+    ws.simulateOpen()
+    onStatus.mockClear()
+
+    ws.simulateMessage({ type: 'welcome', protocolVersion: WS_PROTOCOL_VERSION + 1 })
+
+    expect(onStatus).toHaveBeenCalledWith('connected')
+    expect(client.diagnostics.protocolUpgradeRequired).toBe(true)
+  })
+
   it('does not flag an upgrade when the server is older or equal', () => {
     const client = new WebSocketClient()
     client.connect()

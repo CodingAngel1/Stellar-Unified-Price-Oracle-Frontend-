@@ -115,6 +115,15 @@ export function evaluateCompoundCondition(group: ConditionGroup, state: PriceEva
   return group.logic === 'AND' ? results.every(Boolean) : results.some(Boolean)
 }
 
+/** Returns the first sampled price satisfying a condition group, if any. */
+export function findFirstMatchingPrice(
+  group: ConditionGroup,
+  prices: number[],
+  stateForPrice: (price: number) => PriceEvaluationState,
+): number | undefined {
+  return prices.find((price) => evaluateCompoundCondition(group, stateForPrice(price)))
+}
+
 /** Combines a primary leaf condition with zero or more extra conditions under `logic`. */
 export function combineConditions(
   primary: AlertCondition,

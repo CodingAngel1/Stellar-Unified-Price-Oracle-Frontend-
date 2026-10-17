@@ -53,6 +53,7 @@ import { memo, useEffect, useRef, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RateLimitStatus } from '../api/rateLimit'
 import type { ConnectionStatus, ConnectionDiagnostics } from '../api/websocket'
+import { WS_PROTOCOL_VERSION } from '../api/version'
 import { useAnnounce } from '../hooks/useAnnounce'
 import { Tooltip } from './Tooltip'
 
@@ -142,12 +143,15 @@ export const ConnectionBadge = memo(function ConnectionBadge({
 
   const s = STATUS_MAP[status] ?? STATUS_MAP['disconnected']
   const isRateLimited = rateLimitStatus === 'limited'
+  const hasProtocolMismatch = diagnostics?.protocolUpgradeRequired === true
 
-  let label = isRateLimited
-    ? retryAfterMs && retryAfterMs > 0
-      ? t('connection.rateLimitedWithTimer', { seconds: Math.ceil(retryAfterMs / 1000) })
-      : t('connection.rateLimited')
-    : s.label
+  let label = hasProtocolMismatch
+    ? 'Update client'
+    : isRateLimited
+      ? retryAfterMs && retryAfterMs > 0
+        ? t('connection.rateLimitedWithTimer', { seconds: Math.ceil(retryAfterMs / 1000) })
+        : t('connection.rateLimited')
+      : s.label
 
   // Show retry count on waiting/reconnecting states
   if (
@@ -165,6 +169,12 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   let tooltipText = isRateLimited
     ? 'The API is temporarily rate limited. Requests will resume after the retry window expires.'
     : s.tooltip
+
+  if (hasProtocolMismatch) {
+    tooltipText =
+      `The server uses WebSocket protocol v${diagnostics?.protocolVersion ?? 'unknown'}, while this frontend supports ` +
+      `v${WS_PROTOCOL_VERSION}. Update the frontend to a compatible release and reload. Price polling over REST remains available.`
+  }
 
   if (!isRateLimited && diagnostics && diagnostics.retryCount > 0) {
     tooltipText += ` (attempt ${diagnostics.retryCount} of 20)`
@@ -200,12 +210,12 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   return (
     <Tooltip content={tooltipText}>
       <span
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${hasProtocolMismatch ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
         role="status"
         aria-label={ariaLabel}
       >
         <span
-          className={`w-2 h-2 rounded-full ${isRateLimited ? 'bg-orange-500' : s.color} ${status === 'connected' && !isRateLimited ? 'animate-pulse' : ''}`}
+          className={`w-2 h-2 rounded-full ${hasProtocolMismatch ? 'bg-amber-500' : isRateLimited ? 'bg-orange-500' : s.color} ${status === 'connected' && !isRateLimited && !hasProtocolMismatch ? 'animate-pulse' : ''}`}
           aria-hidden="true"
         />
         {label}

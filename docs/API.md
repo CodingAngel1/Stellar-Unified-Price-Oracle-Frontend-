@@ -657,6 +657,19 @@ Received when a price changes.
 - ✅ **Message ordering** — Prices include monotonic `seq` field for duplicate detection
 - ✅ **Compression** — Messages may be gzip-compressed
 
+### Protocol Compatibility
+
+The frontend sends a `hello` message containing its supported `protocolVersion`
+after connection, and the server replies with `welcome` and its protocol version.
+When the server reports a newer protocol than the client supports, the frontend
+shows an accessible compatibility warning with recovery guidance. Update the
+frontend to a compatible release and reload; REST price polling remains
+available while realtime compatibility may be limited.
+
+The current client contract does not define a server-side protocol error code
+or a per-pair subscription acknowledgement. The warning is based only on the
+version in the existing `welcome` handshake.
+
 ### Example: Full Connection Lifecycle
 
 ```javascript
