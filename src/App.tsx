@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ReactElement } from 'react'
+import { lazy, useEffect, useRef, type ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
@@ -8,7 +8,6 @@ import { DashboardSkeleton } from './components/Skeletons/DashboardSkeleton'
 import { PriceDetailSkeleton } from './components/PriceDetailSkeleton'
 import { ApiDocsSkeleton } from './components/Skeletons/ApiDocsSkeleton'
 import { NotFoundSkeleton } from './components/Skeletons/NotFoundSkeleton'
-import { lazy } from 'react'
 // Developer-only; the ternary is statically replaced by Vite so the chunk is
 // dropped from production bundles unless VITE_ENABLE_KPI_INSIGHTS=true.
 const KpiInsights =
@@ -26,6 +25,7 @@ import { ErrorReporterProvider } from './context/ErrorReporterContext'
 import { WalletProvider } from './wallet/WalletContext'
 import { AuthProvider } from './auth/AuthContext'
 import { AuthCallback } from './pages/AuthCallback'
+import { Inbox } from './pages/Inbox'
 import { useWebVitals } from './hooks/useWebVitals'
 import { useAccessibility } from './hooks/useAccessibility'
 import { initAnalytics } from './hooks/useAnalytics'
@@ -51,6 +51,7 @@ import {
   LazyLanding,
   LazyNotFound,
   LazyPriceDetail,
+  LazyPortfolio,
   LazySecurity,
   preloadDashboard,
   preloadPriceDetail,
@@ -169,8 +170,17 @@ export function AppContent(): ReactElement {
               }
             />
             <Route path="/webhooks" element={<Webhooks />} />
+            <Route path="/inbox" element={<Inbox />} />
             <Route path="/moderation" element={<Moderation />} />
             <Route path="/transparency" element={<Transparency />} />
+            <Route
+              path="/portfolio"
+              element={
+                <RouteSuspense fallback={<DashboardSkeleton />}>
+                  <LazyPortfolio />
+                </RouteSuspense>
+              }
+            />
             <Route path="/developer-insights" element={<DeveloperInsights />} />
             <Route
               path="/security"

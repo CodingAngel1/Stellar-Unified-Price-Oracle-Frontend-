@@ -108,6 +108,23 @@ async function waitForPageReady(page: Page): Promise<void> {
   ])
 }
 
+// ── Price chart palette and per-source overlays ─────────────────────────────
+
+for (const theme of ['light', 'dark', 'high-contrast'] as const) {
+  test(`price chart ${theme} theme baseline with source coverage`, async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop)
+    await page.goto(`/e2e/fixtures/price-chart-harness.html?theme=${theme}`)
+    await page.getByRole('heading', { name: 'BTC/USD Price History' }).waitFor()
+    await page.getByRole('button', { name: 'Toggle per-source coverage overlay' }).click()
+    await page.getByRole('img', { name: /Per-source observed coverage/ }).waitFor()
+
+    const screenshot = await stableScreenshot(page)
+    expect(screenshot).toMatchSnapshot(`price-chart-${theme}-desktop.png`, {
+      maxDiffPixelRatio: 0.02,
+    })
+  })
+}
+
 // ── Dashboard — viewport-specific screenshots ───────────────────────────────
 
 for (const [name, size] of Object.entries(VIEWPORTS) as [

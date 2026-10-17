@@ -2,6 +2,7 @@ import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDragSort } from '../hooks/useDragSort'
 import type { PriceData } from '../types'
+import type { ObservedSourceRange } from '../utils/uncertaintyBand'
 import { PriceCard } from './PriceCard'
 
 interface DraggablePriceGridProps {
@@ -14,6 +15,7 @@ interface DraggablePriceGridProps {
   selectMode?: boolean
   selected?: Set<string>
   onReorder: (orderedPairs: string[]) => void
+  observedSourceRanges?: ReadonlyMap<string, ObservedSourceRange | null>
 }
 
 /**
@@ -31,6 +33,7 @@ export const DraggablePriceGrid = memo(function DraggablePriceGrid({
   selectMode,
   selected,
   onReorder,
+  observedSourceRanges,
 }: DraggablePriceGridProps) {
   const { t } = useTranslation()
 
@@ -83,6 +86,7 @@ export const DraggablePriceGrid = memo(function DraggablePriceGrid({
 
             <PriceCard
               price={p}
+              observedSourceRange={observedSourceRanges?.get(p.assetPair)}
               isLive={livePairs.has(p.assetPair)}
               isStale={isStale}
               hasAlert={hasAlertFn(p.assetPair)}

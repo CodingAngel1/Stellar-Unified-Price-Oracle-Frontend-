@@ -502,6 +502,8 @@ const en = {
     confidence: '{{value}}% confidence',
     updated: 'Updated {{time}}',
     historyError: 'Failed to load price history: {{message}}',
+    historyStorageWarning:
+      'Browser storage is nearing its limit. The browser may remove locally saved price history; live prices are unaffected.',
     emptyState: {
       title: 'No price data available',
       detail: 'No price data available for this pair.',
@@ -587,6 +589,7 @@ const en = {
     fields: {
       refreshInterval: 'Refresh Interval',
       chartTimeRange: 'Chart Time Range',
+      chartHistoryPageSize: 'Chart History Points per Page',
       staleThreshold: 'Stale Asset Threshold',
     },
     accessibility: {

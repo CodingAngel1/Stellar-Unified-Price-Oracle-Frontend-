@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { config } from '../config'
-import { METRIC_HELP_TOPICS, type MetricHelpTopic } from '../data/metricHelp'
+import { OracleClient } from '../sdk/client'
+import { createClientTraceId, reportNetworkError } from '../utils/errorReporting'
 
 /** How long the "Copied!" confirmation stays visible after copying a snippet. */
 const COPY_FEEDBACK_RESET_MS = 1500
 
 type Method = 'GET' | 'POST' | 'WS'
-type SnippetLang = 'curl' | 'javascript' | 'python'
+type SnippetLang = 'curl' | 'javascript' | 'python' | 'sdk'
+type SdkMethod = 'getPrices' | 'getPrice' | 'getHistory'
 
 interface Endpoint {
   method: Method
@@ -16,6 +18,7 @@ interface Endpoint {
   note?: string
   tryPath?: string
   body?: string
+  sdkMethod?: SdkMethod
 }
 
 const ENDPOINTS: Endpoint[] = [
@@ -24,18 +27,21 @@ const ENDPOINTS: Endpoint[] = [
     path: '/api/prices',
     description: 'Returns the latest aggregated price for every tracked asset pair.',
     tryPath: '/api/prices',
+    sdkMethod: 'getPrices',
   },
   {
     method: 'GET',
     path: '/api/prices/:pair',
     description: 'Returns the latest aggregated price for a single asset pair.',
     tryPath: '/api/prices/XLM-USD',
+    sdkMethod: 'getPrice',
   },
   {
     method: 'GET',
     path: '/api/prices/:pair/history',
     description: 'Returns paginated price history for a single asset pair.',
     tryPath: '/api/prices/XLM-USD/history?limit=10',
+    sdkMethod: 'getHistory',
   },
   {
     method: 'POST',
@@ -57,9 +63,35 @@ const ENDPOINTS: Endpoint[] = [
   },
 ]
 
-function buildSnippet(lang: SnippetLang, endpoint: Endpoint, baseUrl: string): string {
-  const fullPath = endpoint.tryPath ?? endpoint.path
+function buildSnippet(lang: SnippetLang, endpoint: Endpoint, baseUrl: string, livePath: string): string {
+  const fullPath = livePath
   const url = `${baseUrl}${fullPath}`
+
+  if (lang === 'sdk') {
+    if (endpoint.sdkMethod === 'getPrices') {
+      return `import { OracleClient } from '@stellar-unified-price-oracle/sdk'
+
+const client = new OracleClient({ baseUrl: '${baseUrl}' })
+const prices = await client.getPrices()
+console.log(prices)`
+    }
+    const pair = endpoint.tryPath?.match(/^\/api\/prices\/([^/?]+)/)?.[1] ?? 'XLM-USD'
+    if (endpoint.sdkMethod === 'getHistory') {
+      return `import { OracleClient } from '@stellar-unified-price-oracle/sdk'
+
+const client = new OracleClient({ baseUrl: '${baseUrl}' })
+const history = await client.getHistory('${pair}', 10)
+console.log(history)`
+    }
+    if (endpoint.sdkMethod === 'getPrice') {
+      return `import { OracleClient } from '@stellar-unified-price-oracle/sdk'
+
+const client = new OracleClient({ baseUrl: '${baseUrl}' })
+const price = await client.getPrice('${pair}')
+console.log(price)`
+    }
+    return ''
+  }
 
   if (lang === 'curl') {
     if (endpoint.method === 'POST') {
@@ -134,6 +166,7 @@ const LANG_LABELS: Record<SnippetLang, string> = {
   curl: 'curl',
   javascript: 'JavaScript',
   python: 'Python',
+  sdk: 'SDK',
 }
 
 /**
@@ -152,12 +185,21 @@ function readCacheStatus(headers: Headers): string | null {
   return null
 }
 
-function TryItOut({ endpoint }: { endpoint: Endpoint }) {
+function pairFromPath(path: string): string {
+  const match = path.match(/^\/api\/prices\/([^/?]+)/)
+  if (!match) throw new Error('Set a valid pair path, for example /api/prices/XLM-USD')
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    throw new Error('The pair in the request path is not valid URL encoding')
+  }
+}
+
+function TryItOut({ endpoint, path, setPath }: { endpoint: Endpoint; path: string; setPath: (path: string) => void }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cacheStatus, setCacheStatus] = useState<string | null>(null)
-  const [path, setPath] = useState<string>(() => endpoint.tryPath ?? '')
   const [body, setBody] = useState<string>('{}')
   const [latency, setLatency] = useState<number | null>(null)
   const [headers, setHeaders] = useState<Record<string, string>>({})
@@ -172,6 +214,7 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
     setCacheStatus(null)
     setLatency(null)
     setHeaders({})
+    const traceId = createClientTraceId()
     const startedAt = performance.now()
     try {
       const base = config.apiUrl.replace(/\/api$/, '')
@@ -189,19 +232,88 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
       setHeaders(responseHeaders)
       setCacheStatus(readCacheStatus(res.headers))
       const text = await res.text()
+      let requestError: string | null = null
       try {
         const parsed: unknown = JSON.parse(text)
         setResult(JSON.stringify(parsed, null, 2))
-        if (!res.ok && typeof parsed === 'object' && parsed !== null && 'message' in parsed)
-          setError(String(parsed.message))
+        if (!res.ok) {
+          requestError =
+            typeof parsed === 'object' && parsed !== null && 'message' in parsed
+              ? String(parsed.message)
+              : `${res.status} ${res.statusText}: ${text}`
+        }
       } catch {
         if (res.ok) setResult(text)
-        else setError(`${res.status} ${res.statusText}: ${text}`)
+        else requestError = `${res.status} ${res.statusText}: ${text}`
+      }
+      if (requestError) {
+        setError(`${requestError}\nTrace ID: ${traceId}`)
+        reportNetworkError(requestError, {
+          method: endpoint.method,
+          url: `${base}${path}`,
+          status: res.status,
+          statusText: res.statusText,
+          responseTime: performance.now() - startedAt,
+          traceId,
+        })
       }
     } catch (err) {
       setLatency(Math.round(performance.now() - startedAt))
-      setError(err instanceof Error ? err.message : 'Request failed')
+      const message = err instanceof Error ? err.message : 'Request failed'
+      setError(`${message}\nTrace ID: ${traceId}`)
+      reportNetworkError(message, {
+        method: endpoint.method,
+        url: `${config.apiUrl.replace(/\/api$/, '')}${path}`,
+        responseTime: performance.now() - startedAt,
+        traceId,
+      })
     } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSdkRun = async () => {
+    if (!endpoint.sdkMethod) return
+    setLoading(true)
+    setResult(null)
+    setError(null)
+    setLatency(null)
+    const traceId = createClientTraceId()
+    let requestStarted = false
+    const startedAt = performance.now()
+    try {
+      const baseUrl = config.apiUrl.replace(/\/api$/, '')
+      const client = new OracleClient({ baseUrl, maxRetries: 0 })
+      let value: unknown
+      if (endpoint.sdkMethod === 'getPrices') {
+        requestStarted = true
+        value = await client.getPrices()
+      } else if (endpoint.sdkMethod === 'getPrice') {
+        const pair = pairFromPath(path)
+        requestStarted = true
+        value = await client.getPrice(pair)
+      } else {
+        const parsedPath = new URL(path, window.location.origin)
+        const limit = Number(parsedPath.searchParams.get('limit') ?? 10)
+        const offset = Number(parsedPath.searchParams.get('offset') ?? 0)
+        const pair = pairFromPath(parsedPath.pathname)
+        requestStarted = true
+        value = await client.getHistory(pair, limit, offset)
+      }
+      setResult(JSON.stringify(value, null, 2))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'SDK request failed'
+      setError(requestStarted ? `${message}\nTrace ID: ${traceId}` : message)
+      if (requestStarted) {
+        reportNetworkError(message, {
+          method: 'GET',
+          url: `${config.apiUrl.replace(/\/api$/, '')}${path}`,
+          responseTime: performance.now() - startedAt,
+          traceId,
+        })
+      }
+    } finally {
+      setLatency(Math.round(performance.now() - startedAt))
       setLoading(false)
     }
   }
@@ -216,18 +328,34 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
       >
         {loading ? t('apiDocs.sending') : t('apiDocs.tryItOut')}
       </button>
+      {endpoint.sdkMethod && (
+        <button
+          type="button"
+          onClick={handleSdkRun}
+          disabled={loading}
+          className="ml-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-900/40 border border-purple-800 text-purple-300 hover:bg-purple-900/70 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {loading ? 'Running…' : 'Run SDK example'}
+        </button>
+      )}
       {cacheStatus && (
         <p className="mt-2 text-xs font-mono text-gray-400">
           {t('apiDocs.cacheStatus', 'Cache:')} <span className="text-gray-300">{cacheStatus}</span>
         </p>
       )}
       {error && (
-        <pre className="mt-2 p-3 rounded-lg bg-red-900/20 border border-red-800 text-red-400 text-xs overflow-auto max-h-48 whitespace-pre-wrap">
+        <pre
+          role="alert"
+          className="mt-2 p-3 rounded-lg bg-red-900/20 border border-red-800 text-red-400 text-xs overflow-auto max-h-48 whitespace-pre-wrap"
+        >
           {error}
         </pre>
       )}
       {result && (
-        <pre className="mt-2 p-3 rounded-lg bg-gray-900 border border-gray-700 text-gray-300 text-xs overflow-auto max-h-64">
+        <pre
+          aria-live="polite"
+          className="mt-2 p-3 rounded-lg bg-gray-900 border border-gray-700 text-gray-300 text-xs overflow-auto max-h-64"
+        >
           {result}
         </pre>
       )}
@@ -267,10 +395,12 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
 function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   const [lang, setLang] = useState<SnippetLang>('curl')
   const [copied, setCopied] = useState(false)
+  const [path, setPath] = useState<string>(() => endpoint.tryPath ?? '')
   const { t } = useTranslation()
 
   const baseUrl = config.apiUrl.replace(/\/api$/, '')
-  const snippet = buildSnippet(lang, endpoint, baseUrl)
+  const snippet = buildSnippet(lang, endpoint, baseUrl, path)
+  const snippetId = `snippet-${endpoint.method}-${endpoint.path.replace(/[^a-zA-Z0-9_-]/g, '-')}`
 
   const handleCopy = () => {
     navigator.clipboard.writeText(snippet).then(() => {
@@ -297,20 +427,45 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
             may only contain role=tab children (aria-required-children). */}
         <div className="flex gap-1 mb-2 items-center">
           <div className="flex gap-1" role="tablist" aria-label={t('export.langSelector')}>
-            {(['curl', 'javascript', 'python'] as SnippetLang[]).map((l) => (
-              <button
-                key={l}
-                type="button"
-                role="tab"
-                aria-selected={lang === l}
-                onClick={() => setLang(l)}
-                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
-                  lang === l ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                }`}
-              >
-                {LANG_LABELS[l]}
-              </button>
-            ))}
+            {(['curl', 'javascript', 'python', ...(endpoint.sdkMethod ? ['sdk' as const] : [])] as SnippetLang[]).map(
+              (l) => (
+                <button
+                  key={l}
+                  type="button"
+                  role="tab"
+                  tabIndex={lang === l ? 0 : -1}
+                  aria-selected={lang === l}
+                  aria-controls={snippetId}
+                  onKeyDown={(event) => {
+                    const tabs = Array.from(
+                      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [],
+                    )
+                    const currentIndex = tabs.indexOf(event.currentTarget)
+                    const nextIndex =
+                      event.key === 'ArrowRight'
+                        ? (currentIndex + 1) % tabs.length
+                        : event.key === 'ArrowLeft'
+                          ? (currentIndex - 1 + tabs.length) % tabs.length
+                          : event.key === 'Home'
+                            ? 0
+                            : event.key === 'End'
+                              ? tabs.length - 1
+                              : -1
+                    if (nextIndex >= 0) {
+                      event.preventDefault()
+                      tabs[nextIndex].focus()
+                      tabs[nextIndex].click()
+                    }
+                  }}
+                  onClick={() => setLang(l)}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                    lang === l ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                  }`}
+                >
+                  {LANG_LABELS[l]}
+                </button>
+              ),
+            )}
           </div>
           <button
             type="button"
@@ -321,10 +476,16 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
             {copied ? t('apiDocs.copied') : t('apiDocs.copy')}
           </button>
         </div>
-        <pre className="p-3 rounded-lg bg-gray-950 text-gray-300 text-xs overflow-x-auto leading-relaxed">
+        <pre
+          id={snippetId}
+          role="tabpanel"
+          aria-label={`${LANG_LABELS[lang]} example for ${endpoint.path}`}
+          tabIndex={0}
+          className="p-3 rounded-lg bg-gray-950 text-gray-300 text-xs overflow-x-auto leading-relaxed"
+        >
           {snippet}
         </pre>
-        <TryItOut endpoint={endpoint} />
+        <TryItOut endpoint={endpoint} path={path} setPath={setPath} />
       </div>
     </div>
   )
