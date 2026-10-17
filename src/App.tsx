@@ -146,6 +146,14 @@ export function AppContent(): ReactElement {
               }
             />
             <Route
+              path="/portfolio"
+              element={
+                <RouteSuspense fallback={<DashboardSkeleton />}>
+                  <Portfolio />
+                </RouteSuspense>
+              }
+            />
+            <Route
               path="/prices/:pair"
               element={
                 <RouteSuspense fallback={<PriceDetailSkeleton />}>
