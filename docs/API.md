@@ -50,6 +50,10 @@ All prices are calculated as weighted aggregates with confidence scores indicati
 
 **No authentication required** for public endpoints. The API is open and does not require API keys or credentials.
 
+The developer usage, request replay, and feed-schema compatibility features are not
+available in this API contract. Their required backend capabilities are documented
+in [Developer API Dependencies](developer-api-dependencies.md).
+
 ### Version Negotiation
 
 To ensure compatibility, send the `Accept-Version` header with all requests:
@@ -89,6 +93,15 @@ Delay = Random(0, min(1s × 2^attempt, 30s))
 Max attempts: 3
 ```
 
+### Frontend circuit-breaker status
+
+The frontend tracks failures for pair-specific price requests independently;
+all-pairs and batch endpoints keep a shared endpoint-group breaker. On a pair's
+detail page, the current state is announced as closed, open, or half-open. When
+open, the page shows the next retry time in the browser's local time zone.
+After the cooldown expires the breaker permits one half-open test request; it
+does not promise that the upstream feed has recovered.
+
 ---
 
 ## Caching (#508)
@@ -115,6 +128,11 @@ value is on its way.
 `STALE` when a stale-while-revalidate response was served) so consumers —
 including the [API docs "Try it out" playground](../src/pages/ApiDocs.tsx) —
 can see whether a given read came from the edge cache or the origin.
+
+The [in-app API playground](/api-docs) includes runnable SDK examples for
+pair prices, all prices, and price history. It invokes the same official
+`OracleClient` implementation as the published SDK and displays live responses;
+SDK examples are not offered for endpoints the SDK does not expose.
 
 SDKs that layer their own client-side cache (e.g. the IndexedDB cache used by
 this frontend, see [`docs/STORAGE_BUDGET.md`](./STORAGE_BUDGET.md)) should
@@ -331,7 +349,11 @@ GET /api/prices/:pair/history
       "price": 42800.0,
       "timestamp": 1693485600000,
       "confidence": 0.97,
-      "sources": ["chainlink", "redstone"]
+      "sources": ["chainlink", "redstone"],
+      "sourceTimestamps": [
+        { "source": "chainlink", "timestamp": 1693485595000 },
+        { "source": "redstone", "timestamp": 1693485598000 }
+      ]
     },
     {
       "price": 42850.25,
@@ -342,6 +364,12 @@ GET /api/prices/:pair/history
   ]
 }
 ```
+
+`sourceTimestamps` is an optional additive response field. The frontend displays
+per-source timestamps when supplied; otherwise it explicitly reports that the
+timestamps are unavailable. The current backend contract does not guarantee
+this field, so backend support is required before timestamps will appear for
+existing responses. See [the frontend dependency note](PRICE_HISTORY_SOURCE_TIMESTAMPS.md).
 
 #### HTTP Example
 
@@ -567,6 +595,22 @@ ws.onclose = () => {
 }
 ```
 
+The frontend's reconnect indicator records client-side causes without changing
+the WebSocket contract: an offline browser is classified as a **network**
+disconnect, a generic browser transport error or close code `1006` as a
+**browser** disconnect, and an exposed WebSocket close frame as a **server
+response**. Close-frame code and reason are shown when the browser provides
+them. Browsers intentionally hide some transport details, so this is a best-
+effort classification; a `1006` does not prove whether the underlying cause
+was a browser policy or a network intermediary.
+
+When a tab returns to the foreground after being hidden, the frontend
+immediately fetches a fresh all-prices REST snapshot. Live WebSocket values
+that are not newer than that response are discarded so the dashboard cannot
+remain stuck on prices received before background throttling. If the REST
+request fails or returns no data, existing values remain visible and normal
+polling continues; no synthetic price is used.
+
 ### Message Types
 
 #### Subscribe Message
@@ -764,6 +808,11 @@ interface PriceData {
   sources: string[] // ["chainlink", "redstone", "band", "reflector"]
 }
 ```
+
+`sourceTickProvenanceUrl` must be a credential-free HTTPS URL supplied by the API.
+The frontend does not construct tick links; when this optional field is absent,
+source-tick provenance is unavailable. See
+[`PRICE_TRANSPARENCY.md`](./PRICE_TRANSPARENCY.md) for related data dependencies.
 
 **Confidence Score:**
 
@@ -1046,6 +1095,37 @@ for pair_history in batch:
 2. Wait until `X-RateLimit-Reset` timestamp
 3. Implement exponential backoff with jitter
 4. Batch requests when possible (use `/api/prices/history/batch`)
+
+## Client-side market summary export
+
+The dashboard can export its currently visible (filtered) market snapshot as
+`market-summary_<timestamp>.json`. This file is generated from the existing
+price feed response and does not require a new API endpoint. Version 1 contains
+the export generation time, each pair's price and confidence, the upstream
+source identifiers, the original observation timestamp in milliseconds and
+ISO-8601, its calculated age, and a `stale` flag using the user's configured
+staleness threshold. A stale observation is included and clearly marked; the
+export does not replace missing or unavailable upstream values with estimates.
+
+## Rolling price-chart statistics
+
+The price-history chart derives a trailing 20-observation median and rolling
+minimum/maximum range band from the history already loaded for the selected
+chart range. Initial windows use the observations available so far. The chart
+labels when additional history is still available; statistics do not imply
+that unloaded history was included. These are client-side derived values and
+do not require a server change.
+
+## Pair movement effects
+
+For current USD-quoted feeds, the detail page uses log-return percentage
+points: `100 × ln(current / previous)`. The base effect equals the pair
+movement because USD is the unit quote reference; the USD quote effect is
+zero. Stale observations remain marked, and fewer than two observations are
+reported as unavailable. Supporting a non-USD pair requires the history API to
+provide synchronized base/USD and quote/USD prices with timestamps on the same
+observation interval; until then the UI reports the decomposition as
+unavailable rather than estimating missing asset values.
 
 #### 404 Not Found
 

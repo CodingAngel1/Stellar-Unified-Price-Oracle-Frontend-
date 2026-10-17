@@ -453,6 +453,32 @@ describe('WebSocketClient', () => {
     vi.useRealTimers()
   })
 
+  it('classifies disconnects by browser network state, browser transport errors, and server close frames', () => {
+    const client = new WebSocketClient()
+    client.connect()
+    ws.simulateClose(1011, 'server unavailable')
+    expect(client.diagnostics.lastReconnectCause).toMatchObject({
+      type: 'server',
+      closeCode: 1011,
+      closeReason: 'server unavailable',
+    })
+
+    ws.simulateOpen()
+    ws.simulateClose(1006, 'abnormal closure')
+    expect(client.diagnostics.lastReconnectCause?.type).toBe('browser')
+
+    vi.stubGlobal('navigator', { onLine: false })
+    ws.simulateOpen()
+    ws.simulateClose(1006)
+    expect(client.diagnostics.lastReconnectCause?.type).toBe('network')
+    expect(client.diagnostics.reconnectCauseCounts).toEqual({
+      network: 1,
+      browser: 1,
+      server: 1,
+      unknown: 0,
+    })
+  })
+
   it('re-subscribes to all tracked pairs after multiple reconnect cycles', () => {
     vi.useFakeTimers()
     const client = new WebSocketClient()

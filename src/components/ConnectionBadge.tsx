@@ -113,22 +113,17 @@ export const ConnectionBadge = memo(function ConnectionBadge({
 }: ConnectionBadgeProps): ReactElement {
   const { t } = useTranslation()
   const { announce } = useAnnounce()
-  const prevStatusRef = useRef<string>(status)
+  const prevStatusRef = useRef<ConnectionStatus | 'rate-limited'>(status)
 
   // Announce status changes to screen readers
   useEffect(() => {
     const isRateLimited = rateLimitStatus === 'limited'
-    const hasProtocolMismatch = diagnostics?.protocolUpgradeRequired === true
-    const currentKey = hasProtocolMismatch ? 'protocol-mismatch' : isRateLimited ? 'rate-limited' : status
+    const currentKey = isRateLimited ? 'rate-limited' : status
 
     if (prevStatusRef.current !== currentKey) {
       let announcement = ''
 
-      if (hasProtocolMismatch) {
-        announcement =
-          `WebSocket protocol compatibility error. Server protocol v${diagnostics?.protocolVersion ?? 'unknown'} ` +
-          `requires a compatible frontend; this client supports v${WS_PROTOCOL_VERSION}. REST polling remains available.`
-      } else if (isRateLimited) {
+      if (isRateLimited) {
         announcement =
           retryAfterMs && retryAfterMs > 0
             ? `API rate limited, requests will resume in ${Math.ceil(retryAfterMs / 1000)} seconds`
@@ -141,7 +136,7 @@ export const ConnectionBadge = memo(function ConnectionBadge({
         }
       }
 
-      announce(announcement, isRateLimited || hasProtocolMismatch || status === 'dead' ? 'assertive' : 'polite')
+      announce(announcement, isRateLimited || status === 'dead' ? 'assertive' : 'polite')
       prevStatusRef.current = currentKey
     }
   }, [status, rateLimitStatus, retryAfterMs, diagnostics, announce])
@@ -161,7 +156,6 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   // Show retry count on waiting/reconnecting states
   if (
     !isRateLimited &&
-    !hasProtocolMismatch &&
     diagnostics &&
     diagnostics.retryCount > 0 &&
     (status === 'waiting' || status === 'reconnecting')
@@ -171,12 +165,6 @@ export const ConnectionBadge = memo(function ConnectionBadge({
 
   // #471 – visible indicator when the client has fallen back from WebSocket to SSE.
   const isSseFallback = diagnostics?.transport === 'sse'
-
-  const ariaLabel = hasProtocolMismatch
-    ? `WebSocket protocol mismatch. Server v${diagnostics?.protocolVersion ?? 'unknown'}, client v${WS_PROTOCOL_VERSION}. Update the frontend; REST polling remains available.`
-    : isRateLimited
-      ? 'API rate limited'
-      : `WebSocket ${s.label}`
 
   let tooltipText = isRateLimited
     ? 'The API is temporarily rate limited. Requests will resume after the retry window expires.'
@@ -196,6 +184,29 @@ export const ConnectionBadge = memo(function ConnectionBadge({
     tooltipText += ' Falling back to Server-Sent Events — the WebSocket upgrade failed or was blocked by the network.'
   }
 
+  const cause = diagnostics?.lastReconnectCause
+  const causeLabel =
+    cause?.type === 'server' ? 'server response' : cause?.type === 'unknown' ? 'unknown cause' : cause?.type
+  const causeDetail = cause
+    ? `Last reconnect cause: ${causeLabel}${cause.closeCode ? ` (close code ${cause.closeCode})` : ''}${cause.closeReason ? ` — ${cause.closeReason}` : ''}.`
+    : ''
+  if (causeDetail) tooltipText += ` ${causeDetail}`
+
+  const counts = diagnostics?.reconnectCauseCounts
+  const causeCountsLabel = counts
+    ? `Reconnect causes: network ${counts.network}, browser ${counts.browser}, server response ${counts.server}${counts.unknown ? `, unknown ${counts.unknown}` : ''}.`
+    : ''
+  const ariaLabel = isRateLimited
+    ? 'API rate limited'
+    : [
+        `WebSocket ${s.label}`,
+        causeDetail.replace(/\.$/, ''),
+        causeCountsLabel.replace(/\.$/, ''),
+      ]
+        .filter(Boolean)
+        .join('. ')
+  const hasReconnectCauses = counts && counts.network + counts.browser + counts.server + counts.unknown > 0
+
   return (
     <Tooltip content={tooltipText}>
       <span
@@ -208,6 +219,11 @@ export const ConnectionBadge = memo(function ConnectionBadge({
           aria-hidden="true"
         />
         {label}
+        {hasReconnectCauses && (
+          <span className="ml-1 border-l border-current/20 pl-2 text-[10px] font-normal opacity-80">
+            Network {counts.network} · Browser {counts.browser} · Server response {counts.server}
+          </span>
+        )}
         {isSseFallback && (
           <span
             className="px-1 rounded bg-amber-500/20 text-amber-400 text-[10px] font-semibold uppercase tracking-wide"
