@@ -662,10 +662,10 @@ export function AlertModal({
                     min="0.1"
                     value={form.percentageThreshold}
                     onChange={(e) => setAndValidate('percentageThreshold', e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 pe-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder="5"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                 </div>
                 {fieldError('percentageThreshold') && (
                   <p className="mt-1 text-sm text-red-400" role="alert">

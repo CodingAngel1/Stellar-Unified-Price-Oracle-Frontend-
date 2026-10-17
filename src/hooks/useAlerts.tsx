@@ -33,6 +33,7 @@ import {
   clearAlertEventSeries,
 } from '../services/alertHistory'
 import { loadBotSecrets, sendTelegramMessage, sendDiscordMessage } from '../services/botNotifications'
+import { addInboxItem } from '../services/inbox'
 import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../services/notificationConfig'
 import { stepRetest, initialRetestState } from '../utils/retestDetector'
 import { registerMemoryProbe } from '../utils/memoryProfiler'
@@ -665,6 +666,18 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       setHistory((prev) => appendHistoryEntries(prev, firedEntries))
       // Mirror into the time-series engine for retention/rollups/range queries.
       recordAlertEvents(firedEntries)
+      // Record the alert alongside its existing immediate notification delivery.
+      for (const entry of firedEntries) {
+        addInboxItem({
+          id: `alert:${entry.id}`,
+          category: 'alert',
+          title: `Price alert fired for ${entry.assetPair}`,
+          message: `Triggered at $${entry.price}.`,
+          createdAt: entry.triggeredAt,
+          href: `/prices/${encodeURIComponent(entry.assetPair)}`,
+          source: 'Price alerts',
+        })
+      }
     }
     if (evaluationEntries.length > 0) {
       setEvaluationTimeline((prev) => [...evaluationEntries].reverse().concat(prev).slice(0, EVALUATION_TIMELINE_LIMIT))
