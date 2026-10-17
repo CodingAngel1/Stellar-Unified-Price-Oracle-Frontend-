@@ -65,6 +65,10 @@ interface ChartPoint {
   sourceTimestamps?: PriceHistoryEntry['sourceTimestamps']
   time: string
   idx: number
+  rollingMedian: number
+  rangeLow: number
+  rangeHigh: number
+  sampleCount: number
   [key: string]: unknown
 }
 
@@ -85,7 +89,8 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, palette, norma
   const raw = payload[0]?.payload as ChartPoint | undefined
   if (!raw) return null
 
-  const price = typeof raw.price === 'number' ? raw.price : (payload[0]?.value as number | undefined)
+  const pricePayload = payload.filter((point) => !ROLLING_STAT_KEYS.has(String(point.dataKey)))
+  const price = typeof raw.price === 'number' ? raw.price : (pricePayload[0]?.value as number | undefined)
   const confidence = typeof raw.confidence === 'number' ? raw.confidence : null
   const sources: string[] = Array.isArray(raw.sources) ? raw.sources : []
   const qualityFlags = raw.qualityFlags
@@ -127,6 +132,22 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, palette, norma
         <p className="mb-1" style={{ color: palette.tooltipMuted }}>
           Confidence: <span style={{ color: palette.tooltipForeground }}>{(confidence * 100).toFixed(1)}%</span>
         </p>
+      )}
+      {typeof raw.rollingMedian === 'number' && (
+        <div className="mt-1.5 pt-1.5 border-t border-gray-800 text-gray-300">
+          <p>
+            Rolling median:{' '}
+            <span className="font-mono">
+              {normalised ? `${raw.rollingMedian.toFixed(2)}%` : `$${formatPriceShort(raw.rollingMedian)}`}
+            </span>
+          </p>
+          <p className="text-gray-400">
+            Range ({raw.sampleCount} obs.):{' '}
+            {normalised
+              ? `${raw.rangeLow.toFixed(2)}% to ${raw.rangeHigh.toFixed(2)}%`
+              : `$${formatPriceShort(raw.rangeLow)} to $${formatPriceShort(raw.rangeHigh)}`}
+          </p>
+        </div>
       )}
       {sources.length > 0 && (
         <div className="mt-1.5 pt-1.5 border-t" style={{ borderColor: palette.border }}>
@@ -179,7 +200,7 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, palette, norma
       ) : (
         <p className="mt-1.5 border-t border-gray-800 pt-1.5 text-gray-500">Quality flags not reported by API</p>
       )}
-      {payload.slice(1).map((p, i) => {
+      {pricePayload.slice(1).map((p, i) => {
         const color = typeof p.color === 'string' ? p.color : '#fff'
         const label = p.name != null ? String(p.name) : `Series ${i + 1}`
         const value = typeof p.value === 'number' ? p.value : undefined
@@ -354,7 +375,20 @@ function ChartContent({
   const chartData = filteredData
     .slice()
     .reverse()
-    .map((d, i) => ({ ...d, time: formatChartTimeWithTz(d.timestamp, timezone), idx: i }))
+    .map((d, i) => {
+      const statistic = rollingStatistics[rollingStatistics.length - 1 - i]
+      return {
+        ...d,
+        time: formatChartTimeWithTz(d.timestamp, timezone),
+        idx: i,
+        rollingMedian: statistic.median,
+        rangeLow: statistic.low,
+        rangeHigh: statistic.high,
+        rangeBandBase: statistic.low,
+        rangeBandWidth: statistic.high - statistic.low,
+        sampleCount: statistic.sampleCount,
+      }
+    })
 
   // Build overlay series (filter by range, normalise if needed)
   const hasOverlays = overlayPairs.length > 0
@@ -366,9 +400,18 @@ function ChartContent({
     if (!hasOverlays) return chartData
     // Normalise primary
     const primaryNorm = normalised ? normaliseToPercent(chartData) : null
+    const normaliseStatistic = (value: number) => {
+      const basePrice = chartData[0]?.price ?? 0
+      return normalised && basePrice !== 0 ? ((value - basePrice) / basePrice) * 100 : value
+    }
     const base = chartData.map((d, i) => ({
       ...d,
       [pair]: normalised && primaryNorm ? primaryNorm[i].pct : d.price,
+      rollingMedian: normaliseStatistic(d.rollingMedian),
+      rangeLow: normaliseStatistic(d.rangeLow),
+      rangeHigh: normaliseStatistic(d.rangeHigh),
+      rangeBandBase: normaliseStatistic(d.rangeLow),
+      rangeBandWidth: normaliseStatistic(d.rangeHigh) - normaliseStatistic(d.rangeLow),
     }))
     // Merge each overlay
     for (const op of overlayPairs) {
@@ -762,6 +805,24 @@ function ChartContent({
           })}
         </div>
       )}
+
+      <div className="flex flex-wrap items-center gap-3 mb-2 text-xs" role="group" aria-label="Rolling statistics">
+        <span className="inline-flex items-center gap-1.5 text-violet-300">
+          <span className="inline-block w-5 border-t-2 border-dashed border-violet-400" aria-hidden="true" />
+          Rolling median (20 observations)
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-gray-400">
+          <span
+            className="inline-block w-5 h-2 rounded bg-violet-400/20 border border-violet-400/40"
+            aria-hidden="true"
+          />
+          Range band (rolling low–high)
+        </span>
+        <span className="text-gray-500">
+          Based on {filteredData.length} loaded observations
+          {hasMore ? '; older history may be available by scrolling.' : '.'}
+        </span>
+      </div>
 
       <div
         ref={chartWrapperRef}

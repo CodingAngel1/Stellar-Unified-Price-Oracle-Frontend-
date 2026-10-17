@@ -316,6 +316,14 @@ export function PriceDetail() {
                 )
               })()}
 
+              <PairMovementEffectsPanel
+                pair={price.assetPair}
+                history={history}
+                loading={historyLoading}
+                error={historyError}
+                staleThresholdMinutes={preferences.staleThresholdMinutes}
+              />
+
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Stellar Asset</p>

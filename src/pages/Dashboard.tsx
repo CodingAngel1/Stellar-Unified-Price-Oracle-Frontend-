@@ -2,6 +2,7 @@ import { Suspense, useCallback, useMemo, useRef, useState, useTransition, useOpt
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePriceContext } from '../context/PriceContext'
+import { useToast } from '../context/ToastContext'
 import { useAlerts } from '../hooks/useAlerts'
 import { useExport } from '../hooks/useExport'
 import { useDashboardCommands } from '../hooks/useDashboardCommands'
@@ -75,7 +76,7 @@ export function Dashboard() {
     alertCreateAllowed,
     alertCreateCooldownSec,
   } = useAlerts()
-  const { exportAllowed, exportCooldownSec } = useExport()
+  const { exportAllowed, exportCooldownSec, exportMarketSummary } = useExport()
   const { tasks: exportTasks, enqueue: enqueueExport, cancel: cancelExport, dismiss: dismissExport } = useExportQueue()
   const {
     columns: exportColumns,
@@ -83,6 +84,7 @@ export function Dashboard() {
     applyPreset: applyColumnPreset,
   } = useColumnSelection('csv')
   const { preferences, updatePreference } = usePreferences()
+  const { addToast } = useToast()
   const [searchParams] = useSearchParams()
 
   const [columnModalOpen, setColumnModalOpen] = useState(false)
@@ -211,6 +213,23 @@ export function Dashboard() {
     legacyConfidence,
     legacySource,
   ])
+
+  const handleMarketSummaryExport = useCallback(() => {
+    const exportPromise = exportMarketSummary(filtered, preferences.staleThresholdMinutes)
+    if (!exportPromise) {
+      addToast({ type: 'warning', message: 'Market summary export is rate limited' })
+      return
+    }
+    void exportPromise.then(
+      () => addToast({ type: 'success', message: 'Market summary downloaded' }),
+      (error: unknown) =>
+        addToast({
+          type: 'error',
+          message: 'Could not export market summary',
+          description: error instanceof Error ? error.message : String(error),
+        }),
+    )
+  }, [addToast, exportMarketSummary, filtered, preferences.staleThresholdMinutes])
 
   // Shared with the Governance page via `deriveSourceHealths` — the two views
   // must never report different source metrics.
@@ -560,6 +579,16 @@ export function Dashboard() {
             </svg>
             {t('scheduledExports.button', { defaultValue: 'Schedule' })}
           </button>
+          <button
+            type="button"
+            onClick={handleMarketSummaryExport}
+            disabled={(pricesLoading && merged.length === 0) || filtered.length === 0 || !exportAllowed}
+            aria-describedby="market-summary-export-status"
+            title={!exportAllowed ? `Too many exports — try again in ${exportCooldownSec}s` : undefined}
+            className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Export market summary
+          </button>
           <ConnectionBadge
             status={wsStatus}
             rateLimitStatus={rateLimitStatus}
@@ -656,6 +685,16 @@ export function Dashboard() {
           {pricesError.message}
         </div>
       )}
+
+      <p id="market-summary-export-status" className="sr-only" role="status">
+        {filtered.length > 0
+          ? `Exports ${filtered.length} market ${filtered.length === 1 ? 'asset' : 'assets'} with source attribution, timestamps, and stale-data flags.`
+          : pricesLoading
+            ? 'Market summary export unavailable while market data is loading.'
+            : pricesError
+              ? 'Market summary export unavailable because market data could not be loaded.'
+              : 'Market summary export unavailable because no market data matches the current filters.'}
+      </p>
 
       {/* Offline-first (#470): rendering the last persisted snapshot instead of a blank dashboard. */}
       {isOfflineSnapshot && offlineSnapshotSavedAt != null && (
