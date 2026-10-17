@@ -54,8 +54,10 @@ export const STORAGE_KEYS = {
   developerWebhooks: 'developer-webhooks',
   /** `'1'` when the user has opted out of analytics. */
   analyticsOptOut: 'analyticsOptOut',
-  /** `'dark'` / `'light'`. Also read by the pre-paint script in `index.html`. */
+  /** `'dark'` / `'light'` / `'system'`. Also read by the pre-paint script in `public/theme-init.js`. */
   theme: 'stellar-oracle-theme',
+  /** Theme key written before #834 unified it with the pre-paint script. Read once for migration. */
+  themeLegacy: 'theme-preference',
   /** Random per-browser bucket id used for sticky percentage-rollout feature flags (#359). No PII. */
   featureFlagBucket: 'feature-flag-bucket',
   /** Ids of alert health flags (#493) the user has dismissed. No PII. */
@@ -357,7 +359,11 @@ export const STORAGE_INVENTORY = Object.freeze({
     },
     {
       key: STORAGE_KEYS.theme,
-      description: "UI theme choice ('dark'/'light'). No PII.",
+      description: "UI theme choice ('dark'/'light'/'system'). No PII.",
+    },
+    {
+      key: STORAGE_KEYS.themeLegacy,
+      description: 'Pre-#834 theme choice, migrated to the theme key on first read. No PII.',
     },
     {
       key: STORAGE_KEYS.featureFlagBucket,
