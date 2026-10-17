@@ -48,7 +48,7 @@
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { PriceData, PriceSyncState } from '../types'
-import { formatPrice } from '../utils/format'
+import { formatPriceWithPrecision } from '../utils/format'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { MetricHelp } from './MetricHelp'
 import { useActiveSource } from '../hooks/useActiveSource'
@@ -181,7 +181,7 @@ export const PriceCard = memo(function PriceCard({
           </div>
         </div>
 
-        <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPrice(price.price)}</div>
+        <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPriceWithPrecision(price.price, preferences.pricePrecision)}</div>
         <ObservedSourceRange range={observedSourceRange} compact showUnavailable={false} />
 
         {price.pairMetadata && <PairMetadataPanel pair={assetPair} metadata={price.pairMetadata} compact />}

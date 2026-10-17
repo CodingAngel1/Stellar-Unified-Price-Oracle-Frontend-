@@ -81,7 +81,8 @@ import { memo, useState, useCallback, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from 'react-i18next'
 import type { PriceData } from '../types'
-import { formatPrice, timeAgo } from '../utils/format'
+import { formatPriceWithPrecision, timeAgo } from '../utils/format'
+import type { PricePrecision } from '../preferences/types'
 import type { ConnectionStatus } from '../api/websocket'
 import { SubscriptionHealthBadge } from './SubscriptionHealthBadge'
 
@@ -105,6 +106,8 @@ interface PriceTableViewProps {
   onToggleSelect?: (pair: string) => void
   subscriptionStatus?: ConnectionStatus
   isOfflineSnapshot?: boolean
+  /** Decimal places for the price column; defaults to the scale-based `auto` precision. */
+  pricePrecision?: PricePrecision
 }
 
 export const PriceTableView = memo(function PriceTableView({
@@ -119,6 +122,7 @@ export const PriceTableView = memo(function PriceTableView({
   onToggleSelect,
   subscriptionStatus = 'disconnected',
   isOfflineSnapshot,
+  pricePrecision = 'auto',
 }: PriceTableViewProps) {
   const { t } = useTranslation()
   const [sortKey, setSortKey] = useState<SortKey>('assetPair')
@@ -266,7 +270,7 @@ export const PriceTableView = memo(function PriceTableView({
             )}
           </span>
         </td>
-        <td className="px-4 py-3 font-mono text-gray-100 whitespace-nowrap">${formatPrice(p.price)}</td>
+        <td className="px-4 py-3 font-mono text-gray-100 whitespace-nowrap">${formatPriceWithPrecision(p.price, pricePrecision)}</td>
         <td className="px-4 py-3 text-cyan-400 whitespace-nowrap">{(p.confidence * 100).toFixed(1)}%</td>
         <td className="px-4 py-3 whitespace-nowrap">
           <span className="text-gray-400">{p.sources.join(', ')}</span>

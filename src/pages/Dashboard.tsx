@@ -747,6 +747,7 @@ export function Dashboard() {
               onToggleSelect={onToggleSelect}
               subscriptionStatus={wsStatus}
               isOfflineSnapshot={isOfflineSnapshot}
+              pricePrecision={preferences.pricePrecision}
             />
           </Suspense>
         </ErrorBoundary>
