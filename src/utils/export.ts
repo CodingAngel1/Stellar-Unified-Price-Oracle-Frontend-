@@ -21,17 +21,73 @@ function alertHistoryCondition(entry: AlertHistoryEntry): string {
   return ''
 }
 
-/** Converts fired-alert history entries to CSV-ready rows (#309). */
-export function alertHistoryToCsvRows(entries: AlertHistoryEntry[]): { rows: Array<Record<string, unknown>>; headers: string[] } {
-  const headers = ['assetPair', 'triggeredAt', 'price', 'condition', 'alertType']
-  const rows = entries.map((e) => ({
-    assetPair: e.assetPair,
-    triggeredAt: isoTs(e.triggeredAt),
-    price: e.price,
-    condition: alertHistoryCondition(e),
-    alertType: e.triggerOnce ? 'one-time' : 'persistent',
+const ALERT_HISTORY_CSV_HEADERS = [
+  'eventId',
+  'alertId',
+  'assetPair',
+  'triggeredAt',
+  'price',
+  'condition',
+  'alertType',
+  'eventType',
+  'percentageMode',
+  'upperThreshold',
+  'lowerThreshold',
+  'percentageThreshold',
+  'percentageWindow',
+  'percentageDirection',
+  'escalationStepId',
+  'escalationChannel',
+  'escalationDelayMinutes',
+  'retestKind',
+  'retestCycle',
+]
+
+/** Converts fired-alert entries into auditable export records with ISO-8601 UTC timestamps. */
+export function alertHistoryToAuditRows(entries: AlertHistoryEntry[]): Array<Record<string, unknown>> {
+  return entries.map((entry) => ({
+    eventId: entry.id,
+    alertId: entry.alertId,
+    assetPair: entry.assetPair,
+    triggeredAt: isoTs(entry.triggeredAt),
+    price: entry.price,
+    condition: alertHistoryCondition(entry),
+    alertType: entry.triggerOnce ? 'one-time' : 'persistent',
+    eventType: entry.escalation ? 'escalation' : (entry.retest?.kind ?? 'trigger'),
+    percentageMode: entry.percentageMode,
+    upperThreshold: entry.upperThreshold,
+    lowerThreshold: entry.lowerThreshold,
+    percentageThreshold: entry.percentageThreshold,
+    percentageWindow: entry.percentageWindow,
+    percentageDirection: entry.percentageDirection,
+    escalationStepId: entry.escalation?.stepId ?? null,
+    escalationChannel: entry.escalation?.channel ?? null,
+    escalationDelayMinutes: entry.escalation?.delayMinutes ?? null,
+    retestKind: entry.retest?.kind ?? null,
+    retestCycle: entry.retest?.cycle ?? null,
   }))
-  return { rows, headers }
+}
+
+/** Converts fired-alert history entries to CSV-ready rows (#309). */
+export function alertHistoryToCsvRows(entries: AlertHistoryEntry[]): {
+  rows: Array<Record<string, unknown>>
+  headers: string[]
+} {
+  return { rows: alertHistoryToAuditRows(entries), headers: ALERT_HISTORY_CSV_HEADERS }
+}
+
+/** Serializes an audit export with its scope and generation time made explicit. */
+export function alertHistoryToAuditJson(entries: AlertHistoryEntry[], exportedAt = new Date()): string {
+  return JSON.stringify(
+    {
+      schemaVersion: 1,
+      source: 'browser-local',
+      exportedAtUtc: exportedAt.toISOString(),
+      entries: alertHistoryToAuditRows(entries),
+    },
+    null,
+    2,
+  )
 }
 
 /** Serialises an array of plain objects to a CSV string. Values containing commas, quotes, or newlines are quoted and escaped. */
@@ -56,6 +112,7 @@ export function priceDataToCsvRows(
     timestamp: (p) => isoTs(p.timestamp),
     confidence: (p) => p.confidence,
     sources: (p) => p.sources.join(';'),
+    sourceTickProvenanceUrl: (p) => p.sourceTickProvenanceUrl ?? '',
   }
   const rows = prices.map((p) =>
     Object.fromEntries(headers.map((h) => [h, values[h](p)])),
@@ -468,6 +525,7 @@ export function priceDataToXlsx(prices: PriceData[], columns?: string[]): Uint8A
     timestamp: (p) => isoTs(p.timestamp),
     confidence: (p) => p.confidence,
     sources: (p) => p.sources.join(';'),
+    sourceTickProvenanceUrl: (p) => p.sourceTickProvenanceUrl ?? '',
   }
   const rows = prices.map((p) =>
     Object.fromEntries(keys.map((k, i) => [headers[i], values[k](p)])),

@@ -4,6 +4,11 @@ Welcome to the Stellar Unified Price Oracle API documentation. This directory co
 
 ## 📚 Documentation Files
 
+### [Portfolio analytics](portfolio-analytics.md)
+**User-entered holdings and portfolio exposure** — local-only holdings,
+valuation freshness rules, and API data dependencies for outage and historical
+aggregation previews.
+
 ### [QUICKSTART.md](QUICKSTART.md)
 **Start here!** Get up and running in 5 minutes with code examples for:
 - Installation & setup
@@ -30,10 +35,11 @@ Welcome to the Stellar Unified Price Oracle API documentation. This directory co
 - Debugging strategies
 - Example implementations
 
-### [notifications.md](notifications.md)
-**Notification digest behavior** covering:
-- All-alert and per-rule digest schedules
-- Client-side schedule limitations and delivery failures
+### [ALERT_HISTORY.md](ALERT_HISTORY.md)
+**Alert history and audit exports** covering:
+- Browser-local source and 500-entry retention limit
+- UTC timestamp and CSV/JSON export fields
+- Storage and server-verification limitations
 
 ### [openapi.yaml](openapi.yaml)
 **OpenAPI 3.0 specification** with:

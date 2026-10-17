@@ -9,28 +9,41 @@
  */
 import type { Alert, AlertHistoryEntry, EscalationStep } from '../types'
 import { AlertHistoryArraySchema } from '../api/schemas'
-import { readRaw, writeJson, STORAGE_KEYS } from '../utils/storage'
+import { readRaw, STORAGE_KEYS } from '../utils/storage'
+import { persistDurable } from '../utils/durableWrites'
 import { SERIES_IDS, timeSeries } from '../storage/timeseries'
 
 /** Cap on the fired-alert history log (#309), oldest entries dropped first. */
 export const HISTORY_LIMIT = 500
 
-/** Loads the fired-alert history log, tolerating legacy/invalid data. */
-export function loadAlertHistory(): AlertHistoryEntry[] {
+export interface AlertHistorySnapshot {
+  entries: AlertHistoryEntry[]
+  status: 'ready' | 'unavailable' | 'error'
+}
+
+/** Loads history while preserving whether empty means no records or unavailable/corrupt storage. */
+export function loadAlertHistorySnapshot(): AlertHistorySnapshot {
+  const raw = readRawResult(STORAGE_KEYS.alertHistory)
+  if (!raw.available) return { entries: [], status: 'unavailable' }
+  if (raw.value === null) return { entries: [], status: 'ready' }
   try {
-    const raw = readRaw(STORAGE_KEYS.alertHistory)
-    if (!raw) return []
-    const parsed: unknown = JSON.parse(raw)
+    const parsed: unknown = JSON.parse(raw.value)
     const result = AlertHistoryArraySchema.safeParse(parsed)
     if (!result.success) {
-      console.warn('[alertHistory] Invalid alert history in storage, resetting:', result.error.issues)
-      return []
+      console.warn('[alertHistory] Invalid alert history in storage:', result.error.issues)
+      return { entries: [], status: 'error' }
     }
     // Zod fills in defaults for new fields (e.g. `escalation`) on legacy entries.
-    return result.data as AlertHistoryEntry[]
-  } catch {
-    return []
+    return { entries: result.data as AlertHistoryEntry[], status: 'ready' }
+  } catch (error) {
+    console.warn('[alertHistory] Could not parse alert history in storage:', error)
+    return { entries: [], status: 'error' }
   }
+}
+
+/** Loads the fired-alert history log, tolerating legacy/invalid data. */
+export function loadAlertHistory(): AlertHistoryEntry[] {
+  return loadAlertHistorySnapshot().entries
 }
 
 /**
@@ -139,6 +152,7 @@ export function buildTriggerHistoryEntry(
   price: number,
   firedAt: number,
   retest?: AlertHistoryEntry['retest'],
+  evidence?: AlertHistoryEntry['evidence'],
 ): AlertHistoryEntry {
   return {
     id: crypto.randomUUID(),
@@ -153,6 +167,7 @@ export function buildTriggerHistoryEntry(
     percentageThreshold: alert.percentageThreshold,
     percentageWindow: alert.percentageWindow,
     percentageDirection: alert.percentageDirection,
+    evidence: evidence ?? null,
     escalation: null,
     retest: retest ?? null,
   }
@@ -164,9 +179,10 @@ export function buildEscalationHistoryEntry(
   step: EscalationStep,
   price: number,
   firedAt: number,
+  evidence?: AlertHistoryEntry['evidence'],
 ): AlertHistoryEntry {
   return {
-    ...buildTriggerHistoryEntry(alert, price, firedAt),
+    ...buildTriggerHistoryEntry(alert, price, firedAt, undefined, evidence),
     id: crypto.randomUUID(),
     escalation: { stepId: step.id, channel: step.channel, delayMinutes: step.delayMinutes },
   }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Alert, EscalationStep } from '../types'
 import {
   loadAlertHistory,
@@ -6,8 +6,31 @@ import {
   buildTriggerHistoryEntry,
   buildEscalationHistoryEntry,
   appendHistoryEntries,
+  loadAlertHistorySnapshot,
   HISTORY_LIMIT,
 } from './alertHistory'
+
+vi.mock('../api/schemas', () => ({
+  AlertHistoryArraySchema: {
+    safeParse(value: unknown) {
+      const valid =
+        Array.isArray(value) &&
+        value.every((entry) => {
+          if (typeof entry !== 'object' || entry === null) return false
+          const record = entry as Record<string, unknown>
+          return (
+            typeof record.id === 'string' &&
+            typeof record.alertId === 'string' &&
+            typeof record.assetPair === 'string' &&
+            typeof record.triggeredAt === 'number' &&
+            typeof record.price === 'number' &&
+            typeof record.triggerOnce === 'boolean'
+          )
+        })
+      return valid ? { success: true, data: value } : { success: false, error: { issues: [] } }
+    },
+  },
+}))
 
 const STORAGE_KEY = 'alert-history'
 
@@ -63,6 +86,20 @@ describe('loadAlertHistory / saveAlertHistory', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([{ nope: true }]))
     expect(loadAlertHistory()).toEqual([])
   })
+
+  it('reports an empty but available history separately from a failed read', () => {
+    expect(loadAlertHistorySnapshot()).toEqual({ entries: [], status: 'ready' })
+    localStorage.setItem(STORAGE_KEY, 'not json')
+    expect(loadAlertHistorySnapshot()).toEqual({ entries: [], status: 'error' })
+  })
+
+  it('reports unavailable browser storage instead of presenting it as an empty history', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError')
+    })
+    expect(loadAlertHistorySnapshot()).toEqual({ entries: [], status: 'unavailable' })
+    vi.restoreAllMocks()
+  })
 })
 
 describe('buildTriggerHistoryEntry', () => {
@@ -72,6 +109,18 @@ describe('buildTriggerHistoryEntry', () => {
     expect(entry.price).toBe(61000)
     expect(entry.triggeredAt).toBe(1000)
     expect(entry.assetPair).toBe('BTC/USD')
+  })
+
+  it('preserves exact tick evidence without manufacturing unavailable per-source prices', () => {
+    const evidence = {
+      timestamp: 900,
+      confidence: 0.97,
+      sources: ['chainlink', 'reflector'],
+    }
+    const entry = buildTriggerHistoryEntry(mockAlert, 61000, 1000, undefined, evidence)
+
+    expect(entry.evidence).toEqual(evidence)
+    expect(entry.evidence?.sourcePrices).toBeUndefined()
   })
 })
 

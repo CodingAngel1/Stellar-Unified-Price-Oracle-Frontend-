@@ -15,6 +15,7 @@ import {
   priceDataToCsvRows,
   historyToCsvRows,
   alertHistoryToCsvRows,
+  alertHistoryToAuditJson,
   exportFilename,
   priceDataToXlsx,
   historyToXlsx,
@@ -89,7 +90,7 @@ function syncExportAlertHistory(input: ExportAlertHistoryInput, onProgress?: Pro
   let mimeType: string
 
   if (format === 'json') {
-    data = JSON.stringify(entries, null, 2)
+    data = alertHistoryToAuditJson(entries)
     mimeType = 'application/json'
   } else if (format === 'xlsx') {
     const { rows, headers } = alertHistoryToCsvRows(entries)

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { idbCache } from '../hooks/useIndexedDB'
-import { STORAGE_KEYS, clearAllData, readJson, readRaw, remove, writeJson, writeRaw } from './storage'
+import { STORAGE_KEYS, clearAllData, readJson, readRaw, readRawResult, remove, writeJson, writeRaw } from './storage'
 
 beforeEach(() => {
   localStorage.clear()
@@ -29,6 +29,11 @@ describe('readRaw / writeRaw', () => {
       throw new Error('SecurityError')
     })
     expect(readRaw(STORAGE_KEYS.theme)).toBeNull()
+    expect(readRawResult(STORAGE_KEYS.theme)).toEqual({ available: false, value: null })
+  })
+
+  it('distinguishes an absent key from unavailable storage', () => {
+    expect(readRawResult(STORAGE_KEYS.theme)).toEqual({ available: true, value: null })
   })
 
   it('swallows write failures', () => {
