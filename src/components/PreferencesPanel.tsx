@@ -53,6 +53,8 @@ import {
   type PortablePreferences,
 } from '../preferences/portability'
 import { downloadFile } from '../utils/export'
+import { resetExplanationDismissals } from '../utils/explanationDismissals'
+import type { ExplanationReappearPolicy } from '../preferences/types'
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 import {
   REFRESH_INTERVAL_OPTIONS,
@@ -82,6 +84,7 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
   // An imported file is staged here and only written to preferences once the user applies it.
   const [draft, setDraft] = useState<PortablePreferences | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [dismissalsReset, setDismissalsReset] = useState(false)
   useUnsavedChangesWarning(draft !== null)
 
   const handleExport = () => {
@@ -278,6 +281,40 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
         >
           Redo
         </button>
+      </div>
+
+      {/* Dismissed inline explanations */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="explanation-reappear" className="text-sm font-medium text-gray-200">
+          Show dismissed explanations again
+        </label>
+        <select
+          id="explanation-reappear"
+          className="rounded bg-slate-800 px-3 py-2 text-sm text-gray-100"
+          value={preferences.explanationReappearPolicy}
+          onChange={(e) => updatePreference('explanationReappearPolicy', e.target.value as ExplanationReappearPolicy)}
+        >
+          <option value="never">Never</option>
+          <option value="weekly">After 7 days</option>
+          <option value="always">Always</option>
+        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              resetExplanationDismissals()
+              setDismissalsReset(true)
+            }}
+            className="rounded bg-slate-700 px-3 py-1.5 text-sm text-gray-200"
+          >
+            Reset dismissed explanations
+          </button>
+          {dismissalsReset && (
+            <span role="status" className="text-xs text-gray-400">
+              Dismissed explanations reset.
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Export / import */}

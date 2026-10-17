@@ -7,6 +7,7 @@ import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { DEFAULT_PREFERENCES } from '../preferences/constants'
 import { exportPreferences, PREFERENCES_FORMAT, PREFERENCES_SCHEMA_VERSION } from '../preferences/portability'
 import { downloadFile } from '../utils/export'
+import { STORAGE_KEYS } from '../utils/storage'
 import { PreferencesPanel } from './PreferencesPanel'
 
 vi.mock('../hooks/useIndexedDB', () => ({
@@ -158,5 +159,39 @@ describe('PreferencesPanel unapplied-change warning', () => {
     await user.click(await screen.findByRole('button', { name: 'Discard' }))
 
     expect(unloadIsCancelled()).toBe(false)
+  })
+})
+
+describe('PreferencesPanel dismissed-explanation controls', () => {
+  it('offers the three reappear policies with the weekly default selected', () => {
+    render(<PreferencesPanel />, { wrapper: Wrapper })
+
+    const select = screen.getByLabelText('Show dismissed explanations again')
+    expect(select).toHaveValue('weekly')
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Never', 'After 7 days', 'Always'])
+  })
+
+  it('updates the policy when the user picks another option', async () => {
+    const user = userEvent.setup()
+    render(<PreferencesPanel />, { wrapper: Wrapper })
+
+    await user.selectOptions(screen.getByLabelText('Show dismissed explanations again'), 'never')
+
+    expect(screen.getByLabelText('Show dismissed explanations again')).toHaveValue('never')
+  })
+
+  it('clears stored dismissals on reset and confirms it in a live region', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(STORAGE_KEYS.dismissedExplanations, JSON.stringify({ 'confidence-gap': Date.now() }))
+    render(<PreferencesPanel />, { wrapper: Wrapper })
+
+    await user.click(screen.getByRole('button', { name: 'Reset dismissed explanations' }))
+
+    expect(localStorage.getItem(STORAGE_KEYS.dismissedExplanations)).toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent('Dismissed explanations reset.')
   })
 })
