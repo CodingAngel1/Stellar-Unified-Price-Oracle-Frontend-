@@ -763,6 +763,7 @@ export function Dashboard() {
             selectMode={selectMode}
             selected={selected}
             onReorder={(orderedPairs) => updatePreference('cardOrder', orderedPairs)}
+            density={preferences.density}
             subscriptionStatus={wsStatus}
             isOfflineSnapshot={isOfflineSnapshot}
           />
