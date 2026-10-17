@@ -442,6 +442,15 @@ const en = {
       clearConfirm: 'Clear all alert history? This cannot be undone.',
       exportCsv: 'Export CSV',
       exportJson: 'Export JSON',
+      sourceNote:
+        'Stored only in this browser; at most 500 recent records are retained. Exports include the current search results. Times are UTC. This is not a server-verified audit log.',
+      storageUnavailable:
+        'Browser storage is unavailable. Only current-session entries can be shown; they may not persist.',
+      storageError: 'Saved alert history could not be read, so the empty view does not confirm that no alerts fired.',
+      retentionLimit: 'The 500-record retention limit is reached; older events may have been discarded.',
+      exporting: 'Preparing alert history export…',
+      exportComplete: 'Alert history export is ready.',
+      exportFailed: 'Alert history export failed. Please try again.',
       count_one: '{{count}} fired alert',
       count_other: '{{count}} fired alerts',
       priceAt: 'Price: ${{price}}',

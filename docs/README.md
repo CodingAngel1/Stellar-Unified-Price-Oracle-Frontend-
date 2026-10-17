@@ -35,6 +35,12 @@ aggregation previews.
 - Debugging strategies
 - Example implementations
 
+### [ALERT_HISTORY.md](ALERT_HISTORY.md)
+**Alert history and audit exports** covering:
+- Browser-local source and 500-entry retention limit
+- UTC timestamp and CSV/JSON export fields
+- Storage and server-verification limitations
+
 ### [openapi.yaml](openapi.yaml)
 **OpenAPI 3.0 specification** with:
 - Complete endpoint definitions

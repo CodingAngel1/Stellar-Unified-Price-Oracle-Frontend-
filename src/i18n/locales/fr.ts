@@ -428,6 +428,17 @@ const fr = {
       clearConfirm: "Effacer tout l'historique des alertes ? Cette action est irréversible.",
       exportCsv: 'Exporter en CSV',
       exportJson: 'Exporter en JSON',
+      sourceNote:
+        'Stocké uniquement dans ce navigateur ; seuls les 500 enregistrements les plus récents sont conservés. L’export inclut les résultats de recherche actuels. Les heures sont en UTC. Il ne s’agit pas d’un journal d’audit vérifié par le serveur.',
+      storageUnavailable:
+        'Le stockage du navigateur est indisponible. Seules les entrées de la session actuelle sont visibles et elles risquent de ne pas être conservées.',
+      storageError:
+        'Impossible de lire l’historique enregistré ; son affichage vide ne confirme pas qu’aucune alerte ne s’est déclenchée.',
+      retentionLimit:
+        'La limite de 500 enregistrements est atteinte ; des événements plus anciens ont peut-être été supprimés.',
+      exporting: 'Préparation de l’export de l’historique des alertes…',
+      exportComplete: 'L’export de l’historique des alertes est prêt.',
+      exportFailed: 'Échec de l’export de l’historique des alertes. Réessayez.',
       count_one: '{{count}} alerte déclenchée',
       count_other: '{{count}} alertes déclenchées',
       priceAt: 'Prix : ${{price}}',

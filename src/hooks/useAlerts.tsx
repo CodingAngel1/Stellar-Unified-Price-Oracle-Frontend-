@@ -23,7 +23,7 @@ import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
 import { evaluateCompoundConditionWithTrace } from '../utils/alertEvaluator'
 import {
-  loadAlertHistory,
+  loadAlertHistorySnapshot,
   saveAlertHistoryDebounced,
   flushAlertHistory,
   buildTriggerHistoryEntry,

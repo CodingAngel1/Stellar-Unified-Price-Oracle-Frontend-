@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useAlerts } from '../hooks/useAlerts'
-import { formatPrice, formatTimestamp } from '../utils/format'
+import { formatPrice } from '../utils/format'
 import { loadExportUtils } from '../utils/deferredExports'
 import type { AlertEvaluationEntry, AlertHistoryEntry } from '../types'
 
@@ -84,6 +84,7 @@ export function AlertHistoryLog(): ReactElement {
   const { alertHistory, evaluationTimeline, clearAlertHistory } = useAlerts()
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
+  const [exportStatus, setExportStatus] = useState<'idle' | 'exporting' | 'complete' | 'error'>('idle')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Search operates over the full (unvirtualized) history so it's honest
@@ -114,9 +115,24 @@ export function AlertHistoryLog(): ReactElement {
     downloadFile(toCsv(rows, headers), exportFilename('alert-history', 'csv'), 'text/csv')
   }
 
-  const handleExportJson = async (): Promise<void> => {
-    const { downloadFile, exportFilename } = await loadExportUtils()
-    downloadFile(JSON.stringify(filtered, null, 2), exportFilename('alert-history', 'json'), 'application/json')
+  const handleExport = async (format: 'csv' | 'json'): Promise<void> => {
+    setExportStatus('exporting')
+    try {
+      const { alertHistoryToAuditJson, alertHistoryToCsvRows, downloadFile, exportFilename, toCsv } =
+        await loadExportUtils()
+      const content =
+        format === 'csv'
+          ? (() => {
+              const { rows, headers } = alertHistoryToCsvRows(filtered)
+              return toCsv(rows, headers)
+            })()
+          : alertHistoryToAuditJson(filtered)
+      downloadFile(content, exportFilename('alert-history', format), format === 'csv' ? 'text/csv' : 'application/json')
+      setExportStatus('complete')
+    } catch (error) {
+      console.error('[AlertHistoryLog] Failed to export alert history:', error)
+      setExportStatus('error')
+    }
   }
 
   const handleClear = (): void => {
@@ -136,16 +152,16 @@ export function AlertHistoryLog(): ReactElement {
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => void handleExportCsv()}
-                disabled={filtered.length === 0}
+                onClick={() => void handleExport('csv')}
+                disabled={filtered.length === 0 || exportStatus === 'exporting'}
                 className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t('alertPanel.history.exportCsv')}
               </button>
               <button
                 type="button"
-                onClick={() => void handleExportJson()}
-                disabled={filtered.length === 0}
+                onClick={() => void handleExport('json')}
+                disabled={filtered.length === 0 || exportStatus === 'exporting'}
                 className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t('alertPanel.history.exportJson')}
@@ -170,7 +186,45 @@ export function AlertHistoryLog(): ReactElement {
         </div>
       )}
 
-      {alertHistory.length === 0 ? (
+      <p className="mb-3 text-xs text-gray-500">{t('alertPanel.history.sourceNote')}</p>
+      {exportStatus !== 'idle' && (
+        <p
+          className={`mb-3 text-xs ${exportStatus === 'error' ? 'text-red-300' : 'text-gray-400'}`}
+          role={exportStatus === 'error' ? 'alert' : 'status'}
+          aria-live={exportStatus === 'error' ? 'assertive' : 'polite'}
+        >
+          {exportStatus === 'exporting'
+            ? t('alertPanel.history.exporting')
+            : exportStatus === 'complete'
+              ? t('alertPanel.history.exportComplete')
+              : t('alertPanel.history.exportFailed')}
+        </p>
+      )}
+      {alertHistoryStatus === 'unavailable' && alertHistory.length > 0 && (
+        <p className="mb-3 text-xs text-amber-300" role="status">
+          {t('alertPanel.history.storageUnavailable')}
+        </p>
+      )}
+      {alertHistoryStatus === 'error' && alertHistory.length > 0 && (
+        <p className="mb-3 text-xs text-red-300" role="alert">
+          {t('alertPanel.history.storageError')}
+        </p>
+      )}
+      {alertHistory.length >= HISTORY_LIMIT && (
+        <p className="mb-3 text-xs text-amber-300" role="status">
+          {t('alertPanel.history.retentionLimit')}
+        </p>
+      )}
+
+      {alertHistoryStatus === 'error' && alertHistory.length === 0 ? (
+        <p className="text-center py-8 text-sm text-red-300" role="alert">
+          {t('alertPanel.history.storageError')}
+        </p>
+      ) : alertHistoryStatus === 'unavailable' && alertHistory.length === 0 ? (
+        <p className="text-center py-8 text-sm text-gray-400" role="status">
+          {t('alertPanel.history.storageUnavailable')}
+        </p>
+      ) : alertHistory.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <svg
             className="w-12 h-12 mx-auto mb-3 text-gray-700"
@@ -202,6 +256,7 @@ export function AlertHistoryLog(): ReactElement {
             {paddingTop > 0 && <li aria-hidden="true" style={{ height: paddingTop }} />}
             {(virtualRows ?? filtered.map((_, index) => ({ index }))).map(({ index }) => {
               const entry = filtered[index]
+              const triggeredAtUtc = new Date(entry.triggeredAt).toISOString()
               return (
                 <li key={entry.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-1">
@@ -222,7 +277,9 @@ export function AlertHistoryLog(): ReactElement {
                         </span>
                       )}
                     </span>
-                    <span className="text-xs text-gray-500">{formatTimestamp(entry.triggeredAt)}</span>
+                    <time className="text-xs text-gray-500" dateTime={triggeredAtUtc}>
+                      {triggeredAtUtc}
+                    </time>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-400 font-mono">{conditionText(entry, t)}</span>

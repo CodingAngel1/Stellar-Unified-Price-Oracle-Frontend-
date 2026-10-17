@@ -85,13 +85,18 @@ export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
 /** IndexedDB stores cleared by {@link clearAllData}. */
 const IDB_STORES = ['prices', 'history', 'preferences'] as const
 
+/** Reads a raw string and distinguishes an absent key from unavailable storage. */
+export function readRawResult(key: StorageKey): { available: boolean; value: string | null } {
+  try {
+    return { available: true, value: localStorage.getItem(key) }
+  } catch {
+    return { available: false, value: null }
+  }
+}
+
 /** Reads a raw string. Returns `null` when absent or when storage is unavailable. */
 export function readRaw(key: StorageKey): string | null {
-  try {
-    return localStorage.getItem(key)
-  } catch {
-    return null
-  }
+  return readRawResult(key).value
 }
 
 /** Outcome of a raw storage write. */
