@@ -232,6 +232,14 @@ export const ConnectionBadge = memo(function ConnectionBadge({
             SSE
           </span>
         )}
+        {readablePath && (
+          <span
+            className="border-l border-gray-600 pl-1.5 text-[10px] text-gray-400"
+            title={`Active transport: ${activeTransport === 'sse' ? 'Server-Sent Events' : 'WebSocket'}; path: ${readablePath}`}
+          >
+            {readablePath}
+          </span>
+        )}
       </span>
     </Tooltip>
   )

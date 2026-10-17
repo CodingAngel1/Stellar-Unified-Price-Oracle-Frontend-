@@ -44,6 +44,7 @@ export interface DigestActiveEntry {
 
 export interface AlertDigestPayload {
   frequency: DigestFrequency
+  ruleId?: string
   windowStart: number
   windowEnd: number
   fired: DigestFiredEntry[]
@@ -76,19 +77,22 @@ export function buildAlertDigest(
   alerts: Alert[],
   frequency: DigestFrequency,
   now = Date.now(),
+  ruleId?: string,
 ): AlertDigestPayload {
   const windowStart = now - DIGEST_FREQUENCY_MS[frequency]
 
   const fired = history
-    .filter((h) => h.triggeredAt >= windowStart && h.triggeredAt <= now)
+    .filter(
+      (h) => h.triggeredAt >= windowStart && h.triggeredAt <= now && (ruleId === undefined || h.alertId === ruleId),
+    )
     .sort((a, b) => b.triggeredAt - a.triggeredAt)
     .map((h) => ({ alertId: h.alertId, assetPair: h.assetPair, price: h.price, triggeredAt: h.triggeredAt }))
 
   const active = alerts
-    .filter((a) => a.active)
+    .filter((a) => a.active && (ruleId === undefined || a.id === ruleId))
     .map((a) => ({ alertId: a.id, assetPair: a.assetPair, conditionSummary: summarizeCondition(a) }))
 
-  return { frequency, windowStart, windowEnd: now, fired, active }
+  return { frequency, ...(ruleId === undefined ? {} : { ruleId }), windowStart, windowEnd: now, fired, active }
 }
 
 function escapeHtml(s: string): string {
@@ -123,7 +127,7 @@ export function renderDigestHtml(payload: AlertDigestPayload, unsubscribeUrl?: s
 
   return `
 <div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
-  <h2>Alert digest — ${payload.frequency === 'daily' ? 'Daily' : 'Weekly'}</h2>
+  <h2>${payload.ruleId ? 'Rule alert summary' : 'Alert digest'} — ${payload.frequency === 'daily' ? 'Daily' : 'Weekly'}</h2>
   <p style="color:#666;">${range}</p>
   <h3>Fired (${payload.fired.length})</h3>
   <table style="width:100%;border-collapse:collapse;"><thead><tr><th>Pair</th><th>Price</th><th>When</th></tr></thead><tbody>${firedRows}</tbody></table>
@@ -137,7 +141,7 @@ export function renderDigestHtml(payload: AlertDigestPayload, unsubscribeUrl?: s
 export function renderDigestText(payload: AlertDigestPayload): string {
   const range = `${new Date(payload.windowStart).toLocaleString()} - ${new Date(payload.windowEnd).toLocaleString()}`
   const lines = [
-    `Alert digest (${payload.frequency}) — ${range}`,
+    `${payload.ruleId ? 'Rule alert summary' : 'Alert digest'} (${payload.frequency}) — ${range}`,
     '',
     `Fired (${payload.fired.length}):`,
     ...(payload.fired.length

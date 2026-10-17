@@ -68,6 +68,8 @@ export interface PriceContextValue {
   livePrices: Map<string, LivePriceEntry>
   /** Current realtime connection status. */
   wsStatus: ConnectionStatus
+  /** REST resynchronization progress for tracked prices after a reconnect. */
+  resyncProgress?: PriceResyncProgress | null
   /**
    * Connection diagnostics — retry count, negotiated protocol, active transport (#471), pause state (#469).
    * Optional: always provided by {@link PriceProvider}; older consumers/tests may omit it.
@@ -206,6 +208,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const tickCoalescer = tickCoalescerRef.current
   const [tickPolicy, setTickPolicy] = useState<TickCoalescerStats>(() => tickCoalescer.getStats())
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('disconnected')
+  const [resyncProgress, setResyncProgress] = useState<PriceResyncProgress | null>(null)
   const [diagnostics, setDiagnostics] = useState<ConnectionDiagnostics>({
     retryCount: 0,
     lastConnectedAt: null,
@@ -235,6 +238,9 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const prevConfidenceRef = useRef<Map<string, number>>(new Map())
 
   const wsRef = useRef<RealtimeClient | null>(null)
+  const hasConnectedBeforeRef = useRef(false)
+  const reconnectPendingRef = useRef(false)
+  const resyncGenerationRef = useRef(0)
   const requestIdsRef = useRef<Map<string, number>>(new Map())
   const cleanupTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   /** Pairs with a REST revalidation currently in flight — never fire a second one. */
@@ -419,6 +425,25 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     [revalidatePair],
   )
 
+  const resynchronizePrices = useCallback(() => {
+    const pairs = [...new Set(pricesRef.current.map((price) => price.assetPair))]
+    const generation = ++resyncGenerationRef.current
+    void resynchronizeTrackedPrices({
+      pairs,
+      refresh: fetchPricesBatched,
+      onPrice: (pair, restPrice) => {
+        queryClient.setQueryData<PriceData[]>(['prices'], (old) => {
+          const current = old ?? []
+          return current.some((price) => price.assetPair === pair)
+            ? current.map((price) => (price.assetPair === pair ? restPrice : price))
+            : [...current, restPrice]
+        })
+      },
+      onProgress: setResyncProgress,
+      isCurrent: () => generation === resyncGenerationRef.current,
+    })
+  }, [queryClient])
+
   // ── Render backpressure: coalesced flush (#469) ───────────────────────────
 
   /**
@@ -553,7 +578,19 @@ export function PriceProvider({ children }: { children: ReactNode }) {
         setWsStatus(status)
         setDiagnostics(client.diagnostics)
         // Stage 3 (live): the realtime connection is up.
-        if (status === 'connected') markStage('live')
+        if (status === 'connected') {
+          markStage('live')
+          if (hasConnectedBeforeRef.current && reconnectPendingRef.current) {
+            reconnectPendingRef.current = false
+            resynchronizePrices()
+          }
+          hasConnectedBeforeRef.current = true
+        } else if (
+          hasConnectedBeforeRef.current &&
+          (status === 'reconnecting' || status === 'waiting' || status === 'disconnected' || status === 'dead')
+        ) {
+          reconnectPendingRef.current = true
+        }
       })
       const unsubMsg = client.onMessage((msg) => {
         if (msg.type === 'price_update') {
@@ -620,6 +657,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     election.start()
 
     return () => {
+      resyncGenerationRef.current += 1
       window.removeEventListener('beforeunload', handleBeforeUnload)
       election.destroy()
       electionRef.current = null
@@ -633,7 +671,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     // closes over is memoized), so this effect runs once. Including prices here
     // would re-run it on every REST poll, tearing down and re-establishing the
     // WS unnecessarily; subscriptions are handled separately in the effect below.
-  }, [queryClient, handlePriceUpdate])
+  }, [queryClient, handlePriceUpdate, resynchronizePrices])
 
   // Re-subscribe to all pairs whenever the REST snapshot changes (e.g., new pairs added)
   useEffect(() => {
@@ -732,6 +770,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     pricesValidating,
     livePrices,
     wsStatus,
+    resyncProgress,
     diagnostics,
     rateLimitStatus,
     rateLimitRetryAfterMs,

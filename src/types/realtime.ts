@@ -77,3 +77,13 @@ export interface RealtimeDiagnostics {
   gaps: GapEvent[];
   stalePairs: string[];
 }
+
+export interface PriceResyncProgress {
+  status: "syncing" | "complete" | "partial" | "failed";
+  total: number;
+  /** Number of price refresh attempts that have settled. */
+  completed: number;
+  /** Attempts that failed; last available prices remain in the dashboard. */
+  failed: number;
+  startedAt: number;
+}

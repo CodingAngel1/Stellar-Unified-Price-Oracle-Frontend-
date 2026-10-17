@@ -23,6 +23,8 @@ export class RealtimeClient {
   private ws: WebSocketClient | null = null
   private sse: SseClient | null = null
   private transport: 'ws' | 'sse' = 'ws'
+  private readonly transportPath: Array<'ws' | 'sse'> = ['ws']
+  private fallbackReason: ConnectionDiagnostics['fallbackReason']
   private everConnected = false
   private destroyed = false
   private readonly subscribedPairs = new Set<string>()
@@ -91,6 +93,8 @@ export class RealtimeClient {
     this.ws?.disconnect()
     this.ws = null
     this.transport = 'sse'
+    if (!this.transportPath.includes('sse')) this.transportPath.push('sse')
+    this.fallbackReason = 'websocket-retries-exhausted'
 
     const sse = new SseClient(deriveSseUrl(config.wsUrl))
     this.sse = sse

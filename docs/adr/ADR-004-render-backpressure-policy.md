@@ -117,6 +117,13 @@ pump.request() // applies now, or schedules the next frame
 whole batch as **one render**. Counters are exposed to the UI as
 `PriceContextValue.tickPolicy`.
 
+The Dashboard's **Live update handling** disclosure shows the page-lifetime
+received, coalesced, dropped, and pending counts. Coalesced counts describe
+renderer sampling (a newer price replaced an unpainted one); dropped counts
+describe distinct-pair overflow at the buffer limit. They are not estimates of
+server-side packet loss. Metrics are unavailable until the provider supplies a
+snapshot and are reset on page reload.
+
 ## Trade-Offs
 
 ### Pro
