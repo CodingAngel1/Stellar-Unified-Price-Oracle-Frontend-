@@ -26,7 +26,7 @@
  *
  * ## Edge cases
  * - **Empty state** — when no alerts exist, an "Add your first alert" prompt is shown.
- * - **Snoozed with elapsed time** — if the app is left open past a snooze window,
+ * - **Snoozed with elapsed time** — if the app is start open past a snooze window,
  *   the alert is reclassified on the next render.
  * - **`isPanelOpen = false`** — component returns `null`; no DOM is rendered.
  *
@@ -263,7 +263,7 @@ export function AlertPanel(): ReactElement | null {
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={togglePanel} aria-hidden="true" />
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-gray-900 border-l border-gray-800 shadow-2xl flex flex-col overflow-hidden transform transition-transform">
+      <div className="fixed inset-y-0 end-0 z-50 w-full max-w-sm bg-gray-900 border-s border-gray-800 shadow-2xl flex flex-col overflow-hidden transform transition-transform">
         <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/80 backdrop-blur">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             {t('alertPanel.title')}
@@ -375,7 +375,7 @@ export function AlertPanel(): ReactElement | null {
                         key={alert.id}
                         className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 relative overflow-hidden"
                       >
-                        <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500" />
+                        <div className="absolute top-0 start-0 w-1 h-full bg-cyan-500" />
                         <div className="flex justify-between items-start mb-1">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-white">{alert.assetPair}</span>
@@ -432,12 +432,12 @@ export function AlertPanel(): ReactElement | null {
                               {t('alertPanel.snooze.button')}
                             </button>
                             {snoozeOpenId === alert.id && (
-                              <div className="absolute bottom-full mb-1 left-0 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-10 overflow-hidden min-w-[140px]">
+                              <div className="absolute bottom-full mb-1 start-0 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-10 overflow-hidden min-w-[140px]">
                                 {SNOOZE_DURATIONS.map(({ value, labelKey }) => (
                                   <button
                                     key={value}
                                     onClick={() => handleSnooze(alert.id, value)}
-                                    className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                                    className="w-full text-start px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
                                   >
                                     {t(labelKey, labelKey)}
                                   </button>
