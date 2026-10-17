@@ -4,6 +4,7 @@ import type { AlertCondition, ConditionGroup, PriceEvaluationState, AlertFormDat
 import {
   evaluateCondition,
   evaluateCompoundCondition,
+  evaluateCompoundConditionWithTrace,
   combineConditions,
   buildConditionGroupFromFormData,
 } from './alertEvaluator'
@@ -57,6 +58,47 @@ describe('evaluateCompoundCondition — truth tables', () => {
       ],
     }
     expect(evaluateCompoundCondition(group, { price })).toBe(expected)
+  })
+
+  describe('evaluateCompoundConditionWithTrace', () => {
+    it('keeps every nested leaf result and a reason for each failed check', () => {
+      const group: ConditionGroup = {
+        id: 'root',
+        logic: 'AND',
+        conditions: [
+          { id: 'price-check', field: 'price', operator: 'gte', value: 100 },
+          {
+            id: 'pct-group',
+            logic: 'OR',
+            conditions: [{ id: 'change-check', field: 'percentageChange', operator: 'gte', value: 5, window: '1hr' }],
+          },
+        ],
+      }
+
+      expect(evaluateCompoundConditionWithTrace(group, { price: 90, percentageChange: { '1hr': 1 } })).toEqual({
+        matched: false,
+        conditions: [
+          {
+            conditionId: 'price-check',
+            field: 'price',
+            operator: 'gte',
+            expected: 100,
+            actual: 90,
+            matched: false,
+            reason: 'condition_not_met',
+          },
+          {
+            conditionId: 'change-check',
+            field: 'percentageChange',
+            operator: 'gte',
+            expected: 5,
+            actual: 1,
+            matched: false,
+            reason: 'condition_not_met',
+          },
+        ],
+      })
+    })
   })
 
   it.each([
@@ -214,6 +256,7 @@ describe('buildConditionGroupFromFormData', () => {
     escalationEnabled: false,
     escalationSteps: [],
     channels: [],
+    notifyOnRecovery: false,
     retestMode: false,
   }
 

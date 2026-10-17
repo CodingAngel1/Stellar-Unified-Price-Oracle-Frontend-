@@ -262,6 +262,7 @@ export function AlertModal({
     upperThreshold: '',
     lowerThreshold: '',
     triggerOnce: false,
+    notifyOnRecovery: false,
     percentageMode: false,
     percentageThreshold: '',
     percentageWindow: '1hr',
@@ -295,6 +296,7 @@ export function AlertModal({
           upperThreshold: alert.upperThreshold !== null ? String(alert.upperThreshold) : '',
           lowerThreshold: alert.lowerThreshold !== null ? String(alert.lowerThreshold) : '',
           triggerOnce: alert.triggerOnce,
+          notifyOnRecovery: alert.notifyOnRecovery ?? false,
           percentageMode: alert.percentageMode,
           percentageThreshold: alert.percentageThreshold !== null ? String(alert.percentageThreshold) : '',
           percentageWindow: alert.percentageWindow ?? '1hr',
@@ -859,6 +861,19 @@ export function AlertModal({
                 ? t('alertModal.fields.alertTypeOneTimeDesc')
                 : t('alertModal.fields.alertTypePersistentDesc')}
             </p>
+
+            <div className="mt-3 border-t border-gray-700 pt-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.notifyOnRecovery}
+                  onChange={(e) => setAndValidate('notifyOnRecovery', e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500/50"
+                />
+                <span className="text-sm font-medium text-gray-300">{t('alertModal.recovery.title')}</span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1.5">{t('alertModal.recovery.description')}</p>
+            </div>
 
             {/* Cooldown between re-fires (#310) */}
             {!form.triggerOnce && (

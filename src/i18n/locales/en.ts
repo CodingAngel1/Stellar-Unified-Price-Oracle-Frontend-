@@ -277,6 +277,10 @@ const en = {
       title: 'Notify on retest',
       description: 'Also fire if the price re-enters this breached level after it exits.',
     },
+    recovery: {
+      title: 'Notify when condition clears',
+      description: 'Send a recovery notice through the same enabled channels when this rule stops matching.',
+    },
     // ── Alert simulation (#490) ──────────────────────────────────────────
     simulate: {
       title: 'Test alert',
@@ -393,6 +397,35 @@ const en = {
       count_one: '{{count}} fired alert',
       count_other: '{{count}} fired alerts',
       priceAt: 'Price: ${{price}}',
+      tickEvidence: 'Show exact tick evidence',
+      tickTime: 'Tick time',
+      tickConfidence: 'Confidence',
+      tickSources: 'Contributing sources',
+      sourcePrices: 'Per-source tick prices',
+      tickUnavailable: 'Not provided by the price feed',
+      evaluationTimeline: 'Rule evaluation timeline ({{count}})',
+      evaluationTimelineLabel: 'Recent rule evaluations',
+      noEvaluations: 'No evaluation events yet. Waiting for a rule check.',
+      conditionResult: '{{field}} {{operator}} {{expected}}; observed {{actual}} — {{result}}',
+      matched: 'matched',
+      notMatched: 'not matched',
+      fields: {
+        price: 'Price',
+        percentageChange: 'Percentage change',
+        schedule: 'Schedule',
+      },
+      evaluationReasons: {
+        inactive: 'Rule is inactive',
+        snoozed: 'Rule is snoozed',
+        priceUnavailable: 'No current price tick was available',
+        stalePrice: 'Price tick is stale; waiting for fresh data',
+        baselineReset: 'Percentage baseline was initialized; this tick was not evaluated',
+        cooldown: 'Condition matched; waiting for cooldown to expire',
+        conditionNotMet: 'Conditions were not satisfied',
+        conditionMatched: 'Conditions were satisfied',
+        thresholdCleared: 'Threshold condition cleared',
+        notAvailable: 'Unavailable',
+      },
     },
     // ── Escalation progress (#487) ────────────────────────────────────────
     escalation: {
