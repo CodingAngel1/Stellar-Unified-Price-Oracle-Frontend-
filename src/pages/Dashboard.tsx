@@ -30,6 +30,7 @@ import { OfflineSnapshotBanner } from '../components/OfflineSnapshotBanner'
 import type { AlertFormData, LivePriceEntry, PriceData, SourceHealth } from '../types'
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
+import { useRestoreRememberedFilters } from '../hooks/useRememberedDashboardFilters'
 import { buildConditionGroupFromFormData } from '../utils/alertEvaluator'
 import { localDateToTimestamp } from '../utils/alertLifecycle'
 import { deriveSourceHealths } from '../utils/sourceHealth'
@@ -91,6 +92,7 @@ export function Dashboard() {
   const { preferences, updatePreference } = usePreferences()
   const { addToast } = useToast()
   const [searchParams] = useSearchParams()
+  useRestoreRememberedFilters()
 
   const [columnModalOpen, setColumnModalOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
