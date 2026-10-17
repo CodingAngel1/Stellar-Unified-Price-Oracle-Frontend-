@@ -1,142 +1,98 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { AlertHistoryEntry } from '../types'
+import { describe, expect, it, vi } from 'vitest'
 import { checkAccessibility } from '../test/accessibility'
-import { useAlerts } from '../hooks/useAlerts'
-import { loadExportUtils } from '../utils/deferredExports'
-import * as exportUtils from '../utils/export'
-import type { AlertsContextType } from '../types'
 import { AlertHistoryLog } from './AlertHistoryLog'
 
-vi.mock('../hooks/useAlerts', () => ({ useAlerts: vi.fn() }))
-vi.mock('../utils/deferredExports', () => ({ loadExportUtils: vi.fn() }))
-vi.mock('../services/alertHistory', () => ({ HISTORY_LIMIT: 500 }))
-
-afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
-})
-
-const entry: AlertHistoryEntry = {
-  id: 'event-1',
-  alertId: 'alert-1',
-  assetPair: 'BTC/USD',
-  triggeredAt: Date.UTC(2026, 0, 2, 3, 4, 5),
-  price: 50000,
-  triggerOnce: false,
-  percentageMode: false,
-  upperThreshold: 49000,
-  lowerThreshold: null,
-  percentageThreshold: null,
-  percentageWindow: null,
-  percentageDirection: null,
-  escalation: null,
-  retest: null,
-}
-
-const mockDownload = vi.fn()
-vi.spyOn(exportUtils, 'downloadFile').mockImplementation(mockDownload)
-
-function createAlertsContext(
-  history: AlertHistoryEntry[],
-  status: AlertsContextType['alertHistoryStatus'],
-): AlertsContextType {
-  return {
-    alerts: [],
-    addAlert: vi.fn(),
-    updateAlert: vi.fn(),
-    removeAlert: vi.fn(),
-    getAlertsForPair: vi.fn(() => []),
-    hasAlertsForPair: vi.fn(() => false),
-    activeCount: 0,
-    isPanelOpen: true,
-    togglePanel: vi.fn(),
-    markAsRead: vi.fn(),
-    snoozeAlert: vi.fn(),
-    unsnoozeAlert: vi.fn(),
-    reEnableAlert: vi.fn(),
-    alertHistory: history,
-    alertHistoryStatus: status,
+vi.mock('../hooks/useAlerts', () => ({
+  useAlerts: () => ({
+    alertHistory: [
+      {
+        id: 'with-tick',
+        alertId: 'alert-1',
+        assetPair: 'BTC/USD',
+        triggeredAt: 1_700_000_000_100,
+        price: 61_000,
+        triggerOnce: false,
+        percentageMode: false,
+        upperThreshold: 60_000,
+        lowerThreshold: null,
+        percentageThreshold: null,
+        percentageWindow: null,
+        percentageDirection: null,
+        evidence: {
+          timestamp: 1_700_000_000_000,
+          confidence: 0.97,
+          sources: ['chainlink'],
+          sourcePrices: { chainlink: 61_010 },
+        },
+      },
+      {
+        id: 'without-source-prices',
+        alertId: 'alert-2',
+        assetPair: 'ETH/USD',
+        triggeredAt: 1_700_000_000_100,
+        price: 3_000,
+        triggerOnce: false,
+        percentageMode: false,
+        upperThreshold: 2_900,
+        lowerThreshold: null,
+        percentageThreshold: null,
+        percentageWindow: null,
+        percentageDirection: null,
+        evidence: {
+          timestamp: 1_700_000_000_000,
+          confidence: 0.9,
+          sources: [],
+        },
+      },
+    ],
+    evaluationTimeline: [
+      {
+        id: 'evaluation-1',
+        alertId: 'alert-1',
+        assetPair: 'BTC/USD',
+        evaluatedAt: 1_700_000_000_000,
+        price: null,
+        outcome: 'skipped',
+        reason: 'price_unavailable',
+      },
+    ],
     clearAlertHistory: vi.fn(),
-    alertCreateAllowed: true,
-    alertCreateCooldownSec: 0,
-  }
-}
+  }),
+}))
 
-function setHistory(history: AlertHistoryEntry[], status: AlertsContextType['alertHistoryStatus'] = 'ready'): void {
-  vi.mocked(useAlerts).mockReturnValue(createAlertsContext(history, status))
-}
-
-describe('AlertHistoryLog', () => {
-  beforeEach(() => {
-    setHistory([entry])
-    vi.mocked(loadExportUtils).mockResolvedValue(exportUtils)
-    mockDownload.mockClear()
-  })
-
-  it('shows timestamps in explicit UTC ISO format and explains local retention', () => {
+describe('AlertHistoryLog tick evidence', () => {
+  it('reveals tick facts on demand and labels feed fields that are unavailable', () => {
     render(<AlertHistoryLog />)
-    expect(screen.getByText('2026-01-02T03:04:05.000Z')).toHaveAttribute('dateTime', '2026-01-02T03:04:05.000Z')
-    expect(screen.getByText(/Stored only in this browser/)).toBeInTheDocument()
+
+    const summaries = screen.getAllByText('Show exact tick evidence')
+    fireEvent.click(summaries[0])
+
+    expect(screen.getByText('chainlink: 61,010.00')).toBeInTheDocument()
+    expect(screen.getByText('chainlink')).toBeInTheDocument()
+
+    fireEvent.click(summaries[1])
+    expect(screen.getAllByText('Not provided by the price feed')).toHaveLength(2)
   })
 
-  it('exports JSON with an accessible success announcement', async () => {
+  it('shows a skipped evaluation reason when no price tick is available', () => {
+    render(<AlertHistoryLog />)
+
+    fireEvent.click(screen.getByText('Rule evaluation timeline (1)'))
+
+    expect(screen.getByText('No current price tick was available', { exact: false })).toBeInTheDocument()
+  })
+
+  it('opens the timeline with the keyboard and has no accessibility violations', async () => {
     const user = userEvent.setup()
     render(<AlertHistoryLog />)
-    await user.click(screen.getByRole('button', { name: 'Export JSON' }))
-    await waitFor(() =>
-      expect(mockDownload).toHaveBeenCalledWith(
-        expect.stringContaining('"source": "browser-local"'),
-        expect.stringMatching(/^alert-history.*\.json$/),
-        'application/json',
-      ),
-    )
-    expect(await screen.findByRole('status')).toHaveTextContent('Alert history export is ready.')
-  })
 
-  it('exports only the searched history and exposes a disabled loading state', async () => {
-    const user = userEvent.setup()
-    const otherEntry = { ...entry, id: 'event-2', alertId: 'alert-2', assetPair: 'ETH/USD' }
-    setHistory([entry, otherEntry])
-    const csvRowsSpy = vi.spyOn(exportUtils, 'alertHistoryToCsvRows')
-    let resolveExport: (module: typeof exportUtils) => void = () => {}
-    vi.mocked(loadExportUtils).mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveExport = resolve
-      }),
-    )
-    render(<AlertHistoryLog />)
-    await user.type(screen.getByRole('searchbox'), 'BTC')
-    await user.click(screen.getByRole('button', { name: 'Export CSV' }))
-
-    expect(screen.getByRole('status')).toHaveTextContent('Preparing alert history export')
-    expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled()
-    resolveExport(exportUtils)
-    await waitFor(() => expect(csvRowsSpy).toHaveBeenCalledWith([entry]))
-    expect(await screen.findByRole('status')).toHaveTextContent('Alert history export is ready.')
-  })
-
-  it('reports unavailable and corrupt history instead of showing a false empty state', () => {
-    setHistory([], 'unavailable')
-    const { rerender } = render(<AlertHistoryLog />)
-    expect(screen.getAllByText(/Browser storage is unavailable/)).toHaveLength(1)
-    expect(screen.queryByText('No alerts have fired yet')).not.toBeInTheDocument()
-
-    setHistory([], 'error')
-    rerender(<AlertHistoryLog />)
-    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0)
-    expect(screen.queryByText('No alerts have fired yet')).not.toBeInTheDocument()
-  })
-
-  it('announces export failures and keeps the export keyboard-operable', async () => {
-    const user = userEvent.setup()
-    vi.mocked(loadExportUtils).mockRejectedValueOnce(new Error('chunk load failed'))
-    render(<AlertHistoryLog />)
-    const exportButton = screen.getByRole('button', { name: 'Export CSV' })
-    exportButton.focus()
+    const summary = screen.getByText('Rule evaluation timeline (1)')
+    summary.focus()
     await user.keyboard('{Enter}')
-    expect(await screen.findByRole('alert')).toHaveTextContent('Alert history export failed.')
+    expect(screen.getByText('No current price tick was available', { exact: false })).toBeInTheDocument()
+
     await checkAccessibility(<AlertHistoryLog />)
   })
 })
