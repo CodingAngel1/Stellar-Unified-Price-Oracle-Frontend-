@@ -382,39 +382,67 @@ export function PriceDetail() {
 
                 {/* Multi-pair overlay chart shown when a benchmark is selected */}
                 {benchmarkPair !== null &&
-                  (benchmarkHistoryLoading && benchmarkHistory.length === 0 ? (
+                  (historyError !== null && history.length === 0 ? (
+                    <div
+                      role="alert"
+                      className="rounded-lg border border-red-800 bg-red-900/30 p-4 text-sm text-red-300"
+                    >
+                      Price history could not be loaded: {historyError.message}
+                    </div>
+                  ) : benchmarkHistoryLoading && benchmarkHistory.length === 0 ? (
                     <div
                       className="h-80 rounded-lg bg-gray-800/60 animate-pulse"
                       role="status"
                       aria-label="Loading benchmark chart"
                     />
+                  ) : benchmarkHistoryError !== null && benchmarkHistory.length === 0 ? (
+                    <div
+                      role="alert"
+                      className="rounded-lg border border-red-800 bg-red-900/30 p-4 text-sm text-red-300"
+                    >
+                      Benchmark history could not be loaded: {benchmarkHistoryError.message}
+                    </div>
                   ) : (
-                    <MultiPairOverlayChart
-                      pairs={[decodedPair, benchmarkPair]}
-                      history={{
-                        [decodedPair]: history,
-                        [benchmarkPair]: benchmarkHistory,
-                      }}
-                      benchmarkPair={benchmarkPair}
-                      normalizedMode={normalizedMode}
-                      onExport={(rows: ExportRow[]) => {
-                        // Build CSV and trigger download
-                        if (rows.length === 0) return
-                        const pairsInExport = Object.keys(rows[0]).filter((k) => k !== 'timestamp')
-                        const header = ['timestamp', ...pairsInExport].join(',')
-                        const lines = rows.map((row) =>
-                          [row.timestamp, ...pairsInExport.map((p) => row[p] ?? '')].join(','),
-                        )
-                        const csv = [header, ...lines].join('\n')
-                        const blob = new Blob([csv], { type: 'text/csv' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = `benchmark_${decodedPair.replace('/', '-')}_vs_${benchmarkPair.replace('/', '-')}.csv`
-                        a.click()
-                        URL.revokeObjectURL(url)
-                      }}
-                    />
+                    <>
+                      {historyError !== null && history.length > 0 && (
+                        <p role="status" className="mb-3 text-sm text-amber-300">
+                          Could not refresh {decodedPair} history. Showing previously loaded observations; they may be
+                          stale.
+                        </p>
+                      )}
+                      {benchmarkHistoryError !== null && (
+                        <p role="status" className="mb-3 text-sm text-amber-300">
+                          Could not refresh benchmark history. Showing previously loaded observations; they may be
+                          stale.
+                        </p>
+                      )}
+                      <MultiPairOverlayChart
+                        pairs={[decodedPair, benchmarkPair]}
+                        history={{
+                          [decodedPair]: history,
+                          [benchmarkPair]: benchmarkHistory,
+                        }}
+                        benchmarkPair={benchmarkPair}
+                        normalizedMode={normalizedMode}
+                        onExport={(rows: ExportRow[]) => {
+                          // Build CSV and trigger download
+                          if (rows.length === 0) return
+                          const pairsInExport = Object.keys(rows[0]).filter((k) => k !== 'timestamp')
+                          const header = ['timestamp', ...pairsInExport].join(',')
+                          const lines = rows.map((row) =>
+                            [row.timestamp, ...pairsInExport.map((p) => row[p] ?? '')].join(','),
+                          )
+                          const csv = [header, ...lines].join('\n')
+                          const blob = new Blob([csv], { type: 'text/csv' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `benchmark_${decodedPair.replace('/', '-')}_vs_${benchmarkPair.replace('/', '-')}.csv`
+                          a.click()
+                          URL.revokeObjectURL(url)
+                        }}
+                      />
+                    </>
                   ))}
 
                 {benchmarkPair === null && (
