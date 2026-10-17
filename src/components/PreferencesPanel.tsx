@@ -53,6 +53,7 @@ import {
   type PortablePreferences,
 } from '../preferences/portability'
 import { downloadFile } from '../utils/export'
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 import {
   REFRESH_INTERVAL_OPTIONS,
   CHART_RANGE_OPTIONS,
@@ -81,6 +82,7 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
   // An imported file is staged here and only written to preferences once the user applies it.
   const [draft, setDraft] = useState<PortablePreferences | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  useUnsavedChangesWarning(draft !== null)
 
   const handleExport = () => {
     downloadFile(exportPreferences(preferences), 'supo-preferences.json', 'application/json')

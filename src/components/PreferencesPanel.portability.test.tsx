@@ -122,3 +122,41 @@ describe('PreferencesPanel backup controls', () => {
     expect(input.tabIndex).toBeGreaterThanOrEqual(0)
   })
 })
+
+describe('PreferencesPanel unapplied-change warning', () => {
+  function unloadIsCancelled(): boolean {
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
+  }
+
+  it('warns before the page unloads while an imported draft is pending', async () => {
+    render(<PreferencesPanel />, { wrapper: Wrapper })
+    expect(unloadIsCancelled()).toBe(false)
+
+    await importFile(fileWith(exportPreferences({ ...DEFAULT_PREFERENCES, largeText: true })))
+    await screen.findByRole('region', { name: 'Imported preferences review' })
+
+    expect(unloadIsCancelled()).toBe(true)
+  })
+
+  it('stops warning once the draft is applied', async () => {
+    const user = userEvent.setup()
+    render(<PreferencesPanel />, { wrapper: Wrapper })
+    await importFile(fileWith(exportPreferences({ ...DEFAULT_PREFERENCES, largeText: true })))
+    const review = await screen.findByRole('region', { name: 'Imported preferences review' })
+
+    await user.click(within(review).getByRole('button', { name: 'Apply imported preferences' }))
+
+    expect(unloadIsCancelled()).toBe(false)
+  })
+
+  it('stops warning once the draft is discarded', async () => {
+    const user = userEvent.setup()
+    render(<PreferencesPanel />, { wrapper: Wrapper })
+    await importFile(fileWith(exportPreferences({ ...DEFAULT_PREFERENCES, largeText: true })))
+    await user.click(await screen.findByRole('button', { name: 'Discard' }))
+
+    expect(unloadIsCancelled()).toBe(false)
+  })
+})
