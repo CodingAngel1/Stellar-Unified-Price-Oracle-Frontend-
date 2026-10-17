@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useMemo, useRef, useState, useTransition, useOptimistic } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useTransition, useOptimistic } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePriceContext } from '../context/PriceContext'
@@ -35,6 +35,8 @@ import { localDateToTimestamp } from '../utils/alertLifecycle'
 import { deriveSourceHealths } from '../utils/sourceHealth'
 import { WORKSPACE_PARAM, type Workspace } from '../utils/workspaceShare'
 import { OnboardingTour, resetTour } from '../components/OnboardingTour'
+import { FirstComparisonGuide } from '../components/FirstComparisonGuide'
+import { readComparisonGuide, saveComparisonGuide, type ComparisonGuideProgress } from '../utils/firstComparisonGuide'
 import { WorkspaceShareDialog } from '../components/WorkspaceShareDialog'
 import { ConfidenceRegimePanel } from '../components/ConfidenceRegimePanel'
 import { getObservedSourceRange } from '../utils/uncertaintyBand'
@@ -119,6 +121,17 @@ export function Dashboard() {
 
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [comparisonGuide, setComparisonGuide] = useState<ComparisonGuideProgress>(readComparisonGuide)
+
+  useEffect(() => {
+    saveComparisonGuide(comparisonGuide)
+  }, [comparisonGuide])
+
+  useEffect(() => {
+    if (selected.size >= 2) {
+      setComparisonGuide((p) => (p.comparedPairs ? p : { ...p, comparedPairs: true }))
+    }
+  }, [selected])
 
   // Optimistic alerts: show immediately, revert if needed
   const [optimisticAlerts, addOptimisticAlert] = useOptimistic(
@@ -263,6 +276,7 @@ export function Dashboard() {
           return next
         })
       } else {
+        setComparisonGuide((p) => (p.viewedPair ? p : { ...p, viewedPair: true }))
         navigate(`/prices/${encodeURIComponent(pair)}`)
       }
     },
@@ -714,6 +728,11 @@ export function Dashboard() {
           onRefresh={refetchPrices}
         />
       )}
+
+      <FirstComparisonGuide
+        progress={comparisonGuide}
+        onDismiss={() => setComparisonGuide((p) => ({ ...p, dismissed: true }))}
+      />
 
       {pricesLoading && prices.length === 0 ? (
         <section
