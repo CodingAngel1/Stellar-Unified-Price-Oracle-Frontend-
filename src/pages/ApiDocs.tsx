@@ -7,6 +7,7 @@ import { METRIC_HELP_TOPICS, type MetricHelpTopic } from '../data/metricHelp'
 import { isOracleNetwork, type OracleNetwork } from '../lib/contractRegistry'
 import { getSelectedNetwork, onNetworkChange } from '../lib/networkRegistry'
 import { SdkIntegrationChecklist } from '../components/SdkIntegrationChecklist'
+import { SdkMigrationGuide } from '../components/SdkMigrationGuide'
 import { OracleClient } from '../sdk/client'
 import { createClientTraceId, reportNetworkError } from '../utils/errorReporting'
 
@@ -634,6 +635,8 @@ export function ApiDocs() {
           <EndpointCard key={`${ep.method}-${ep.path}`} endpoint={ep} context={context} />
         ))}
       </div>
+
+      <SdkMigrationGuide />
 
       <section id="metric-help" aria-labelledby="metric-help-heading" className="mt-10 border-t border-gray-800 pt-6">
         <h2 id="metric-help-heading" className="text-lg font-semibold text-gray-900 dark:text-white">

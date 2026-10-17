@@ -47,7 +47,9 @@ describe('API docs SDK playground', () => {
     const sdkTabs = screen.getAllByRole('tab', { name: 'SDK' })
     await user.click(sdkTabs[1])
 
-    expect(screen.getByText(/client\.getPrice\('XLM-USD'\)/)).toBeInTheDocument()
+    expect(screen.getByRole('tabpanel', { name: 'SDK example for /api/prices/:pair' })).toHaveTextContent(
+      "client.getPrice('XLM-USD')",
+    )
     await user.click(screen.getAllByRole('button', { name: 'Run SDK example' })[1])
 
     expect(await screen.findByText(/"assetPair": "XLM-USD"/)).toBeInTheDocument()

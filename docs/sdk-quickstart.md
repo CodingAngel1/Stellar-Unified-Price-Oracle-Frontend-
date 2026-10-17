@@ -166,3 +166,7 @@ The API docs page (`/api-docs`) ends its SDK section with an executable integrat
 4. **Look up one pair** — `GET /api/prices/XLM-USD` must return that pair.
 
 Run one check or all of them. A failed step shows its reason, and a failed request does not stop the remaining checks. The checks live in `src/utils/sdkChecklist.ts`, so they can be reused in CI or a smoke test.
+
+## Migrating between SDK majors
+
+Migration examples live on the API docs page under **SDK migration guide** (#809). Each supported major has a disclosure that lists its breaking changes and shows the code being replaced beside its replacement. The source is `src/data/sdkMigrations.ts`. Its tests fail if a major in `SUPPORTED_SDK_MAJORS` has no migration, so a new major must be documented before it is listed as supported. The repo has shipped only v1 so far, so its entry covers the move from hand-written REST calls to the typed client.
