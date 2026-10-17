@@ -78,6 +78,8 @@ export const STORAGE_KEYS = {
   transparencyArchive: 'transparency-archive',
   /** User-entered local-only portfolio positions; no account sync or PII. */
   portfolioHoldings: 'portfolio-holdings',
+  /** Pinned pair detail snapshots kept for offline access (#831). Prices only, no PII. */
+  pinnedPairs: 'supo:pinned-pairs',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
@@ -376,6 +378,10 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       key: STORAGE_KEYS.soundPreferences,
       description: 'Alert sound enabled flag + 0–1 volume. No PII.',
+    },
+    {
+      key: STORAGE_KEYS.pinnedPairs,
+      description: 'Last-known price snapshots of pinned pairs for offline access (#831). No PII.',
     },
   ],
   indexedDB: [
