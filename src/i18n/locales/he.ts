@@ -466,6 +466,8 @@ const he = {
     confidence: 'ביטחון {{value}}%',
     updated: 'עודכן {{time}}',
     historyError: 'טעינת היסטוריית מחירים נכשלה: {{message}}',
+    historyStorageWarning:
+      'האחסון בדפדפן מתקרב למגבלה. הדפדפן עשוי להסיר היסטוריית מחירים שנשמרה מקומית; המחירים החיים אינם מושפעים.',
     emptyState: {
       title: 'אין נתוני מחיר זמינים',
       detail: 'אין נתוני מחיר זמינים עבור זוג זה.',
@@ -523,6 +525,7 @@ const he = {
     fields: {
       refreshInterval: 'מרווח רענון',
       chartTimeRange: 'טווח זמן גרף',
+      chartHistoryPageSize: 'נקודות היסטוריה בכל עמוד',
       staleThreshold: 'סף נכסים ישנים',
     },
     accessibility: {

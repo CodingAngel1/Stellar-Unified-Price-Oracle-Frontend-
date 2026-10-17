@@ -114,6 +114,34 @@ const fr = {
       'La confiance reflète la cohérence du prix entre les sources oracle. 100% signifie que toutes les sources concordent exactement.',
   },
 
+  metricHelp: {
+    docsTitle: 'Comprendre les métriques de prix',
+    helpFor: 'Aide : {{topic}}',
+    readDocs: 'Lire le guide des métriques',
+    topics: {
+      confidence: {
+        title: 'Confiance',
+        description:
+          'Score de 0 à 1 indiquant le degré de concordance des sources oracle disponibles. 0,95 correspond à 95% de confiance ; ce n’est pas la probabilité que le prix soit correct.',
+      },
+      divergence: {
+        title: 'Divergence',
+        description:
+          'Écart en pourcentage entre l’agrégat hors chaîne et la dernière valeur de l’oracle sur chaîne. Un écart plus important peut signaler un retard de publication ou un désaccord entre sources.',
+      },
+      staleness: {
+        title: 'Fraîcheur des données',
+        description:
+          'Temps écoulé depuis la publication de ce prix. Des données anciennes peuvent ne plus refléter le marché ; le seuil de fraîcheur configuré indique à partir de quand elles sont considérées comme obsolètes.',
+      },
+      weights: {
+        title: 'Pondérations d’agrégation',
+        description:
+          'Part apportée par chaque source oracle active à un agrégat pondéré. Les pondérations actives totalisent 100% ; les sources exclues ne contribuent pas.',
+      },
+    },
+  },
+
   table: {
     ariaLabel: 'Tableau des flux de prix',
     columns: {
@@ -470,13 +498,22 @@ const fr = {
 
   pwa: {
     installTitle: 'Installer Stellar Oracle',
-    installDetail: 'Ajoutez cette application à votre appareil pour un accès rapide et une utilisation hors ligne.',
+    installDetail: 'Accédez aux prix des oracles en un geste, avec l’application disponible hors ligne.',
     installAction: 'Installer',
+    installing: 'Ouverture…',
     installDismiss: 'Pas maintenant',
+    installError:
+      'La fenêtre d’installation ne s’est pas ouverte. Vous pouvez installer l’application depuis le menu du navigateur.',
     updateTitle: 'Mise à jour disponible',
-    updateDetail: "Une nouvelle version de l'application est prête.",
+    updateVersion: 'Version {{version}}',
+    updateNotes: 'Inclut les dernières améliorations et corrections.',
     updateAction: 'Recharger',
+    updating: 'Application…',
     updateDismiss: 'Plus tard',
+    offlineReady: 'L’application est disponible hors ligne. Les prix en direct nécessitent une connexion.',
+    errorTitle: 'La mise à jour ou le mode hors ligne est indisponible',
+    errorDetail: 'La version actuelle reste disponible en ligne ; le changement demandé n’a pas été appliqué.',
+    dismissError: 'Fermer',
   },
 
   notFound: {
@@ -498,6 +535,8 @@ const fr = {
     confidence: '{{value}}% de confiance',
     updated: 'Mis à jour {{time}}',
     historyError: "Échec du chargement de l'historique des prix : {{message}}",
+    historyStorageWarning:
+      "L'espace de stockage du navigateur est presque plein. Le navigateur peut supprimer l'historique des prix enregistré localement ; les prix en direct ne sont pas affectés.",
     emptyState: {
       title: 'Aucune donnée de prix disponible',
       detail: 'Aucune donnée de prix disponible pour cette paire.',
@@ -580,6 +619,7 @@ const fr = {
     fields: {
       refreshInterval: 'Intervalle de rafraîchissement',
       chartTimeRange: 'Plage de temps du graphique',
+      chartHistoryPageSize: "Points d'historique par page",
       staleThreshold: "Seuil d'actif obsolète",
     },
     accessibility: {

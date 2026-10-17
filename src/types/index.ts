@@ -1,10 +1,14 @@
 // Price-related types — see src/types/price.ts for full documentation
 export type {
   PriceData,
+  PairMetadata,
+  FeedSymbolStatus,
+  FeedSymbolMetadata,
   PriceSyncState,
   LivePriceEntry,
   PriceHistoryEntry,
   ExcludedSourceTick,
+  SourceTimestamp,
   PriceHistoryResponse,
   SourceName,
   SourceHealth,
@@ -114,6 +118,10 @@ export interface Alert {
   // ── Alert type: one-time vs persistent (#312) ────────────────────────────
   /** If true, alert fires once then auto-disables. If false, fires every time condition is met. */
   triggerOnce: boolean
+  /** Send a recovery notice when this rule's previously matched condition clears. */
+  notifyOnRecovery?: boolean
+  /** Runtime marker for a breach awaiting a recovery transition. */
+  breachActive?: boolean
   /** Number of times this alert has been triggered (persistent alerts count up) */
   fireCount: number
 
@@ -193,6 +201,7 @@ export interface AlertFormData {
   upperThreshold: string
   lowerThreshold: string
   triggerOnce: boolean
+  notifyOnRecovery: boolean
   // Percentage alert fields
   percentageMode: boolean
   percentageThreshold: string
@@ -240,6 +249,13 @@ export interface AlertHistoryEntry {
   percentageThreshold: number | null
   percentageWindow: AlertTimeWindow | null
   percentageDirection: AlertPercentageDirection | null
+  /** Exact price snapshot observed when this alert fired. */
+  evidence?: {
+    timestamp: number
+    confidence: number
+    sources: string[]
+    sourcePrices?: Record<string, number>
+  } | null
   /**
    * Present when this entry records an escalation step firing (#487) rather than
    * the alert's initial trigger — lets `AlertHistoryLog` distinguish and label them.
@@ -247,6 +263,35 @@ export interface AlertHistoryEntry {
   escalation?: { stepId: string; channel: _EscalationStep['channel']; delayMinutes: number } | null
   /** Present when this entry records a retest-triggered fire (#491). */
   retest?: { kind: 'breach' | 'exit' | 'retest'; cycle: number } | null
+}
+
+/** One live rule evaluation, including the reason it fired, matched, or was skipped. */
+export interface AlertEvaluationEntry {
+  id: string
+  alertId: string
+  assetPair: string
+  evaluatedAt: number
+  price: number | null
+  outcome: 'fired' | 'matched' | 'not_matched' | 'skipped'
+  reason:
+    | 'alert_inactive'
+    | 'snoozed'
+    | 'price_unavailable'
+    | 'stale_price'
+    | 'baseline_reset'
+    | 'cooldown'
+    | 'condition_not_met'
+    | 'condition_matched'
+    | 'threshold_cleared'
+  conditions?: Array<{
+    conditionId: string
+    field: _AlertCondition['field']
+    operator: _AlertCondition['operator']
+    expected: number
+    actual: number | null
+    matched: boolean
+    reason: 'schedule_inactive' | 'condition_not_met' | null
+  }>
 }
 
 export interface AlertsContextType {
@@ -285,6 +330,8 @@ export interface AlertsContextType {
   reEnableAlert: (id: string) => void
   // Alert history log (#309)
   alertHistory: AlertHistoryEntry[]
+  /** Recent rule evaluations, newest first and capped in memory. */
+  evaluationTimeline: AlertEvaluationEntry[]
   clearAlertHistory: () => void
   /** Rate-limit info for alert creation — used by UI to disable buttons and show countdown. */
   alertCreateAllowed: boolean

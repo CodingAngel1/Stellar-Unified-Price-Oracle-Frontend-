@@ -303,6 +303,7 @@ export function AlertModal({
     upperThreshold: '',
     lowerThreshold: '',
     triggerOnce: false,
+    notifyOnRecovery: false,
     percentageMode: false,
     percentageThreshold: '',
     percentageWindow: '1hr',
@@ -349,6 +350,7 @@ export function AlertModal({
           upperThreshold: alert.upperThreshold !== null ? String(alert.upperThreshold) : '',
           lowerThreshold: alert.lowerThreshold !== null ? String(alert.lowerThreshold) : '',
           triggerOnce: alert.triggerOnce,
+          notifyOnRecovery: alert.notifyOnRecovery ?? false,
           percentageMode: alert.percentageMode,
           percentageThreshold: alert.percentageThreshold !== null ? String(alert.percentageThreshold) : '',
           percentageWindow: alert.percentageWindow ?? '1hr',
@@ -733,10 +735,10 @@ export function AlertModal({
                     min="0.1"
                     value={form.percentageThreshold}
                     onChange={(e) => setAndValidate('percentageThreshold', e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 pe-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder="5"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                 </div>
                 {fieldError('percentageThreshold') && (
                   <p className="mt-1 text-sm text-red-400" role="alert">
@@ -932,6 +934,19 @@ export function AlertModal({
                 ? t('alertModal.fields.alertTypeOneTimeDesc')
                 : t('alertModal.fields.alertTypePersistentDesc')}
             </p>
+
+            <div className="mt-3 border-t border-gray-700 pt-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.notifyOnRecovery}
+                  onChange={(e) => setAndValidate('notifyOnRecovery', e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500/50"
+                />
+                <span className="text-sm font-medium text-gray-300">{t('alertModal.recovery.title')}</span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1.5">{t('alertModal.recovery.description')}</p>
+            </div>
 
             {/* Cooldown between re-fires (#310) */}
             {!form.triggerOnce && (

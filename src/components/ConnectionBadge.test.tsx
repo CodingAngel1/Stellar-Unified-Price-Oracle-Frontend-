@@ -31,6 +31,26 @@ describe('ConnectionBadge', () => {
     expect(screen.getByText('Offline')).toBeInTheDocument()
   })
 
+  it('surfaces reconnect cause details and category totals accessibly', () => {
+    render(
+      <ConnectionBadge
+        status="reconnecting"
+        diagnostics={{
+          retryCount: 1,
+          lastConnectedAt: null,
+          totalDisconnections: 3,
+          lastReconnectCause: { type: 'server', timestamp: 1, closeCode: 1011, closeReason: 'maintenance' },
+          reconnectCauseCounts: { network: 1, browser: 1, server: 1, unknown: 0 },
+        }}
+      />,
+    )
+    expect(screen.getByText('Network 1 · Browser 1 · Server response 1')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveAttribute(
+      'aria-label',
+      expect.stringContaining('Last reconnect cause: server response (close code 1011) — maintenance'),
+    )
+  })
+
   it('renders rate limited status with countdown', () => {
     render(<ConnectionBadge status="connected" rateLimitStatus="limited" retryAfterMs={15000} />)
     expect(screen.getByText('Rate limited (15s)')).toBeInTheDocument()

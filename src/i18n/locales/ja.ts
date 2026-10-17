@@ -114,6 +114,34 @@ const ja = {
       '信頼度は、オラクルソース間での価格の一貫性を反映しています。100%はすべてのソースが完全に一致することを意味します。',
   },
 
+  metricHelp: {
+    docsTitle: '価格指標について',
+    helpFor: 'ヘルプ: {{topic}}',
+    readDocs: '指標ガイドを読む',
+    topics: {
+      confidence: {
+        title: '信頼度',
+        description:
+          '利用可能なオラクルソース間の一致度を0から1で示します。0.95は95%の信頼度を表し、価格が正しい確率ではありません。',
+      },
+      divergence: {
+        title: '乖離',
+        description:
+          'オフチェーン集計値と最新のオンチェーンオラクル値との差をパーセントで示します。差が大きい場合、公開の遅れやソース間の不一致が考えられます。',
+      },
+      staleness: {
+        title: 'データの鮮度',
+        description:
+          '価格が報告されてからの経過時間です。古いデータは現在の市場を反映しない可能性があり、設定した鮮度のしきい値を超えると古いデータとして扱われます。',
+      },
+      weights: {
+        title: '集計ウェイト',
+        description:
+          '加重集計において各有効なオラクルソースが占める割合です。有効なウェイトの合計は100%で、除外されたソースは寄与しません。',
+      },
+    },
+  },
+
   table: {
     ariaLabel: '価格フィードテーブル',
     columns: {
@@ -463,13 +491,21 @@ const ja = {
 
   pwa: {
     installTitle: 'Stellar Oracle をインストール',
-    installDetail: 'このアプリをデバイスに追加すると、すばやくアクセスでき、オフラインでも利用できます。',
+    installDetail: 'オラクル価格にすぐアクセスできます。アプリの基本部分はオフラインでも利用できます。',
     installAction: 'インストール',
+    installing: '起動中…',
     installDismiss: '後で',
+    installError: 'インストール画面を開けませんでした。ブラウザーのメニューからインストールできます。',
     updateTitle: 'アップデートがあります',
-    updateDetail: '新しいバージョンの準備ができました。',
+    updateVersion: 'バージョン {{version}}',
+    updateNotes: '最新の修正と改善が含まれています。',
     updateAction: '再読み込み',
+    updating: '適用中…',
     updateDismiss: '後で',
+    offlineReady: 'アプリの基本部分をオフラインで利用できます。最新価格の取得には接続が必要です。',
+    errorTitle: 'アップデートまたはオフライン機能を利用できません',
+    errorDetail: '現在のアプリはオンラインで引き続き利用できます。要求された変更は適用されませんでした。',
+    dismissError: '閉じる',
   },
 
   notFound: {
@@ -491,6 +527,8 @@ const ja = {
     confidence: '信頼度{{value}}%',
     updated: '{{time}}に更新',
     historyError: '価格履歴の読み込みに失敗しました: {{message}}',
+    historyStorageWarning:
+      'ブラウザーのストレージが上限に近づいています。ローカルに保存された価格履歴が削除される可能性がありますが、ライブ価格には影響しません。',
     emptyState: {
       title: '価格データがありません',
       detail: 'このペアの価格データはありません。',
@@ -573,6 +611,7 @@ const ja = {
     fields: {
       refreshInterval: '更新間隔',
       chartTimeRange: 'チャート時間範囲',
+      chartHistoryPageSize: 'ページごとのチャート履歴ポイント数',
       staleThreshold: '古いデータのしきい値',
     },
     accessibility: {

@@ -466,6 +466,8 @@ const ar = {
     confidence: 'ثقة {{value}}%',
     updated: 'تحديث {{time}}',
     historyError: 'فشل تحميل تاريخ الأسعار: {{message}}',
+    historyStorageWarning:
+      'مساحة تخزين المتصفح تقترب من الحد الأقصى. قد يحذف المتصفح سجل الأسعار المحفوظ محليًا؛ الأسعار المباشرة غير متأثرة.',
     emptyState: {
       title: 'لا تتوفر بيانات أسعار',
       detail: 'لا تتوفر بيانات أسعار لهذا الزوج.',
@@ -523,6 +525,7 @@ const ar = {
     fields: {
       refreshInterval: 'فترة التحديث',
       chartTimeRange: 'نطاق وقت الرسم البياني',
+      chartHistoryPageSize: 'نقاط السجل لكل صفحة',
       staleThreshold: 'حد الأصول القديمة',
     },
     accessibility: {
