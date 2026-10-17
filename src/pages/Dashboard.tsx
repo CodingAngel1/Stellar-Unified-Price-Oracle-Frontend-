@@ -36,6 +36,7 @@ import { deriveSourceHealths } from '../utils/sourceHealth'
 import { WORKSPACE_PARAM, type Workspace } from '../utils/workspaceShare'
 import { OnboardingTour, resetTour } from '../components/OnboardingTour'
 import { FirstComparisonGuide } from '../components/FirstComparisonGuide'
+import { SampleDataPreview } from '../components/SampleDataPreview'
 import { readComparisonGuide, saveComparisonGuide, type ComparisonGuideProgress } from '../utils/firstComparisonGuide'
 import { WorkspaceShareDialog } from '../components/WorkspaceShareDialog'
 import { ConfidenceRegimePanel } from '../components/ConfidenceRegimePanel'
@@ -808,6 +809,7 @@ export function Dashboard() {
               Take the tour
             </button>
           </div>
+          <SampleDataPreview />
         </div>
       )}
 
