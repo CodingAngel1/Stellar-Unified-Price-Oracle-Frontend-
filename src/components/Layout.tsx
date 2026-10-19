@@ -100,10 +100,10 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
   const NAV_ITEMS = [
     { path: '/', label: t('nav.home'), preload: preloadLanding },
     { path: '/dashboard', label: t('nav.dashboard'), preload: preloadDashboard },
-    { path: '/portfolio', label: 'Portfolio' },
-    { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
-    { path: '/governance', label: 'Governance', preload: preloadGovernance },
     { path: '/portfolio', label: 'Portfolio', preload: preloadPortfolio },
+    { path: '/governance', label: 'Governance', preload: preloadGovernance },
+    { path: '/roadmap', label: 'Roadmap' },
+    { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
     { path: '/webhooks', label: 'Webhooks' },
   ]
 
