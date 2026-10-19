@@ -6,6 +6,7 @@ import { formatPrice, formatTimestamp, timeAgo } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { explorerTxUrl, explorerContractUrl, networkLabel } from '../lib/stellarExplorer'
 import { shortenAccount } from '../lib/stellarAssets'
+import { VerifiableLedgerLink } from './VerifiableLedgerLink'
 
 export interface PriceProofPanelProps {
   /** Asset pair to fetch the on-chain proof for, e.g. "XLM/USD". */
@@ -160,7 +161,13 @@ export function PriceProofPanel({ pair, latestTimestamp, historyTimestamps = [] 
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3 text-xs text-gray-600 pt-1">
-                <span>{t('priceDetail.proof.ledger', { sequence: proof.ledgerSequence })}</span>
+                <VerifiableLedgerLink
+                  claimType="ledger"
+                  identifier={proof.ledgerSequence}
+                  network={proof.network}
+                  label={t('priceDetail.proof.ledger', { sequence: proof.ledgerSequence })}
+                  className="text-xs text-cyan-400 hover:text-cyan-300"
+                />
                 <span className="px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700">
                   {networkLabel(proof.network)}
                 </span>

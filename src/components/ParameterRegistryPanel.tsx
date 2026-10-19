@@ -18,6 +18,7 @@ import {
   formatParameterValue,
   searchParameters,
 } from '../utils/parameterRegistry'
+import { VerifiableLedgerLink } from './VerifiableLedgerLink'
 
 const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000 // 24 hours
 
@@ -42,9 +43,14 @@ const ChangeEntryRow = memo(function ChangeEntryRow({ entry }: ChangeEntryRowPro
     <li className="flex flex-col gap-1 text-xs border-l-2 border-gray-700 pl-3 py-1">
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className="text-gray-500 tabular-nums">{formatTimestamp(entry.changedAt)}</span>
-        <span className="font-mono text-gray-400" title={entry.changedBy}>
-          {truncateAddress(entry.changedBy)}
-        </span>
+        <VerifiableLedgerLink
+          claimType={entry.changedBy.startsWith('C') ? 'contract' : 'account'}
+          identifier={entry.changedBy}
+          label={truncateAddress(entry.changedBy)}
+          fallbackText={truncateAddress(entry.changedBy)}
+          title={`Verify account ${entry.changedBy} on Stellar`}
+          className="font-mono text-gray-400 hover:text-cyan-300"
+        />
       </div>
       <div className="flex items-center gap-2 text-gray-300">
         <span className="line-through text-gray-500">{formatParameterValue(entry.previousValue)}</span>
@@ -90,8 +96,15 @@ const ParameterRow = memo(function ParameterRow({ record, now }: ParameterRowPro
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-400">
         <div>
           <dt className="text-gray-500">Owner</dt>
-          <dd className="font-mono text-gray-300" title={record.owner}>
-            {truncateAddress(record.owner)}
+          <dd className="font-mono text-gray-300">
+            <VerifiableLedgerLink
+              claimType={record.owner.startsWith('C') ? 'contract' : 'account'}
+              identifier={record.owner}
+              label={truncateAddress(record.owner)}
+              fallbackText={truncateAddress(record.owner)}
+              title={`Verify owner ${record.owner} on Stellar`}
+              className="text-xs text-cyan-400 hover:text-cyan-300"
+            />
           </dd>
         </div>
         <div>
