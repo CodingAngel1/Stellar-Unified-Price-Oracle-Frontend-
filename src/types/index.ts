@@ -71,6 +71,17 @@ export type {
   GovernanceEventExportJson,
 } from './governanceEvents'
 
+// #862 — Mobile device tier benchmarks
+export type {
+  InteractionBenchmarkId,
+  BenchmarkStatus,
+  MobileDeviceTier,
+  BenchmarkInteractionBudget,
+  BenchmarkResult,
+  MobileBenchmarkSuiteSummary,
+} from './mobileBenchmarks'
+export { TIER_2_MOBILE_REFERENCE, MOBILE_BENCHMARK_BUDGETS } from './mobileBenchmarks'
+
 // On-chain price / proof types — see src/types/onChainPrice.ts
 export type { OnChainPriceRecord, SourceContribution, PriceProof } from './onChainPrice'
 export { onChainRecordToPriceData, isSourceContribution, isPriceProof } from './onChainPrice'
