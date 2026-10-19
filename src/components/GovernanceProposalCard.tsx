@@ -14,6 +14,7 @@ import { memo, type ReactElement } from 'react'
 import type { GovernanceProposal, ProposalStatus, VoteTally } from '../types'
 import { SOURCE_COLORS } from '../utils/sourceColors'
 import { ProposedParameterDiff } from './ProposedParameterDiff'
+import { ProposalVotingRulesExplainer } from './ProposalVotingRulesExplainer'
 import {
   STATUS_LABELS,
   deadlineState,
@@ -196,6 +197,9 @@ export const GovernanceProposalCard = memo(function GovernanceProposalCard({
               : `${participation.toFixed(1)}% of eligible voting power participated`}
           </span>
         </div>
+
+        {/* ── #853 Quorum, eligibility, and deadline explainer ── */}
+        <ProposalVotingRulesExplainer proposal={proposal} now={now} />
       </section>
 
       {/* ── Stale-status caveat ── */}
