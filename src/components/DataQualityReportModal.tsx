@@ -115,7 +115,7 @@ export function DataQualityReportModal({
 
       if (e.key === 'Tab' && dialogRef.current) {
         const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
         )
         if (focusables.length === 0) return
 
@@ -194,6 +194,7 @@ export function DataQualityReportModal({
 
   return (
     <div
+      data-testid="data-quality-backdrop"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()

@@ -1,4 +1,4 @@
-import { useId, useState, useMemo, type FormEvent, type ReactElement } from 'react'
+import { useEffect, useId, useState, useMemo, type FormEvent, type ReactElement } from 'react'
 import {
   CODE_OF_CONDUCT_URL,
   REPORT_CATEGORIES,
@@ -33,6 +33,15 @@ export function ReportButton({ surface, targetId, label = 'Report' }: ReportButt
     () => findDuplicateReports({ surface, targetId, category, evidence }, existingReports),
     [surface, targetId, category, evidence, existingReports],
   )
+
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
