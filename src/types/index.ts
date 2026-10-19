@@ -55,6 +55,14 @@ export type {
   OperatorDisclosureSummary,
 } from './operatorDisclosures'
 
+// #857 — Governance roles and permissions
+export type {
+  GovernanceRole,
+  GovernanceAction,
+  ActionGateEvaluation,
+  RoleRegistryEntry,
+} from './governancePermissions'
+
 // On-chain price / proof types — see src/types/onChainPrice.ts
 export type { OnChainPriceRecord, SourceContribution, PriceProof } from './onChainPrice'
 export { onChainRecordToPriceData, isSourceContribution, isPriceProof } from './onChainPrice'

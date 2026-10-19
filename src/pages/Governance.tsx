@@ -40,6 +40,8 @@ import { ReputationScorePanel } from '../components/ReputationScorePanel'
 import { IncentiveLedgerPanel } from '../components/IncentiveLedgerPanel'
 import { DisputePanel } from '../components/DisputePanel'
 import { OperatorDisclosuresPanel } from '../components/OperatorDisclosuresPanel'
+import { GovernanceRoleBadge, GovernanceActionGate } from '../components/GovernanceActionGate'
+import { useGovernancePermissions } from '../hooks/useGovernancePermissions'
 import { VALID_PAIRS, type PriceHistoryEntry } from '../types'
 import { deriveSourceHealths } from '../utils/sourceHealth'
 import { orderProposals } from '../utils/governance'
@@ -130,14 +132,43 @@ export function Governance(): ReactElement {
     return () => clearInterval(id)
   }, [])
 
+  const { currentRole, activeNetwork } = useGovernancePermissions()
+
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-8">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-gray-100">Governance</h1>
-        <p className="text-sm text-gray-400">
-          What the community is voting on, source performance, system parameters, reputation scores, incentive
-          accounting, and formal dispute records.
-        </p>
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-100">Governance</h1>
+          <p className="text-sm text-gray-400">
+            What the community is voting on, source performance, system parameters, reputation scores, incentive
+            accounting, and formal dispute records.
+          </p>
+        </div>
+
+        {/* ── #857 Role and Network Permission Badge & Action ── */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 bg-gray-800/80 border border-gray-700/60 rounded-xl px-3 py-1.5 text-xs">
+            <span className="text-gray-400">Network:</span>
+            <span className="font-semibold text-cyan-400 uppercase font-mono">{activeNetwork}</span>
+            <span className="text-gray-600">|</span>
+            <span className="text-gray-400">Role:</span>
+            <GovernanceRoleBadge role={currentRole} />
+          </div>
+
+          <GovernanceActionGate action="proposal:create">
+            {({ allowed, disabledReason }) => (
+              <button
+                type="button"
+                disabled={!allowed}
+                aria-disabled={!allowed}
+                title={disabledReason ?? 'Create a new community proposal'}
+                className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                + New Proposal
+              </button>
+            )}
+          </GovernanceActionGate>
+        </div>
       </header>
 
       {/* ── Provenance ─────────────────────────────────────────────────── */}
