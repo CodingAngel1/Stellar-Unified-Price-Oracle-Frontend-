@@ -13,6 +13,7 @@
 import { memo, type ReactElement } from 'react'
 import type { GovernanceProposal, ProposalStatus, VoteTally } from '../types'
 import { SOURCE_COLORS } from '../utils/sourceColors'
+import { ProposedParameterDiff } from './ProposedParameterDiff'
 import {
   STATUS_LABELS,
   deadlineState,
@@ -132,6 +133,14 @@ export const GovernanceProposalCard = memo(function GovernanceProposalCard({
             )
           })}
         </div>
+      )}
+
+      {proposal.proposedParameterChanges && proposal.proposedParameterChanges.length > 0 && (
+        <ProposedParameterDiff
+          changes={proposal.proposedParameterChanges}
+          proposalId={proposal.id}
+          compact
+        />
       )}
 
       {/* ── Tally ── */}

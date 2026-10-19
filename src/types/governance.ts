@@ -165,7 +165,14 @@ export interface SourceIncentiveSummary {
 // ---------------------------------------------------------------------------
 
 /** Lifecycle of a price dispute. */
-export type DisputeStatus = 'open' | 'under_review' | 'resolved_upheld' | 'resolved_overturned' | 'withdrawn'
+export type DisputeStatus =
+  | 'open'
+  | 'under_review'
+  | 'resolved_upheld'
+  | 'resolved_overturned'
+  | 'withdrawn'
+  | 'resolved'
+  | 'dismissed'
 
 /**
  * A piece of evidence attached to a dispute by any participant.
@@ -337,9 +344,6 @@ export interface TreasuryEntry {
 
 // ── #695 Dispute & challenge process ─────────────────────────────────────────
 
-/** Lifecycle of a price dispute. */
-export type DisputeStatus = 'open' | 'under_review' | 'resolved' | 'dismissed'
-
 /** The outcome recorded when a dispute is closed. */
 export type DisputeOutcome = 'upheld' | 'rejected' | 'inconclusive' | null
 
@@ -347,7 +351,7 @@ export type DisputeOutcome = 'upheld' | 'rejected' | 'inconclusive' | null
  * A formal challenge to an aggregated price.
  * All fields are verbatim from the governance API.
  */
-export interface PriceDispute {
+export interface LegacyPriceDispute {
   /** Stable identifier assigned at submission time. */
   id: string
   /** The asset pair being challenged, e.g. `"BTC/USD"`. */
@@ -400,4 +404,45 @@ export interface GovernanceProposal {
   category: string | null
   /** Oracle sources this proposal concerns (add / remove / re-weight). */
   relatedSources: string[]
+  /**
+   * Proposed parameter modifications evaluated in this proposal (#851).
+   * Null or omitted when the proposal does not alter system parameters.
+   */
+  proposedParameterChanges?: ProposedParameterChange[] | null
+}
+
+// ---------------------------------------------------------------------------
+// #851 — Proposed governance parameter changes
+// ---------------------------------------------------------------------------
+
+/** Classification of a parameter modification. */
+export type ParameterDiffType = 'modify' | 'add' | 'remove'
+
+/**
+ * A proposed change to an oracle system parameter under community vote (#851).
+ * Rendered side-by-side (current registry value vs proposed governance value).
+ */
+export interface ProposedParameterChange {
+  /** Stable parameter key, e.g. `"aggregator.minSources"`. */
+  paramKey: string
+  /** Human-readable parameter label, e.g. `"Minimum Active Sources"`. */
+  paramName: string
+  /** Parameter functional group, e.g. `"aggregation"`, `"thresholds"`, `"weights"`. */
+  category: string
+  /**
+   * Current value in the active parameter registry.
+   * Null when proposing an entirely new parameter.
+   */
+  currentValue: string | null
+  /**
+   * Proposed new value if the proposal passes.
+   * Null when proposing parameter deprecation/removal.
+   */
+  proposedValue: string | null
+  /** Type of diff: modify, add, or remove. */
+  diffType: ParameterDiffType
+  /** Optional rationale or governance note for this specific parameter change. */
+  rationale?: string | null
+  /** Optional engineering unit, e.g. `"ms"`, `"%"`, `"sources"`. */
+  unit?: string | null
 }

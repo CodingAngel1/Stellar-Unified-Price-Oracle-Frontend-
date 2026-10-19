@@ -318,6 +318,21 @@ export const VoteTallySchema = z.object({
   abstain: z.number().int().min(0),
 })
 
+// ── #851 Proposed parameter change schema ───────────────────────────────────
+
+export const ProposedParameterChangeSchema = z.object({
+  paramKey: z.string().min(1),
+  paramName: z.string().min(1),
+  category: z.string().min(1),
+  currentValue: z.string().nullable(),
+  proposedValue: z.string().nullable(),
+  diffType: z.enum(['modify', 'add', 'remove']),
+  rationale: z.string().nullable().optional(),
+  unit: z.string().nullable().optional(),
+})
+
+export const ProposedParameterChangesSchema = z.array(ProposedParameterChangeSchema)
+
 /**
  * Strict schema for {@link import('../types/governance').GovernanceProposal}.
  * All fields are required (nullable ones must be explicitly `null`, not absent)
@@ -335,6 +350,7 @@ export const GovernanceProposalSchema = z.object({
   totalVotingPower: z.number().finite().nonnegative().nullable(),
   category: z.string().nullable(),
   relatedSources: z.array(z.string()),
+  proposedParameterChanges: z.array(ProposedParameterChangeSchema).nullable().optional(),
 })
 
 /** Response of `GET /api/governance/proposals`. */
@@ -391,9 +407,9 @@ export const TreasuryEntrySchema = z.object({
 
 export const TreasurySchema = z.array(TreasuryEntrySchema)
 
-// ── #695 Dispute schemas ──────────────────────────────────────────────────────
+// ── Legacy dispute schemas ──────────────────────────────────────────────────
 
-export const PriceDisputeSchema = z.object({
+export const LegacyPriceDisputeSchema = z.object({
   id: z.string().min(1),
   assetPair: z.string().min(1),
   disputedPrice: z.number().finite(),
@@ -409,7 +425,7 @@ export const PriceDisputeSchema = z.object({
   flaggedSources: z.array(z.string()),
 })
 
-export const PriceDisputesSchema = z.array(PriceDisputeSchema)
+export const LegacyPriceDisputesSchema = z.array(LegacyPriceDisputeSchema)
 
 // ── Type inference from schemas ──────────────────────────────────────────────
 
@@ -513,3 +529,5 @@ export const PriceDisputeSchema = z.object({
   comments: z.array(DisputeCommentSchema),
   resolutionNote: z.string().nullable(),
 })
+
+export const PriceDisputesSchema = z.array(PriceDisputeSchema)
