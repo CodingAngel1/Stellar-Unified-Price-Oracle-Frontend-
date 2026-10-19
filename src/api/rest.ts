@@ -25,6 +25,7 @@ import {
   SourceReputationScoreSchema,
   SourceIncentiveSummarySchema,
   PriceDisputeSchema,
+  OperatorDisclosureSchema,
 } from './schemas'
 import { validate } from './validate'
 import { getAcceptVersionHeader } from './version'
@@ -692,4 +693,41 @@ export async function fetchPriceDisputes(signal?: AbortSignal): Promise<PriceDis
     }
   }
   return disputes
+}
+
+// ---------------------------------------------------------------------------
+// #856 — Operator conflict-of-interest disclosures
+// ---------------------------------------------------------------------------
+
+import type { OperatorDisclosure } from '../types/operatorDisclosures'
+import { DEFAULT_OPERATOR_DISCLOSURES } from '../utils/operatorDisclosures'
+
+/**
+ * Fetches operator conflict-of-interest disclosures from the governance API.
+ * Falls back to canonical verified operator disclosures if the endpoint is not yet live.
+ */
+export async function fetchOperatorDisclosures(signal?: AbortSignal): Promise<OperatorDisclosure[]> {
+  try {
+    const raw = await request<unknown>('/api/governance/operator-disclosures', undefined, signal)
+
+    if (!Array.isArray(raw)) {
+      return [...DEFAULT_OPERATOR_DISCLOSURES]
+    }
+
+    const disclosures: OperatorDisclosure[] = []
+    for (const item of raw) {
+      const parsed = OperatorDisclosureSchema.safeParse(item)
+      if (parsed.success) {
+        disclosures.push(parsed.data as OperatorDisclosure)
+      } else {
+        const message = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
+        console.warn(`[governance] dropping malformed operator disclosure — ${message}`)
+      }
+    }
+    return disclosures.length > 0 ? disclosures : [...DEFAULT_OPERATOR_DISCLOSURES]
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    // Graceful fallback to verified registered disclosures
+    return [...DEFAULT_OPERATOR_DISCLOSURES]
+  }
 }

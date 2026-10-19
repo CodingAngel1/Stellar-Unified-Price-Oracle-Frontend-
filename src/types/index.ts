@@ -44,6 +44,17 @@ export type { AccountingPeriod, IncentiveLedgerEntry, SourceIncentiveSummary } f
 // #695 — Dispute and challenge process
 export type { DisputeStatus, DisputeEvidence, DisputeComment, PriceDispute } from './governance'
 
+// #856 — Operator conflict-of-interest disclosures
+export type {
+  ConflictCategory,
+  MaterialityLevel,
+  ProvenanceStatus,
+  ProvenanceMethod,
+  ProvenanceRecord,
+  OperatorDisclosure,
+  OperatorDisclosureSummary,
+} from './operatorDisclosures'
+
 // On-chain price / proof types — see src/types/onChainPrice.ts
 export type { OnChainPriceRecord, SourceContribution, PriceProof } from './onChainPrice'
 export { onChainRecordToPriceData, isSourceContribution, isPriceProof } from './onChainPrice'

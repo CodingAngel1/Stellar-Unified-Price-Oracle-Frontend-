@@ -337,47 +337,9 @@ export interface TreasuryEntry {
 
 // ── #695 Dispute & challenge process ─────────────────────────────────────────
 
-/** Lifecycle of a price dispute. */
-export type DisputeStatus = 'open' | 'under_review' | 'resolved' | 'dismissed'
-
 /** The outcome recorded when a dispute is closed. */
 export type DisputeOutcome = 'upheld' | 'rejected' | 'inconclusive' | null
 
-/**
- * A formal challenge to an aggregated price.
- * All fields are verbatim from the governance API.
- */
-export interface PriceDispute {
-  /** Stable identifier assigned at submission time. */
-  id: string
-  /** The asset pair being challenged, e.g. `"BTC/USD"`. */
-  assetPair: string
-  /** The disputed aggregated price. */
-  disputedPrice: number
-  /** Unix timestamp (ms) of the price tick being challenged. */
-  priceTimestamp: number
-  /** Current lifecycle status. */
-  status: DisputeStatus
-  /** Address or identifier of the party who raised the dispute. */
-  challenger: string
-  /** Human-readable description of the discrepancy observed. */
-  reason: string
-  /**
-   * URL or CID pointing to attached evidence (chart exports, raw tick dumps).
-   * Null when no evidence was attached.
-   */
-  evidenceUrl: string | null
-  /** Unix timestamp (ms) when the dispute was submitted. */
-  createdAt: number
-  /** Unix timestamp (ms) when the dispute was closed, or null when still open. */
-  resolvedAt: number | null
-  /** Final outcome, or null while the dispute is still open. */
-  outcome: DisputeOutcome
-  /** Reviewer notes written when the dispute was closed. Null until resolved. */
-  resolutionNotes: string | null
-  /** Sources flagged by the challenger as contributing to the bad price. */
-  flaggedSources: string[]
-}
 
 /** A single governance proposal the community can act on. */
 export interface GovernanceProposal {

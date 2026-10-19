@@ -33,7 +33,13 @@ import {
   fetchReputationScores,
   fetchIncentiveSummaries,
   fetchPriceDisputes,
+  fetchOperatorDisclosures,
 } from '../api/rest'
+import { ParameterRegistryPanel } from '../components/ParameterRegistryPanel'
+import { ReputationScorePanel } from '../components/ReputationScorePanel'
+import { IncentiveLedgerPanel } from '../components/IncentiveLedgerPanel'
+import { DisputePanel } from '../components/DisputePanel'
+import { OperatorDisclosuresPanel } from '../components/OperatorDisclosuresPanel'
 import { VALID_PAIRS, type PriceHistoryEntry } from '../types'
 import { deriveSourceHealths } from '../utils/sourceHealth'
 import { orderProposals } from '../utils/governance'
@@ -95,6 +101,18 @@ export function Governance(): ReactElement {
   const { data: disputes } = useSwr(
     'governance/disputes',
     (signal) => fetchPriceDisputes(signal),
+    { staleTime: 60_000, refreshInterval: 120_000 },
+  )
+
+  // #856 — Operator conflict-of-interest disclosures
+  const {
+    data: disclosures,
+    loading: disclosuresLoading,
+    error: disclosuresError,
+    refetch: refetchDisclosures,
+  } = useSwr(
+    'governance/operator-disclosures',
+    (signal) => fetchOperatorDisclosures(signal),
     { staleTime: 60_000, refreshInterval: 120_000 },
   )
 
@@ -266,6 +284,20 @@ export function Governance(): ReactElement {
       {/* ── #695 Price disputes ────────────────────────────────────────── */}
       <ErrorBoundary boundaryId="governance-disputes" featureLabel="Price disputes">
         <DisputePanel disputes={disputes ?? []} now={now} />
+      </ErrorBoundary>
+
+      {/* ── #856 Operator conflict-of-interest disclosures ───────────────── */}
+      <ErrorBoundary
+        boundaryId="governance-operator-disclosures"
+        featureLabel="Operator conflict-of-interest disclosures"
+      >
+        <OperatorDisclosuresPanel
+          disclosures={disclosures ?? []}
+          loading={disclosuresLoading}
+          error={disclosuresError ? String(disclosuresError) : null}
+          onRetry={refetchDisclosures}
+          now={now}
+        />
       </ErrorBoundary>
     </div>
   )
