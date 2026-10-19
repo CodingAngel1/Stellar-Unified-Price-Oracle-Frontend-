@@ -731,3 +731,40 @@ export async function fetchOperatorDisclosures(signal?: AbortSignal): Promise<Op
     return [...DEFAULT_OPERATOR_DISCLOSURES]
   }
 }
+
+// ---------------------------------------------------------------------------
+// #858 — Filterable governance event log with stable identifiers
+// ---------------------------------------------------------------------------
+
+import type { GovernanceEvent } from '../types/governanceEvents'
+import { DEFAULT_GOVERNANCE_EVENTS } from '../utils/governanceEvents'
+
+/**
+ * Fetches governance event logs with stable identifiers.
+ * Falls back to canonical governance events when running offline or against provisional backends.
+ */
+export async function fetchGovernanceEvents(signal?: AbortSignal): Promise<GovernanceEvent[]> {
+  try {
+    const raw = await request<unknown>('/api/governance/events', undefined, signal)
+
+    if (!Array.isArray(raw)) {
+      return [...DEFAULT_GOVERNANCE_EVENTS]
+    }
+
+    const events = raw.filter((item): item is GovernanceEvent => {
+      return (
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).id === 'string' &&
+        typeof (item as Record<string, unknown>).eventType === 'string' &&
+        typeof (item as Record<string, unknown>).timestamp === 'number'
+      )
+    })
+
+    return events.length > 0 ? events : [...DEFAULT_GOVERNANCE_EVENTS]
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    return [...DEFAULT_GOVERNANCE_EVENTS]
+  }
+}
+

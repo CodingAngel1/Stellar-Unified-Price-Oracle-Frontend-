@@ -34,12 +34,14 @@ import {
   fetchIncentiveSummaries,
   fetchPriceDisputes,
   fetchOperatorDisclosures,
+  fetchGovernanceEvents,
 } from '../api/rest'
 import { ParameterRegistryPanel } from '../components/ParameterRegistryPanel'
 import { ReputationScorePanel } from '../components/ReputationScorePanel'
 import { IncentiveLedgerPanel } from '../components/IncentiveLedgerPanel'
 import { DisputePanel } from '../components/DisputePanel'
 import { OperatorDisclosuresPanel } from '../components/OperatorDisclosuresPanel'
+import { GovernanceEventLogPanel } from '../components/GovernanceEventLogPanel'
 import { GovernanceRoleBadge, GovernanceActionGate } from '../components/GovernanceActionGate'
 import { useGovernancePermissions } from '../hooks/useGovernancePermissions'
 import { VALID_PAIRS, type PriceHistoryEntry } from '../types'
@@ -116,6 +118,18 @@ export function Governance(): ReactElement {
     'governance/operator-disclosures',
     (signal) => fetchOperatorDisclosures(signal),
     { staleTime: 60_000, refreshInterval: 120_000 },
+  )
+
+  // #858 — Governance event log & audit trail
+  const {
+    data: governanceEvents,
+    loading: eventsLoading,
+    error: eventsError,
+    refetch: refetchEvents,
+  } = useSwr(
+    'governance/events',
+    (signal) => fetchGovernanceEvents(signal),
+    { staleTime: 30_000, refreshInterval: 60_000 },
   )
 
   const sourceHealths = useMemo(() => deriveSourceHealths(prices), [prices])
@@ -327,6 +341,20 @@ export function Governance(): ReactElement {
           loading={disclosuresLoading}
           error={disclosuresError ? String(disclosuresError) : null}
           onRetry={refetchDisclosures}
+          now={now}
+        />
+      </ErrorBoundary>
+
+      {/* ── #858 Governance event log & audit trail ─────────────────────── */}
+      <ErrorBoundary
+        boundaryId="governance-events"
+        featureLabel="Governance event log and audit trail"
+      >
+        <GovernanceEventLogPanel
+          events={governanceEvents ?? []}
+          loading={eventsLoading}
+          error={eventsError ? String(eventsError) : null}
+          onRetry={refetchEvents}
           now={now}
         />
       </ErrorBoundary>

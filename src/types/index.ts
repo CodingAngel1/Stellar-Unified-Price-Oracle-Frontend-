@@ -63,6 +63,14 @@ export type {
   RoleRegistryEntry,
 } from './governancePermissions'
 
+// #858 — Governance event log with stable identifiers
+export type {
+  GovernanceEventType,
+  GovernanceEvent,
+  GovernanceEventFilters,
+  GovernanceEventExportJson,
+} from './governanceEvents'
+
 // On-chain price / proof types — see src/types/onChainPrice.ts
 export type { OnChainPriceRecord, SourceContribution, PriceProof } from './onChainPrice'
 export { onChainRecordToPriceData, isSourceContribution, isPriceProof } from './onChainPrice'
