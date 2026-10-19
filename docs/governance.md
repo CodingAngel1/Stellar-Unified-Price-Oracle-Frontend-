@@ -60,3 +60,57 @@ To ensure high voter comprehension and compliance with Stellar governance standa
 - **Stale State Caveat**: If an active status persists after the deadline has elapsed, the UI flags the result as provisional pending on-chain reconciliation.
 - **Execution Timelock**: Details the mandatory 24-hour grace/timelock period between a passed vote and execution of parameters on-chain.
 
+## Source Certification Status, Evidence, and Expiry Dates (#855)
+
+The Governance dashboard features a dedicated **Source certifications** panel (`SourceCertificationPanel`) providing visibility into the technical credentials, security audits, and regulatory certifications held by price oracle feed providers (e.g. Chainlink, Reflector, Binance, Coinbase, Kraken).
+
+### Data Model
+
+Source certifications are reported via `SourceCertification`:
+
+```typescript
+export interface SourceCertification {
+  /** Stable identifier for the certificate, e.g. "cert-chainlink-soc2-2026" */
+  id: string;
+  /** Target oracle source name */
+  source: string;
+  /** Name of the certification (e.g. "SOC 2 Type II", "ISO 27001", "Stellar Attestation") */
+  name: string;
+  /** Functional category, e.g. "security", "infrastructure", "compliance" */
+  category: string;
+  /** Certifying body or independent auditor */
+  issuer: string;
+  /** Operational status: 'active' | 'expiring-soon' | 'expired' | 'revoked' | 'suspended' */
+  status: CertificationStatus;
+  /** Issue timestamp (ms) */
+  issuedAt: number;
+  /** Expiration timestamp (ms), or null for perpetual attestations */
+  expiresAt: number | null;
+  /** Verifiable audit documents, links, and SHA-256 digests */
+  evidence: CertificationEvidence[];
+  /** Optional summary of audit scope */
+  description?: string | null;
+  /** Optional revocation timestamp (ms) */
+  revokedAt?: number | null;
+  /** Reason recorded if certification was revoked */
+  revocationReason?: string | null;
+}
+```
+
+### UI & Verification Features
+
+- **Status Derivation**: Operational status is dynamically derived based on the current timestamp, remaining days to expiry, and revocation flags.
+- **Expiry Tracking & Warnings**:
+  - Expiries within 30 days are highlighted with an `Expiring Soon` badge and amber countdown (e.g. `Expires in 10d`).
+  - Lapsed certifications display an `Expired` badge with elapsed duration (e.g. `Expired 3d ago`).
+  - Perpetual certifications without expiration dates display `Perpetual (No Expiry)`.
+- **Verifiable Evidence & Audit Proofs**:
+  - Each certificate contains an expandable evidence list with links to public audit reports or attestations (`rel="noopener noreferrer"`, `target="_blank"`).
+  - Evidence items include cryptographic SHA-256 digests with a one-click copy button for tamper-proof verification.
+- **Revocation Transparency**:
+  - Explicit revocation notices display the date of revocation and reason (e.g. "Infrastructure key migration failed"), preventing compromised credentials from appearing valid.
+- **Search & Filters**:
+  - Instant client-side search across source names, certification titles, issuers, and descriptions.
+  - Multi-dimensional filtering by derived status and functional category.
+
+

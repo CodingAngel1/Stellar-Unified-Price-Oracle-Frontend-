@@ -6,6 +6,7 @@ import type {
   SourceReputationScore,
   SourceIncentiveSummary,
   PriceDispute,
+  SourceCertification,
   PriceData,
   PriceHistoryResponse,
   PriceProof,
@@ -25,6 +26,7 @@ import {
   SourceReputationScoreSchema,
   SourceIncentiveSummarySchema,
   PriceDisputeSchema,
+  SourceCertificationSchema,
 } from './schemas'
 import { validate } from './validate'
 import { getAcceptVersionHeader } from './version'
@@ -693,3 +695,35 @@ export async function fetchPriceDisputes(signal?: AbortSignal): Promise<PriceDis
   }
   return disputes
 }
+
+// ---------------------------------------------------------------------------
+// #855 — Source certifications
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches verifiable certifications for all oracle sources from the governance API.
+ *
+ * Each certification is validated individually; invalid records are safely dropped
+ * with a warning to protect against registry corruption.
+ */
+export async function fetchSourceCertifications(signal?: AbortSignal): Promise<SourceCertification[]> {
+  const raw = await request<unknown>('/api/governance/certifications', undefined, signal)
+
+  if (!Array.isArray(raw)) {
+    console.warn('[governance] fetchSourceCertifications: expected an array; received', typeof raw)
+    return []
+  }
+
+  const certifications: SourceCertification[] = []
+  for (const item of raw) {
+    const parsed = SourceCertificationSchema.safeParse(item)
+    if (parsed.success) {
+      certifications.push(parsed.data)
+    } else {
+      const message = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
+      console.warn(`[governance] dropping malformed certification — ${message}`)
+    }
+  }
+  return certifications
+}
+

@@ -446,3 +446,54 @@ export interface ProposedParameterChange {
   /** Optional engineering unit, e.g. `"ms"`, `"%"`, `"sources"`. */
   unit?: string | null
 }
+
+// ---------------------------------------------------------------------------
+// #855 — Source certification status, evidence, and expiry dates
+// ---------------------------------------------------------------------------
+
+/** Certification status of an oracle source. */
+export type CertificationStatus = 'active' | 'expiring-soon' | 'expired' | 'revoked' | 'suspended'
+
+/** Verifiable proof or audit report backing a source certification. */
+export interface CertificationEvidence {
+  /** Document or artifact title, e.g. "SOC-2 Type II Independent Audit". */
+  title: string
+  /** URL to the verifiable report, public attestation, IPFS artifact, or certificate. */
+  url: string
+  /** Optional cryptographic hash (SHA-256 or IPFS CID) for tamper-evidence verification. */
+  sha256?: string | null
+  /** Type of proof: e.g. 'audit_report', 'attestation', 'cryptographic_key', 'regulatory_license'. */
+  type?: string | null
+}
+
+/**
+ * Formal certification held by an oracle source provider (#855).
+ * Contains technical attestation, audit scope, evidence links, and verifiable expiry dates.
+ */
+export interface SourceCertification {
+  /** Stable identifier for the certificate, e.g. "cert-chainlink-soc2-2026". */
+  id: string
+  /** Oracle source identifier (e.g. "chainlink", "reflector", "binance", "coinbase", "kraken"). */
+  source: string
+  /** Name of the certification, e.g. "SOC 2 Type II", "ISO 27001", "Stellar Attestation". */
+  name: string
+  /** Functional category, e.g. "security", "infrastructure", "compliance", "data_quality". */
+  category: string
+  /** Certifying body or independent auditor, e.g. "Trail of Bits", "CertiK", "KPMG". */
+  issuer: string
+  /** Status reported by the registry. */
+  status: CertificationStatus
+  /** Unix timestamp (ms) when the certificate was issued. */
+  issuedAt: number
+  /** Unix timestamp (ms) when the certificate expires, or null if perpetual/continuous. */
+  expiresAt: number | null
+  /** Verifiable evidence items, reports, or cryptographic proofs. */
+  evidence: CertificationEvidence[]
+  /** Optional brief description or audit summary. */
+  description?: string | null
+  /** Optional revocation timestamp (ms) if revoked or suspended. */
+  revokedAt?: number | null
+  /** Optional explanation recorded when certification was revoked. */
+  revocationReason?: string | null
+}
+

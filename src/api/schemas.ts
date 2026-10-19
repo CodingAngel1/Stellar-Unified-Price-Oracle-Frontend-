@@ -427,6 +427,32 @@ export const LegacyPriceDisputeSchema = z.object({
 
 export const LegacyPriceDisputesSchema = z.array(LegacyPriceDisputeSchema)
 
+// ── #855 Source certification schemas ────────────────────────────────────────
+
+export const CertificationEvidenceSchema = z.object({
+  title: z.string().min(1),
+  url: z.string(),
+  sha256: z.string().nullable().optional(),
+  type: z.string().nullable().optional(),
+})
+
+export const SourceCertificationSchema = z.object({
+  id: z.string().min(1),
+  source: z.string().min(1),
+  name: z.string().min(1),
+  category: z.string().min(1),
+  issuer: z.string().min(1),
+  status: z.enum(['active', 'expiring-soon', 'expired', 'revoked', 'suspended']),
+  issuedAt: z.number().int().min(0),
+  expiresAt: z.number().int().min(0).nullable(),
+  evidence: z.array(CertificationEvidenceSchema),
+  description: z.string().nullable().optional(),
+  revokedAt: z.number().int().min(0).nullable().optional(),
+  revocationReason: z.string().nullable().optional(),
+})
+
+export const SourceCertificationsSchema = z.array(SourceCertificationSchema)
+
 // ── Type inference from schemas ──────────────────────────────────────────────
 
 export type PriceDataFromSchema = z.infer<typeof PriceDataSchema>

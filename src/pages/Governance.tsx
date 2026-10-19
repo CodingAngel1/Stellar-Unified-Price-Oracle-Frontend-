@@ -28,6 +28,7 @@ import { ParameterRegistryPanel } from '../components/ParameterRegistryPanel'
 import { ReputationScorePanel } from '../components/ReputationScorePanel'
 import { IncentiveLedgerPanel } from '../components/IncentiveLedgerPanel'
 import { DisputePanel } from '../components/DisputePanel'
+import { SourceCertificationPanel } from '../components/SourceCertificationPanel'
 import { usePriceContext } from '../context/PriceContext'
 import { useSwr } from '../hooks/useSwr'
 import {
@@ -37,6 +38,7 @@ import {
   fetchReputationScores,
   fetchIncentiveSummaries,
   fetchPriceDisputes,
+  fetchSourceCertifications,
 } from '../api/rest'
 import { VALID_PAIRS, type PriceHistoryEntry } from '../types'
 import { deriveSourceHealths } from '../utils/sourceHealth'
@@ -100,6 +102,13 @@ export function Governance(): ReactElement {
     'governance/disputes',
     (signal) => fetchPriceDisputes(signal),
     { staleTime: 60_000, refreshInterval: 120_000 },
+  )
+
+  // #855 — Source certifications
+  const { data: certifications } = useSwr(
+    'governance/certifications',
+    (signal) => fetchSourceCertifications(signal),
+    { staleTime: 120_000, refreshInterval: 300_000 },
   )
 
   const sourceHealths = useMemo(() => deriveSourceHealths(prices), [prices])
@@ -270,6 +279,11 @@ export function Governance(): ReactElement {
       {/* ── #695 Price disputes ────────────────────────────────────────── */}
       <ErrorBoundary boundaryId="governance-disputes" featureLabel="Price disputes">
         <DisputePanel disputes={disputes ?? []} now={now} />
+      </ErrorBoundary>
+
+      {/* ── #855 Source certifications ─────────────────────────────────── */}
+      <ErrorBoundary boundaryId="governance-certifications" featureLabel="Source certifications">
+        <SourceCertificationPanel certifications={certifications ?? []} now={now} />
       </ErrorBoundary>
     </div>
   )
