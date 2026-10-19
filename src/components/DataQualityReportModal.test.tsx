@@ -140,4 +140,31 @@ describe('DataQualityReportModal', () => {
       expect(screen.getByText(/unable to save your report to local storage/i)).toBeInTheDocument()
     })
   })
+
+  it('displays duplicate report alert when similar report exists for this asset pair', () => {
+    const existing = moderation.createReport({
+      surface: 'chart',
+      targetId: 'XLM/USD',
+      category: 'data-quality',
+      evidence: '[Concern: Abnormal price spike or sudden drop] Observed a 15% flash crash spike on Binance feed.',
+      confidential: false,
+    })
+    moderation.saveReports([existing])
+
+    render(
+      <DataQualityReportModal
+        isOpen={true}
+        onClose={vi.fn()}
+        pair="XLM/USD"
+      />,
+    )
+
+    const textarea = screen.getByPlaceholderText(/describe what you observed/i)
+    fireEvent.change(textarea, {
+      target: { value: 'Observed a flash crash spike on Binance feed.' },
+    })
+
+    expect(screen.getByRole('region', { name: /likely duplicate reports warning/i })).toBeInTheDocument()
+    expect(screen.getByText(/likely duplicate report detected/i)).toBeInTheDocument()
+  })
 })

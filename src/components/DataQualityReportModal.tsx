@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useId, type FormEvent, type ReactElement } from 'react'
+import { useState, useEffect, useRef, useId, useMemo, type FormEvent, type ReactElement } from 'react'
 import {
   CODE_OF_CONDUCT_URL,
   createReport,
@@ -6,6 +6,8 @@ import {
   saveReports,
 } from '../utils/moderation'
 import { formatTimestamp } from '../utils/format'
+import { findDuplicateReports } from '../utils/duplicateDetection'
+import { DuplicateReportAlert } from './DuplicateReportAlert'
 
 export type DataQualityConcernType =
   | 'price-spike'
@@ -53,6 +55,22 @@ export function DataQualityReportModal({
   const [confidential, setConfidential] = useState(false)
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [dismissedDuplicates, setDismissedDuplicates] = useState(false)
+
+  const existingReports = useMemo(() => (isOpen ? loadReports() : []), [isOpen])
+  const duplicates = useMemo(
+    () =>
+      findDuplicateReports(
+        {
+          surface: 'chart',
+          targetId: pair,
+          category: 'data-quality',
+          evidence: `[Concern: ${CONCERN_LABELS[concernType]}] ${evidence}`,
+        },
+        existingReports,
+      ),
+    [pair, concernType, evidence, existingReports],
+  )
 
   const titleId = useId()
   const descId = useId()
@@ -80,6 +98,7 @@ export function DataQualityReportModal({
       setConcernType('price-spike')
       setSuspectSource('all')
       setConfidential(false)
+      setDismissedDuplicates(false)
     }
   }, [isOpen])
 
@@ -330,6 +349,12 @@ export function DataQualityReportModal({
                 className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 p-2.5 text-xs text-gray-900 dark:text-gray-100 focus:outline-hidden focus:ring-2 focus:ring-cyan-500 resize-y"
               />
             </label>
+
+            <DuplicateReportAlert
+              duplicates={duplicates}
+              dismissed={dismissedDuplicates}
+              onDismiss={() => setDismissedDuplicates(true)}
+            />
 
             <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
               <input
