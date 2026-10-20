@@ -27,6 +27,8 @@ import { FilterPanel, readFilterState, countActiveFilters } from '../components/
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { ReliabilityLeaderboard } from '../components/ReliabilityLeaderboard'
 import { OfflineSnapshotBanner } from '../components/OfflineSnapshotBanner'
+import { OfflineUnavailableNotice } from '../components/OfflineUnavailableNotice'
+import { resolveOfflineDataState } from '../utils/offlineDataState'
 import type { AlertFormData, LivePriceEntry, PriceData, SourceHealth } from '../types'
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
@@ -744,6 +746,9 @@ export function Dashboard() {
           onRefresh={refetchPrices}
         />
       )}
+      {resolveOfflineDataState({ hasLivePrices: prices.length > 0, hasSnapshot: isOfflineSnapshot }) ===
+        'unavailable' &&
+        !pricesLoading && <OfflineUnavailableNotice onRetry={refetchPrices} />}
 
       {pricesLoading && prices.length === 0 ? (
         <section
