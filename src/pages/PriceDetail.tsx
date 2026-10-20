@@ -18,6 +18,7 @@ import { PriceQualityDisclosure } from '../components/PriceQualityDisclosure'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { PairMetadataPanel } from '../components/PairMetadataPanel'
+import { PairInversionPreview } from '../components/PairInversionPreview'
 import { FeedSymbolDiagnostics } from '../components/FeedSymbolDiagnostics'
 import { ProviderPrecisionComparison } from '../components/ProviderPrecisionComparison'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
@@ -212,6 +213,12 @@ export function PriceDetail() {
               <PinPairButton price={price} />
             </div>
           </div>
+
+          <PairInversionPreview
+            pair={price.assetPair}
+            price={price.price}
+            onSwitch={(inverted) => navigate(`/price/${encodeURIComponent(inverted)}`)}
+          />
 
           <PairMetadataPanel pair={price.assetPair} metadata={price.pairMetadata} />
           <FeedSymbolDiagnostics pair={price.assetPair} feedSymbols={price.pairMetadata?.feedSymbols} />

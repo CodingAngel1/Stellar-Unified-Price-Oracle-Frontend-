@@ -553,31 +553,28 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
       >
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-              <XAxis
-                reversed={isRtl}
-                type="number"
-                scale="time"
-                dataKey="timestamp"
-                domain={['dataMin', 'dataMax']}
-                tickFormatter={formatTs}
-                tick={{ fill: tickFill, fontSize: 11 }}
-                axisLine={{ stroke: gridStroke }}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                orientation={isRtl ? 'right' : 'left'}
-                tick={{ fill: tickFill, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={yTickFormatter}
-                width={80}
-              />
-              <Tooltip
-                content={<MultiTooltip pairs={pairs} normalizedMode={normalizedMode} benchmarkPair={benchmarkPair} />}
-              />
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+            <XAxis
+              reversed={isRtl}
+              dataKey="timestamp"
+              tickFormatter={formatTs}
+              tick={{ fill: tickFill, fontSize: 11 }}
+              axisLine={{ stroke: gridStroke }}
+              tickLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              orientation={isRtl ? 'right' : 'left'}
+              tick={{ fill: tickFill, fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={yTickFormatter}
+              width={80}
+            />
+            <Tooltip
+              content={<MultiTooltip pairs={pairs} normalizedMode={normalizedMode} benchmarkPair={benchmarkPair} />}
+            />
               {regimeBands
                 .filter((regime) => regime.regime !== 'normal')
                 .map((regime, index) => (
