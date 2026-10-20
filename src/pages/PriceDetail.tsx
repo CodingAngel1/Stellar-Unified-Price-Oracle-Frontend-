@@ -29,6 +29,9 @@ import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
 import { CircuitBreakerStatus } from '../components/CircuitBreakerStatus'
+import { PinPairButton } from '../components/PinPairButton'
+import { PinnedSnapshotCard } from '../components/PinnedSnapshotCard'
+import { usePinnedPairs } from '../hooks/usePinnedPairs'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
 
@@ -130,6 +133,10 @@ export function PriceDetail() {
     enabled: !isInvalidPair && decodedPair !== '',
   })
 
+  // Pinned snapshot shown in place of the error when the live price is unavailable (#831)
+  const { getPin } = usePinnedPairs()
+  const pinnedSnapshot = decodedPair ? getPin(decodedPair) : undefined
+
   const {
     history,
     loading: historyLoading,
@@ -188,8 +195,11 @@ export function PriceDetail() {
       ) : loading ? (
         <PriceDetailSkeleton />
       ) : priceError ? (
-        <div className="p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
-          {priceError.message}
+        <div className="space-y-4">
+          <div className="p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
+            {priceError.message}
+          </div>
+          {pinnedSnapshot && <PinnedSnapshotCard snapshot={pinnedSnapshot} />}
         </div>
       ) : price ? (
         <div>
@@ -199,6 +209,9 @@ export function PriceDetail() {
             <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-medium">
               {t('priceDetail.live')}
             </span>
+            <div className="ms-auto">
+              <PinPairButton price={price} />
+            </div>
           </div>
 
           <PairInversionPreview
