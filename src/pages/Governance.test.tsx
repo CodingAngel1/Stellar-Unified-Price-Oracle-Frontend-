@@ -10,6 +10,8 @@ import {
   fetchTreasury,
   fetchDisputes,
   fetchParameterRegistry,
+  fetchOperatorDisclosures,
+  fetchGovernanceEvents,
 } from '../api/rest'
 import { GovernanceProposalCard } from '../components/GovernanceProposalCard'
 import type { GovernanceProposal } from '../types'
@@ -22,6 +24,11 @@ vi.mock('../api/rest', () => ({
   fetchTreasury: vi.fn(),
   fetchDisputes: vi.fn(),
   fetchParameterRegistry: vi.fn(),
+  fetchReputationScores: vi.fn(),
+  fetchIncentiveSummaries: vi.fn(),
+  fetchPriceDisputes: vi.fn(),
+  fetchOperatorDisclosures: vi.fn(),
+  fetchGovernanceEvents: vi.fn(),
 }))
 
 vi.mock('../context/PriceContext', () => ({
@@ -57,6 +64,8 @@ beforeEach(() => {
   vi.mocked(fetchTreasury).mockResolvedValue([])
   vi.mocked(fetchDisputes).mockResolvedValue([])
   vi.mocked(fetchParameterRegistry).mockResolvedValue([])
+  vi.mocked(fetchOperatorDisclosures).mockResolvedValue([])
+  vi.mocked(fetchGovernanceEvents).mockResolvedValue([])
 })
 
 afterEach(cleanup)

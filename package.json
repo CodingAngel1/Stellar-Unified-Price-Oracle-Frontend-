@@ -42,6 +42,7 @@
     "test:e2e:pointer": "playwright test --project=interaction-desktop-pointer",
     "test:e2e:touch": "playwright test --project=interaction-mobile-touch",
     "bench:idb": "node scripts/bench-idb.mjs",
+    "bench:mobile": "node scripts/benchmark-mobile.mjs",
     "check:api-version": "node scripts/check-api-version.js",
     "generate:openapi": "npx openapi-typescript ${BACKEND_OPENAPI_URL:-http://localhost:3000/openapi.json} --output src/api/openapi-types.ts",
     "lhci": "npx @lhci/cli@0.14.x autorun --config=.lighthouserc.json"

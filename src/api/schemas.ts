@@ -390,7 +390,6 @@ export const TreasuryEntrySchema = z.object({
 
 export const TreasurySchema = z.array(TreasuryEntrySchema)
 
-// ── #695 Dispute schemas ──────────────────────────────────────────────────────
 
 
 // ── Type inference from schemas ──────────────────────────────────────────────

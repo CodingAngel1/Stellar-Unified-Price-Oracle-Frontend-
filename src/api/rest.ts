@@ -25,6 +25,7 @@ import {
   SourceReputationScoreSchema,
   SourceIncentiveSummarySchema,
   PriceDisputeSchema,
+  OperatorDisclosureSchema,
 } from './schemas'
 import { validate } from './validate'
 import { getAcceptVersionHeader } from './version'
