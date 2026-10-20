@@ -1,16 +1,9 @@
 import { networkFromPassphrase } from '../lib/networkRegistry'
-import type { OracleNetwork } from '../lib/contractRegistry'
 import type { TxSummary } from './txReview'
 
-const NETWORK_LABEL: Record<OracleNetwork, string> = {
-  mainnet: 'Mainnet (public)',
-  testnet: 'Testnet',
-  futurenet: 'Futurenet',
-}
-
 /**
- * Shows the decoded payload before any signature (#631). The network is shown
- * first with its passphrase, so the user can see which chain they are signing for (#845).
+ * Shows the decoded payload and the network it targets before any signature (#631, #845).
+ * An unrecognised passphrase is flagged so the user never signs blind to the network.
  */
 export function TxReviewDialog({
   summary,
@@ -25,19 +18,11 @@ export function TxReviewDialog({
   return (
     <div role="dialog" aria-modal="true" aria-label="Review transaction">
       <h2>Review transaction</h2>
-      <p>
-        Network: <strong>{network ? NETWORK_LABEL[network] : 'Unrecognised network'}</strong>
-      </p>
-      <p>
-        Network passphrase: <code>{summary.networkPassphrase}</code>
-      </p>
-      {!network && (
-        <p role="alert">
-          This transaction targets a network this app does not recognise. Do not sign it unless you expect that network.
-        </p>
+      <p>Network: {network ?? 'Unknown network'}</p>
+      {network === null && (
+        <p role="alert">This transaction targets a network this app does not recognise. Do not sign it.</p>
       )}
       <p>Source: {summary.source}</p>
-      <p>Operations: {summary.operations.length}</p>
       <p>
         Fee estimate: {summary.feeXlm} XLM ({summary.feeStroops} stroops)
       </p>

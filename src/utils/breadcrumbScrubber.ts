@@ -1,55 +1,69 @@
 /**
- * Strips personal data from error breadcrumbs before they are reported (#846).
- *
- * Breadcrumbs carry free text (messages, URLs) and arbitrary payloads, so an email,
- * a wallet address or a secret in a query string can reach the error tracker
- * unnoticed. These are pure functions: the input is never mutated.
+ * Removes personal data from error-reporting breadcrumbs before they leave the
+ * browser (#846). Breadcrumb payloads are free-form, so this works on two
+ * levels: values under personal-data keys are dropped wholesale, and email
+ * addresses or IPv4 addresses appearing inside any string are masked.
  */
 
-const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
-/** Stellar account (StrKey G...): 56 base32 characters. */
-const STELLAR_ACCOUNT = /\bG[A-Z2-7]{55}\b/g
-const IPV4 = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g
-/** Credential-bearing query parameters, e.g. `?access_token=...` in a fetch URL. */
-const SENSITIVE_QUERY = /([?&](?:access_token|token|code|api[_-]?key|secret|password)=)[^&#\s]*/gi
+export const SCRUBBED = '[redacted]'
 
-/** Object keys whose values are always personal, regardless of content. Lower-cased. */
-const PERSONAL_KEYS = new Set(['email', 'username', 'ip', 'ipaddress', 'phone', 'fullname', 'firstname', 'lastname'])
+/** Normalized key names (lower-case, letters only) whose values are personal data. */
+const PERSONAL_KEYS = new Set([
+  'email',
+  'phone',
+  'phonenumber',
+  'ip',
+  'ipaddress',
+  'username',
+  'fullname',
+  'firstname',
+  'lastname',
+  'displayname',
+  'address',
+  'dateofbirth',
+])
 
-const REDACTED = '[redacted]'
-/** Payloads nest shallowly; anything deeper is dropped rather than passed through unscanned. */
-const MAX_DEPTH = 6
+const EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
+const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g
 
-/** Replaces personal data inside a free-text string. */
-export function scrubPersonalText(text: string): string {
-  return text
-    .replace(SENSITIVE_QUERY, `$1${REDACTED}`)
-    .replace(EMAIL, '[email]')
-    .replace(STELLAR_ACCOUNT, '[account]')
-    .replace(IPV4, '[ip]')
+/** Guards against cyclic or pathologically deep payloads. */
+const MAX_DEPTH = 8
+
+function isPersonalKey(key: string): boolean {
+  return PERSONAL_KEYS.has(key.toLowerCase().replace(/[^a-z]/g, ''))
 }
 
-/** Recursively scrubs a payload: strings are scanned, personal keys are redacted wholesale. */
-export function scrubPersonalData<T>(value: T, depth = 0): T {
-  if (typeof value === 'string') return scrubPersonalText(value) as T
-  if (value === null || typeof value !== 'object') return value
-  if (depth >= MAX_DEPTH) return REDACTED as T
-  if (Array.isArray(value)) return value.map((item) => scrubPersonalData(item, depth + 1)) as T
+/** Masks email addresses and IPv4 addresses inside a free-text string. */
+export function scrubString(text: string): string {
+  return text.replace(EMAIL_PATTERN, '[email]').replace(IPV4_PATTERN, '[ip]')
+}
 
-  const out: Record<string, unknown> = {}
-  for (const [key, item] of Object.entries(value)) {
-    out[key] = PERSONAL_KEYS.has(key.toLowerCase()) ? REDACTED : scrubPersonalData(item, depth + 1)
+/**
+ * Returns a copy of a breadcrumb payload with personal data removed. The input
+ * is never mutated.
+ */
+export function scrubBreadcrumbData(value: unknown, depth = 0): unknown {
+  if (typeof value === 'string') return scrubString(value)
+  if (depth >= MAX_DEPTH) return SCRUBBED
+  if (Array.isArray(value)) return value.map((item) => scrubBreadcrumbData(item, depth + 1))
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = isPersonalKey(key) ? SCRUBBED : scrubBreadcrumbData(inner, depth + 1)
+    }
+    return out
   }
-  return out as T
+  return value
 }
 
-/** Scrubs a Sentry-style breadcrumb's message and data. Used as Sentry's `beforeBreadcrumb`. */
-export function scrubBreadcrumb<T extends { category?: string; message?: string; data?: Record<string, unknown> }>(
-  breadcrumb: T,
-): T {
+/**
+ * Scrubs the message and data of a Sentry breadcrumb. Generic over the breadcrumb
+ * shape so this module does not need to import Sentry's types.
+ */
+export function scrubBreadcrumb<T extends { message?: string; data?: Record<string, unknown> }>(breadcrumb: T): T {
   return {
     ...breadcrumb,
-    ...(breadcrumb.message !== undefined ? { message: scrubPersonalText(breadcrumb.message) } : {}),
-    ...(breadcrumb.data ? { data: scrubPersonalData(breadcrumb.data) } : {}),
+    ...(breadcrumb.message !== undefined && { message: scrubString(breadcrumb.message) }),
+    ...(breadcrumb.data !== undefined && { data: scrubBreadcrumbData(breadcrumb.data) as Record<string, unknown> }),
   }
 }

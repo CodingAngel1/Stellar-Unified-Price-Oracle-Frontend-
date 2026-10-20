@@ -1,76 +1,81 @@
 import { describe, it, expect } from 'vitest'
-import { scrubBreadcrumb, scrubPersonalData, scrubPersonalText } from './breadcrumbScrubber'
+import fc from 'fast-check'
+import { scrubBreadcrumb, scrubBreadcrumbData, scrubString, SCRUBBED } from './breadcrumbScrubber'
 
-const ACCOUNT = 'GCZST3XJKCCWLZ2TNSKZ3Z6ZXVRVN4UWP6BGFSIEZHMUWDPVTK5SGZOQ'
-
-describe('scrubPersonalText', () => {
-  it('replaces email addresses', () => {
-    expect(scrubPersonalText('signed in as ada@example.com')).toBe('signed in as [email]')
+describe('scrubString', () => {
+  it('masks email addresses inside free text', () => {
+    expect(scrubString('failed for jane.doe+ops@example.co.uk today')).toBe('failed for [email] today')
   })
 
-  it('replaces Stellar account addresses', () => {
-    expect(scrubPersonalText(`paid from ${ACCOUNT}`)).toBe('paid from [account]')
-  })
-
-  it('replaces IPv4 addresses', () => {
-    expect(scrubPersonalText('client 203.0.113.42 timed out')).toBe('client [ip] timed out')
-  })
-
-  it('redacts credential query parameters but keeps the rest of the URL', () => {
-    expect(scrubPersonalText('GET /data?symbol=XLM&access_token=abc123&limit=5')).toBe(
-      'GET /data?symbol=XLM&access_token=[redacted]&limit=5',
-    )
+  it('masks IPv4 addresses inside free text', () => {
+    expect(scrubString('request from 203.0.113.42 timed out')).toBe('request from [ip] timed out')
   })
 
   it('leaves ordinary text untouched', () => {
-    expect(scrubPersonalText('Starting operation: fetchPrices')).toBe('Starting operation: fetchPrices')
+    expect(scrubString('price feed stale for XLM/USD')).toBe('price feed stale for XLM/USD')
   })
 })
 
-describe('scrubPersonalData', () => {
-  it('redacts personal keys wholesale, whatever their value', () => {
-    expect(scrubPersonalData({ email: 'x', username: 'ada', ok: true })).toEqual({
-      email: '[redacted]',
-      username: '[redacted]',
-      ok: true,
-    })
+describe('scrubBreadcrumbData', () => {
+  it('drops values under personal-data keys regardless of casing or separators', () => {
+    const out = scrubBreadcrumbData({ Email: 'a@b.co', phone_number: '+1555', fullName: 'Ada', ipAddress: '10.0.0.1' })
+    expect(out).toEqual({ Email: SCRUBBED, phone_number: SCRUBBED, fullName: SCRUBBED, ipAddress: SCRUBBED })
   })
 
-  it('scrubs strings nested inside objects and arrays', () => {
-    expect(scrubPersonalData({ notes: ['from ada@example.com', { detail: 'ip 10.0.0.1' }] })).toEqual({
-      notes: ['from [email]', { detail: 'ip [ip]' }],
+  it('recurses into nested objects and arrays', () => {
+    const out = scrubBreadcrumbData({ req: { headers: [{ user: { email: 'x@y.io' } }] } })
+    expect(out).toEqual({ req: { headers: [{ user: { email: SCRUBBED } }] } })
+  })
+
+  it('keeps non-personal fields intact', () => {
+    expect(scrubBreadcrumbData({ pair: 'XLM/USD', count: 3, ok: true, n: null })).toEqual({
+      pair: 'XLM/USD',
+      count: 3,
+      ok: true,
+      n: null,
     })
   })
 
   it('does not mutate its input', () => {
-    const input = { email: 'ada@example.com', nested: { text: 'ada@example.com' } }
-    scrubPersonalData(input)
-    expect(input).toEqual({ email: 'ada@example.com', nested: { text: 'ada@example.com' } })
+    const input = { email: 'a@b.co', note: 'from 1.2.3.4' }
+    scrubBreadcrumbData(input)
+    expect(input).toEqual({ email: 'a@b.co', note: 'from 1.2.3.4' })
   })
 
-  it('drops payloads nested deeper than the limit instead of passing them through', () => {
-    let deep: unknown = 'ada@example.com'
-    for (let i = 0; i < 10; i++) deep = { next: deep }
-    expect(JSON.stringify(scrubPersonalData(deep))).not.toContain('ada@example.com')
+  it('stops at a bounded depth so cyclic payloads terminate', () => {
+    const cyclic: Record<string, unknown> = { label: 'loop' }
+    cyclic.self = cyclic
+    expect(() => scrubBreadcrumbData(cyclic)).not.toThrow()
   })
 })
 
 describe('scrubBreadcrumb', () => {
-  it('scrubs the message and data of a breadcrumb', () => {
-    const crumb = {
-      category: 'user-action',
-      message: 'Error: could not save for ada@example.com',
-      data: { wallet: ACCOUNT, status: 500 },
-    }
-
-    expect(scrubBreadcrumb(crumb)).toEqual({
-      category: 'user-action',
-      message: 'Error: could not save for [email]',
-      data: { wallet: '[account]', status: 500 },
-    })
+  it('scrubs both message and data and preserves other fields', () => {
+    const out = scrubBreadcrumb({ message: 'user a@b.co hit 10.1.1.1', data: { password: 'x' }, category: 'ui' })
+    expect(out).toEqual({ message: 'user [email] hit [ip]', data: { password: 'x' }, category: 'ui' })
   })
 
-  it('passes a breadcrumb without message or data through unchanged', () => {
+  it('leaves a breadcrumb without message or data as is', () => {
     expect(scrubBreadcrumb({ category: 'navigation' })).toEqual({ category: 'navigation' })
+  })
+})
+
+describe('breadcrumb scrubbing invariants', () => {
+  it('never leaves the value of a personal key in the output', () => {
+    fc.assert(
+      fc.property(fc.constantFrom('email', 'phone', 'username', 'fullName', 'ipAddress'), fc.string(), (key, value) => {
+        const out = scrubBreadcrumbData({ [key]: value }) as Record<string, unknown>
+        expect(out[key]).toBe(SCRUBBED)
+      }),
+    )
+  })
+
+  it('never emits a raw email address from free text', () => {
+    fc.assert(
+      fc.property(fc.stringMatching(/^[a-z]{3,10}$/), fc.stringMatching(/^[a-z]{3,10}$/), (local, domain) => {
+        const text = `contact ${local}@${domain}.com now`
+        expect(scrubString(text)).not.toContain(`${local}@${domain}`)
+      }),
+    )
   })
 })

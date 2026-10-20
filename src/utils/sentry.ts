@@ -84,7 +84,8 @@ export async function initSentry(): Promise<boolean> {
       attachStacktrace: config.attachStacktrace,
       maxBreadcrumbs: config.maxBreadcrumbs,
 
-      // Every breadcrumb, including the SDK's automatic ones, passes through here (#846).
+      // Last line of defence: strip personal data from every breadcrumb, including
+      // ones the SDK records itself (console, fetch, DOM) and not just ours.
       beforeBreadcrumb: (breadcrumb) => scrubBreadcrumb(breadcrumb),
 
       // Ignore specific errors that are not actionable
@@ -199,8 +200,7 @@ export function addSentryBreadcrumb(
     import('@sentry/react')
       .then((Sentry) => {
         Sentry.addBreadcrumb({
-          message,
-          data,
+          ...scrubBreadcrumb({ message, data }),
           level: level as import('@sentry/react').SeverityLevel,
           category: 'user-action',
         })
