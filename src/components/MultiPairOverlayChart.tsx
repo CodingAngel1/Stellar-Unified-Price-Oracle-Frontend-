@@ -11,6 +11,7 @@ import {
   ReferenceArea,
 } from 'recharts'
 import type { PriceHistoryEntry } from '../types'
+import { useIsRtl } from '../hooks/useIsRtl'
 import { SOURCE_COLORS } from '../utils/sourceColors'
 import { formatPriceShort } from '../utils/format'
 import {
@@ -22,7 +23,6 @@ import {
   calculateVolatilityRegimes,
   groupVolatilityRegimes,
 } from '../utils/comparisonAnalytics'
-import { useIsRtl } from '../hooks/useIsRtl'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -230,7 +230,7 @@ function MultiLegend({ pairs, benchmarkPair }: LegendProps) {
             )}
             <span>
               {pair}
-              {isBenchmark && <span className="ms-1 text-[10px] uppercase tracking-wide opacity-60">benchmark</span>}
+              {isBenchmark && <span className="ml-1 text-[10px] uppercase tracking-wide opacity-60">benchmark</span>}
             </span>
           </div>
         )
@@ -250,8 +250,8 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
   normalizedMode = false,
   onExport,
 }: MultiPairOverlayChartProps) {
-  const isRtl = useIsRtl()
   const analyticsHeadingId = useId()
+  const isRtl = useIsRtl()
   const [periodStart, setPeriodStart] = useState('')
   const [periodEnd, setPeriodEnd] = useState('')
   const [rollingWindow, setRollingWindow] = useState(10)
@@ -545,6 +545,14 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
         </section>
       )}
 
+      {/* Summary of the same window the chart draws, so the lines can be read against it (#814) */}
+      <ComparisonSummary
+        pairs={pairs}
+        history={history}
+        start={hasBenchmark && validPeriod ? (startTimestamp ?? undefined) : undefined}
+        end={hasBenchmark && validPeriod ? (endTimestamp ?? undefined) : undefined}
+      />
+
       {/* Chart area */}
       <div
         className="h-72"
@@ -553,31 +561,28 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
       >
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-              <XAxis
-                reversed={isRtl}
-                type="number"
-                scale="time"
-                dataKey="timestamp"
-                domain={['dataMin', 'dataMax']}
-                tickFormatter={formatTs}
-                tick={{ fill: tickFill, fontSize: 11 }}
-                axisLine={{ stroke: gridStroke }}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                orientation={isRtl ? 'right' : 'left'}
-                tick={{ fill: tickFill, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={yTickFormatter}
-                width={80}
-              />
-              <Tooltip
-                content={<MultiTooltip pairs={pairs} normalizedMode={normalizedMode} benchmarkPair={benchmarkPair} />}
-              />
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+            <XAxis
+              reversed={isRtl}
+              dataKey="timestamp"
+              tickFormatter={formatTs}
+              tick={{ fill: tickFill, fontSize: 11 }}
+              axisLine={{ stroke: gridStroke }}
+              tickLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              orientation={isRtl ? 'right' : 'left'}
+              tick={{ fill: tickFill, fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={yTickFormatter}
+              width={80}
+            />
+            <Tooltip
+              content={<MultiTooltip pairs={pairs} normalizedMode={normalizedMode} benchmarkPair={benchmarkPair} />}
+            />
               {regimeBands
                 .filter((regime) => regime.regime !== 'normal')
                 .map((regime, index) => (

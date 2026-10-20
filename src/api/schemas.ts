@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { isSecureProvenanceUrl } from '../utils/provenance'
 
 /**
  * Strict Zod schema for {@link import('../types/price').PriceData}.
@@ -390,6 +389,9 @@ export const TreasuryEntrySchema = z.object({
 })
 
 export const TreasurySchema = z.array(TreasuryEntrySchema)
+
+// ── #695 Dispute schemas ──────────────────────────────────────────────────────
+
 
 // ── Type inference from schemas ──────────────────────────────────────────────
 
