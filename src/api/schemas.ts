@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { isSecureProvenanceUrl } from '../utils/provenance'
 
 /**
  * Strict Zod schema for {@link import('../types/price').PriceData}.
@@ -407,51 +406,7 @@ export const TreasuryEntrySchema = z.object({
 
 export const TreasurySchema = z.array(TreasuryEntrySchema)
 
-// ── Legacy dispute schemas ──────────────────────────────────────────────────
 
-export const LegacyPriceDisputeSchema = z.object({
-  id: z.string().min(1),
-  assetPair: z.string().min(1),
-  disputedPrice: z.number().finite(),
-  priceTimestamp: z.number().int().min(0),
-  status: z.enum(['open', 'under_review', 'resolved', 'dismissed']),
-  challenger: z.string().min(1),
-  reason: z.string().min(1),
-  evidenceUrl: z.string().nullable(),
-  createdAt: z.number().int().min(0),
-  resolvedAt: z.number().int().min(0).nullable(),
-  outcome: z.enum(['upheld', 'rejected', 'inconclusive']).nullable(),
-  resolutionNotes: z.string().nullable(),
-  flaggedSources: z.array(z.string()),
-})
-
-export const LegacyPriceDisputesSchema = z.array(LegacyPriceDisputeSchema)
-
-// ── #855 Source certification schemas ────────────────────────────────────────
-
-export const CertificationEvidenceSchema = z.object({
-  title: z.string().min(1),
-  url: z.string(),
-  sha256: z.string().nullable().optional(),
-  type: z.string().nullable().optional(),
-})
-
-export const SourceCertificationSchema = z.object({
-  id: z.string().min(1),
-  source: z.string().min(1),
-  name: z.string().min(1),
-  category: z.string().min(1),
-  issuer: z.string().min(1),
-  status: z.enum(['active', 'expiring-soon', 'expired', 'revoked', 'suspended']),
-  issuedAt: z.number().int().min(0),
-  expiresAt: z.number().int().min(0).nullable(),
-  evidence: z.array(CertificationEvidenceSchema),
-  description: z.string().nullable().optional(),
-  revokedAt: z.number().int().min(0).nullable().optional(),
-  revocationReason: z.string().nullable().optional(),
-})
-
-export const SourceCertificationsSchema = z.array(SourceCertificationSchema)
 
 // ── Type inference from schemas ──────────────────────────────────────────────
 
