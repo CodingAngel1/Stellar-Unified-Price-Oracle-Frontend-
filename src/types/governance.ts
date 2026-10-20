@@ -335,11 +335,6 @@ export interface TreasuryEntry {
   lastSettledAt: number | null
 }
 
-// ── #695 Dispute & challenge process ─────────────────────────────────────────
-
-/** The outcome recorded when a dispute is closed. */
-export type DisputeOutcome = 'upheld' | 'rejected' | 'inconclusive' | null
-
 
 /** A single governance proposal the community can act on. */
 export interface GovernanceProposal {

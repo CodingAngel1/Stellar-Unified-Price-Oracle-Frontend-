@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { isSecureProvenanceUrl } from '../utils/provenance'
 
 /**
  * Strict Zod schema for {@link import('../types/price').PriceData}.
@@ -496,39 +495,4 @@ export const PriceDisputeSchema = z.object({
   resolutionNote: z.string().nullable(),
 })
 
-// ---------------------------------------------------------------------------
-// #856 — Operator conflict-of-interest disclosures
-// ---------------------------------------------------------------------------
-
-export const ProvenanceRecordSchema = z.object({
-  attestationHash: z.string().min(1),
-  signedBy: z.string().min(1),
-  provenanceUrl: z.string().nullable().optional(),
-  status: z.enum(['verified', 'unverified', 'expired', 'disputed']),
-  timestamp: z.number().int().min(0),
-  method: z.enum(['on_chain_attestation', 'signed_payload', 'registry_submission']),
-})
-
-export const OperatorDisclosureSchema = z.object({
-  id: z.string().min(1),
-  operatorId: z.string().min(1),
-  operatorName: z.string().min(1),
-  stellarAddress: z.string().min(1),
-  organization: z.string().nullable().optional(),
-  category: z.enum([
-    'liquidity_provider',
-    'token_holder',
-    'validator_operator',
-    'protocol_advisor',
-    'lending_market_maker',
-    'other',
-  ]),
-  materiality: z.enum(['low', 'medium', 'high']),
-  affectedPairs: z.array(z.string()),
-  description: z.string(),
-  financialInterestEstimate: z.string().nullable().optional(),
-  disclosedAt: z.number().int().min(0),
-  lastVerifiedAt: z.number().int().min(0).nullable().optional(),
-  provenance: ProvenanceRecordSchema,
-})
-
+export const PriceDisputesSchema = z.array(PriceDisputeSchema)
