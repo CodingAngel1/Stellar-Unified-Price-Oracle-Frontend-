@@ -65,6 +65,7 @@ import {
   PRICE_PRECISION_OPTIONS,
 } from '../preferences/constants'
 import type { Preferences } from '../preferences/types'
+import { DENSITY_OPTIONS, toDashboardDensity } from '../utils/density'
 
 /** Portable keys whose value in `draft` differs from the live preferences. Arrays compare by content. */
 function differingKeys(current: PortablePreferences, draft: PortablePreferences): (keyof PortablePreferences)[] {

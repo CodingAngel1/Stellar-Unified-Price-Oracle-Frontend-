@@ -68,7 +68,7 @@ export const PRIVACY_PREFERENCE_KEYS = [
 /** Handles refresh cadence, chart window, and staleness threshold. */
 export const dataPreferencesReducer = createSliceReducer(DATA_PREFERENCE_KEYS)
 
-/** Handles dashboard view mode and card ordering. */
+/** Handles dashboard view mode, density, and card ordering. */
 export const layoutPreferencesReducer = createSliceReducer(LAYOUT_PREFERENCE_KEYS)
 
 /** Handles reduced motion, high contrast, and large text. */
