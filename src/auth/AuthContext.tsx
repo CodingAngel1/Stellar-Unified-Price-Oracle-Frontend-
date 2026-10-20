@@ -95,9 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // async refresh compares against the true previous state, not a stale render.
   const statusRef = useRef<AuthStatus>('loading')
   const mountedRef = useRef(true)
+  // Whether this tab last saw a live session. Lets a server-side expiry be told
+  // apart from a user who was never signed in, or who signed out on purpose.
+  const hadSessionRef = useRef(false)
 
   const refresh = useCallback(async () => {
-    const session = await fetchSession()
+    const check = await checkSession()
     if (!mountedRef.current) return
     const next: AuthStatus = session ? 'authenticated' : 'unauthenticated'
     // fetchSession also maps network failures to null, so a brief outage can
@@ -108,6 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(session)
     setStatus(next)
   }, [])
+
+  const dismissSessionExpired = useCallback(() => setSessionExpired(false), [])
 
   useEffect(() => {
     mountedRef.current = true
@@ -156,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const signedInUser = await exchangeCode(providerId, code, verifier, redirectUri())
+      hadSessionRef.current = true
       setUser(signedInUser)
       setStatus('authenticated')
       statusRef.current = 'authenticated'
@@ -170,16 +176,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { returnTo }
   }, [])
 
+  // An explicit sign-out is not an expiry, so mark the session as ended before the
+  // request; a refresh racing with it then will not raise the expired banner.
   const signOut = useCallback(async () => {
+    hadSessionRef.current = false
     await apiSignOut()
     setUser(null)
+    setSessionExpired(false)
     setStatus('unauthenticated')
     statusRef.current = 'unauthenticated'
   }, [])
 
   const signOutEverywhere = useCallback(async () => {
+    hadSessionRef.current = false
     await apiSignOutEverywhere()
     setUser(null)
+    setSessionExpired(false)
     setStatus('unauthenticated')
     statusRef.current = 'unauthenticated'
   }, [])
@@ -212,4 +224,9 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
   return ctx
+}
+
+/** Like {@link useAuth}, but returns `null` outside an AuthProvider instead of throwing. */
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext)
 }
