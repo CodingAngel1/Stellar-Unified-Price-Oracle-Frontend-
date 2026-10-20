@@ -230,7 +230,7 @@ function MultiLegend({ pairs, benchmarkPair }: LegendProps) {
             )}
             <span>
               {pair}
-              {isBenchmark && <span className="ms-1 text-[10px] uppercase tracking-wide opacity-60">benchmark</span>}
+              {isBenchmark && <span className="ml-1 text-[10px] uppercase tracking-wide opacity-60">benchmark</span>}
             </span>
           </div>
         )
@@ -544,6 +544,14 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
           )}
         </section>
       )}
+
+      {/* Summary of the same window the chart draws, so the lines can be read against it (#814) */}
+      <ComparisonSummary
+        pairs={pairs}
+        history={history}
+        start={hasBenchmark && validPeriod ? (startTimestamp ?? undefined) : undefined}
+        end={hasBenchmark && validPeriod ? (endTimestamp ?? undefined) : undefined}
+      />
 
       {/* Chart area */}
       <div
