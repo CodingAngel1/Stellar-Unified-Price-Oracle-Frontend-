@@ -12,6 +12,10 @@ export type ChartTimezone = 'UTC' | 'Local' | 'America/New_York' | 'Europe/Londo
  */
 export type ExplanationReappearPolicy = 'never' | 'weekly' | 'always'
 export type LocaleCode = 'auto' | 'en-US' | 'de-DE' | 'fr-FR' | 'ja-JP' | 'es-ES' | 'ar-SA' | 'he' | 'pt-BR'
+/** `auto` keeps the scale-based precision of `formatPrice`; a number fixes the decimal places. */
+export type PricePrecision = 'auto' | 2 | 4 | 6 | 8
+/** Table columns the user can hide. Pair, price, and the alert action always show. */
+export type ToggleableTableColumn = 'confidence' | 'sources' | 'timestamp'
 
 /** How often and over what window price data is fetched and judged stale. */
 export interface DataPreferences {
@@ -32,7 +36,10 @@ export interface DataPreferences {
 export interface LayoutPreferences {
   dashboardView: DashboardView
   cardOrder: string[]
-  explanationReappearPolicy: ExplanationReappearPolicy
+  /** Decimal places used when displaying prices on the dashboard and tables. */
+  pricePrecision: PricePrecision
+  /** Table columns hidden by the user (#813). */
+  hiddenTableColumns: ToggleableTableColumn[]
 }
 
 /** Presentation overrides for users with accessibility needs. */
